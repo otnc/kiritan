@@ -3,6 +3,10 @@ name: release
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: '"auto" applies whatever changesets have accumulated on main. Any other value is passed to `changeset version --snapshot <value>` for an ad hoc pre-release (e.g. "beta").'
+        required: true
+        default: auto
       dist_tag:
         description: 'npm dist-tag to publish under. Leave empty to auto-detect: the prerelease identifier (e.g. "beta" from 0.2.0-beta.0), or "latest" for a stable version.'
         required: false
@@ -45,7 +49,12 @@ jobs:
 
       - name: Apply changesets (bump versions, write changelogs)
         if: steps.changesets.outputs.pending == 'true'
-        run: npx changeset version
+        run: |
+          if [ "${{ inputs.version }}" = "auto" ]; then
+            npx changeset version
+          else
+            npx changeset version --snapshot "${{ inputs.version }}"
+          fi
 
       - name: Determine dist-tag
         if: steps.changesets.outputs.pending == 'true'
@@ -53,7 +62,11 @@ jobs:
         run: |
           TAG="${{ inputs.dist_tag }}"
           if [ -z "$TAG" ]; then
-            TAG="latest"
+            if [ "${{ inputs.version }}" = "auto" ]; then
+              TAG="latest"
+            else
+              TAG="${{ inputs.version }}"
+            fi
           fi
           echo "npm_tag=$TAG" >> "$GITHUB_OUTPUT"
 
