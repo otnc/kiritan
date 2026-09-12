@@ -1,6 +1,5 @@
-dist
+**/dist
 coverage
-scripts
 package-lock.json
 pnpm-lock.yaml
 yarn.lock

@@ -1,0 +1,47 @@
+{
+  "name": "@kiritan/runtime",
+  "version": "0.1.0",
+  "description": "Minimal runtime i18n (t(key, params)) for kiritan, with no build-time dependencies / kiritanの最小ランタイムi18n(t(key, params))。ビルド時依存なし",
+  "keywords": [
+    "i18n",
+    "internationalization",
+    "translation",
+    "runtime",
+    "kiritan"
+  ],
+  "homepage": "https://github.com/otnc/kiritan#readme",
+  "bugs": {
+    "url": "https://github.com/otnc/kiritan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otnc/kiritan.git",
+    "directory": "packages/runtime"
+  },
+  "license": "WTFPL",
+  "author": "otoneko.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  }
+}
