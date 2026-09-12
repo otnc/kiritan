@@ -75,6 +75,7 @@ packages/runtime/src/
 ```
 
 - `kiritan` から `kiritan/runtime` を re-export する形は取らず、`@kiritan/runtime` を独立パッケージにする(`kiritan` は `@kiritan/runtime` に依存しても、逆はない)。ランタイムだけを使いたいプロジェクトが `kiritan` 本体(remark 等のビルド時依存)を一切引き込まずに済む。
+- CLI(`src/cli.ts`)以外はすべて CJS/ESM 両対応を維持する。remark/unified/micromark 系の依存は ESM 専用パッケージしか無い(CJS版へ戻すことは「古いバージョンを使う」ことになるため避ける)ため、`tsdown.config.ts` の `deps.alwaysBundle` でこれらを `dist/index.{cjs,mjs}` に直接バンドルし、CJS 利用者が ESM 専用パッケージを `require` する場面自体を無くす。CLI 専用の `citty` はバンドルせず外部依存のままでよい。
 - 将来追加する翻訳ミドルウェアの参考実装(`@kiritan/google-translate` など、13章)も同じワークスペースの `packages/*` に追加していく想定。
 - 既存の `tsdown` / `vitest` / `eslint` / CI(`ci.yml` / `release.yml`)はワークスペース対応に更新が必要(各パッケージごとのビルド・テスト・公開)。これは設計確定後の実装タスクとして扱う。
 - バージョニングは **パッケージごとに独立**させる(lockstep にしない)。変更のあったパッケージだけをリリースできるよう [Changesets](https://github.com/changesets/changesets) を導入するが、標準の「Bot が Version Packages PR を自動作成し、それをマージすると publish される」という2段階PRフローは採用しない。**changeset ファイルの作成(各PRの一部)と、実際のリリース実行(手動 workflow_dispatch)を分離する**:
