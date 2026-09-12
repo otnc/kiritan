@@ -3,20 +3,17 @@ name: release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to release: a semver bump (patch/minor/major/prerelease) or an explicit version (e.g. 0.1.0)'
-        required: true
-        default: patch
       dist_tag:
-        description: 'npm dist-tag to publish under. Leave empty to auto-detect: the prerelease identifier (e.g. "beta" from 12.0.0-beta.0), or "latest" for a stable version.'
+        description: 'npm dist-tag to publish under. Leave empty to auto-detect: the prerelease identifier (e.g. "beta" from 0.2.0-beta.0), or "latest" for a stable version.'
         required: false
         default: ''
 
 # Trusted publishing: npm authenticates this workflow via OIDC, so no NPM_TOKEN
-# secret is needed. Configure the link on npmjs.com first:
-#   package Settings -> Publishing access -> Trusted publishers -> GitHub
+# secret is needed. Configure the link on npmjs.com first, for every package
+# published from this repo: package Settings -> Publishing access -> Trusted
+# publishers -> GitHub.
 permissions:
-  contents: write # push the version commit/tag and create the GitHub Release
+  contents: write # push the version commit/tags and create the GitHub Release
   id-token: write # npm trusted publishing (OIDC)
 
 jobs:
@@ -30,63 +27,61 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm run ci
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
 
-      - name: Bump version
-        id: bump
+      - name: Check for pending changesets
+        id: changesets
         run: |
-          OLD="$(node -p "require('./package.json').version")"
-          npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version >/dev/null
-          NEW="$(node -p "require('./package.json').version")"
-          echo "version=v${NEW}" >> "$GITHUB_OUTPUT"
-          if [ "$OLD" = "$NEW" ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Version is already ${NEW}; skipping the bump commit but still releasing."
+          if [ -z "$(ls -A .changeset/*.md 2>/dev/null | grep -v README.md)" ]; then
+            echo "pending=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No changesets pending; nothing to release."
           else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "pending=true" >> "$GITHUB_OUTPUT"
           fi
 
-          if [[ "$NEW" == *-* ]]; then
-            REST="${NEW#*-}"
-            PRERELEASE_ID="${REST%%.*}"
-          else
-            PRERELEASE_ID=""
-          fi
+      - name: Apply changesets (bump versions, write changelogs)
+        if: steps.changesets.outputs.pending == 'true'
+        run: npx changeset version
 
+      - name: Determine dist-tag
+        if: steps.changesets.outputs.pending == 'true'
+        id: tag
+        run: |
           TAG="${{ inputs.dist_tag }}"
           if [ -z "$TAG" ]; then
-            if [ -n "$PRERELEASE_ID" ]; then TAG="$PRERELEASE_ID"; else TAG="latest"; fi
+            TAG="latest"
           fi
           echo "npm_tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$([ "$TAG" = "latest" ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
 
       # Trusted publishing: no NODE_AUTH_TOKEN — npm exchanges the OIDC token
-      # issued by GitHub for a short-lived publish credential.
-      - run: npm install -g npm@11
-      - run: npm publish --access public --provenance --tag "${{ steps.bump.outputs.npm_tag }}"
+      # issued by GitHub for a short-lived publish credential, per package.
+      - name: Publish changed packages
+        if: steps.changesets.outputs.pending == 'true'
+        run: |
+          npm install -g npm@11
+          npx changeset publish --tag "${{ steps.tag.outputs.npm_tag }}"
 
       - name: Commit, tag and push
+        if: steps.changesets.outputs.pending == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Only commit when the bump actually changed package.json; otherwise just tag and release.
-          if [ "${{ steps.bump.outputs.changed }}" = "true" ]; then
-            git commit -am "release: ${{ steps.bump.outputs.version }}"
-          fi
-          if ! git rev-parse -q --verify "refs/tags/${{ steps.bump.outputs.version }}" >/dev/null; then
-            git tag "${{ steps.bump.outputs.version }}"
-          fi
-          git push origin HEAD "${{ steps.bump.outputs.version }}"
+          git commit -am "release: version packages" || echo "::notice::Nothing to commit"
+          git push origin HEAD --follow-tags
 
       - name: Create GitHub Release
+        if: steps.changesets.outputs.pending == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.bump.outputs.version }}" \
-            --title "${{ steps.bump.outputs.version }}" \
-            --generate-notes \
-            ${{ steps.bump.outputs.prerelease == 'true' && '--prerelease' || '' }}
+          for tag in $(git tag --points-at HEAD); do
+            pkg="${tag%@*}"
+            changelog_path="packages/${pkg#@kiritan/}/CHANGELOG.md"
+            if [ "$pkg" = "kiritan" ]; then changelog_path="packages/kiritan/CHANGELOG.md"; fi
+            notes="$(awk '/^## /{if (seen++) exit} seen' "$changelog_path" 2>/dev/null || true)"
+            gh release create "$tag" --title "$tag" --notes "${notes:-See CHANGELOG.md}"
+          done
