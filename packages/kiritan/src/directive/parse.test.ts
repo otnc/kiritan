@@ -24,4 +24,13 @@ describe("stringifyMarkdown", () => {
     expect(result).toContain("> [!Warning]");
     expect(result).not.toContain("\\[!Warning]");
   });
+
+  it.each(["success", "gitlab-flag", "custom_type"])(
+    "restores markers outside GitHub's fixed alert list, like %s",
+    (type) => {
+      const source = `> [!${type}]\n>\n> Text.\n`;
+      const result = stringifyMarkdown(parseMarkdown(source));
+      expect(result).toContain(`> [!${type}]`);
+    }
+  );
 });
