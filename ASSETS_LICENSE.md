@@ -14,7 +14,7 @@ However, the following are **prohibited**:
 
 The author of these images is [otnc](https://github.com/otnc).
 
-## 東北ずん子・ずんだもんプロジェクト guideline
+## 東北ずん子ずんだもんプロジェクト guideline
 
 The images under `assets/` are based on characters from the 東北ずん子・ずんだもんプロジェクト (Tohoku Zunko / Zundamon project). The [guideline by SSS LLC.](https://zunko.jp/guideline.html) also applies to the use of these images.
 
@@ -28,7 +28,7 @@ In particular, the following sections of the guideline must be observed:
 
 > [!Note]
 >   
-> according to the guideline, a copyright notice is **not required** when using the characters. The copyright of the 東北ずん子・ずんだもんプロジェクト is managed by SSS LLC.
+> according to the guideline, a copyright notice is **not required** when using the characters. The copyright of the 東北ずん子ずんだもんプロジェクト is managed by SSS LLC.
 
 ## Covered Files
 
