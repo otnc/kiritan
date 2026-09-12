@@ -12,7 +12,7 @@
 
 > [!Warning]
 >   
-> kiritan is early and under active development (pre-1.0). The full design — including translation stores, translate middlewares, and the runtime resource strategies — is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md). `kiritan build` currently supports the `sidecar` and `inline` strategies; `catalog`, `extract`, `translate`, `check`, and `typegen` aren't implemented yet.
+> kiritan is early and under active development (pre-1.0). The full design — including translate middlewares and the runtime resource strategies — is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md). `kiritan build` currently supports the `sidecar`, `inline`, and `catalog` strategies; `extract`, `translate`, `check`, and `typegen` aren't implemented yet.
 
 ## Install
 
