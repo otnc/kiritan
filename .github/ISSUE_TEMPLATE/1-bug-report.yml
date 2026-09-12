@@ -8,9 +8,18 @@ body:
         Thank you for submitting a bug report. It helps make kiritan better.
 
         Please try to include as much information as possible.
+  - type: dropdown
+    attributes:
+      label: Which package is this about?
+      options:
+        - kiritan
+        - "@kiritan/runtime"
+        - Not sure / both
+    validations:
+      required: true
   - type: input
     attributes:
-      label: What version of kiritan are you using?
+      label: What version are you using?
       placeholder: 0.0.0
     validations:
       required: true
