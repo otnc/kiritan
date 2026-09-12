@@ -14,6 +14,22 @@ However, the following are **prohibited**:
 
 The author of these images is [otnc](https://github.com/otnc).
 
+## 東北ずん子・ずんだもんプロジェクト guideline
+
+The images under `assets/` are based on characters from the 東北ずん子・ずんだもんプロジェクト (Tohoku Zunko / Zundamon project). The [guideline by SSS LLC.](https://zunko.jp/guideline.html) also applies to the use of these images.
+
+In particular, the following sections of the guideline must be observed:
+
+- 東北ずん子ずんだもんプロジェクト キャラクター利用の手引き
+  - クリエイターの利用について
+    - 非商用利用のケース
+  - イラストの利用方法について
+    - 商用利用、非商用利用共通
+
+> [!Note]
+>   
+> according to the guideline, a copyright notice is **not required** when using the characters. The copyright of the 東北ずん子・ずんだもんプロジェクト is managed by SSS LLC.
+
 ## Covered Files
 
 - `assets/kiritan-logo.png`
