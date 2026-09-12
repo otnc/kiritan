@@ -1,68 +1,34 @@
 {
-  "name": "kiritan",
+  "name": "kiritan-workspace",
+  "private": true,
   "version": "0.0.0",
   "description": "In addition to standard scopes, an internationalization (i18n) utility for Markdown and other plain text documents / 通常の範囲に加え、マークダウンやその他平文ドキュメントのための国際化(i18n)ユーティリティ",
-  "keywords": [
-    "markdown",
-    "md",
-    "i18n",
-    "internationalization",
-    "plain-text",
-    "plain",
-    "text",
-    "txt",
-    "multi-language",
-    "multi",
-    "language",
-    "lang",
-    "rule"
-  ],
-  "homepage": "https://github.com/otnc/kiritan#readme",
-  "bugs": {
-    "url": "https://github.com/otnc/kiritan/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/otnc/kiritan.git"
-  },
   "license": "WTFPL",
   "author": "otoneko.",
   "type": "module",
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.mts",
-  "exports": {
-    ".": {
-      "types": {
-        "import": "./dist/index.d.mts",
-        "require": "./dist/index.d.cts"
-      },
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
-    }
-  },
-  "files": [
-    "dist"
+  "workspaces": [
+    "packages/*"
   ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "setup": "node scripts/setup.js",
-    "build": "tsdown",
+    "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "check": "prettier --write . && eslint --fix .",
     "ci": "prettier --check . && eslint .",
-    "prepublishOnly": "npm run build"
+    "changeset": "changeset",
+    "version-packages": "changeset version"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.7",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.2",
     "@vitest/coverage-v8": "^4.1.11",

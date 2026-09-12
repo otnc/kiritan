@@ -10,27 +10,22 @@
 
 [![npm](https://img.shields.io/npm/v/kiritan)](https://www.npmjs.com/package/kiritan) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/kiritan)](https://www.npmjs.com/package/kiritan)
 
-## Install
+This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./docs/DESIGN.md) — read it before making a structural change.
 
-```sh
-npm install kiritan
-```
+## Packages
 
-## Usage
+| Package | Path | What it is |
+| --- | --- | --- |
+| [`kiritan`](./packages/kiritan) | `packages/kiritan` | The CLI + build pipeline: config, translation stores, renderers, translate middlewares |
+| [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
 
-<!-- Replace with a real usage example. -->
-
-```ts
-import { greet } from 'kiritan'
-```
+> [!Warning]
+>   
+> kiritan is early and under active development (pre-1.0). Only the `.kiritan.*` config loader and `@kiritan/runtime`'s `createT`/`interpolate` are implemented so far — see each package's README for what actually works today.
 
 ## Requirements
 
 - Node.js >= 22
-
-## Features
-
-<!-- Some description ... -->
 
 ## Contributing
 

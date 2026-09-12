@@ -1,0 +1,69 @@
+{
+  "name": "kiritan",
+  "version": "0.1.0",
+  "description": "In addition to standard scopes, an internationalization (i18n) utility for Markdown and other plain text documents / 通常の範囲に加え、マークダウンやその他平文ドキュメントのための国際化(i18n)ユーティリティ",
+  "keywords": [
+    "markdown",
+    "md",
+    "i18n",
+    "internationalization",
+    "plain-text",
+    "plain",
+    "text",
+    "txt",
+    "multi-language",
+    "multi",
+    "language",
+    "lang",
+    "rule"
+  ],
+  "homepage": "https://github.com/otnc/kiritan#readme",
+  "bugs": {
+    "url": "https://github.com/otnc/kiritan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otnc/kiritan.git",
+    "directory": "packages/kiritan"
+  },
+  "license": "WTFPL",
+  "author": "otoneko.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "bin": {
+    "kiritan": "dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kiritan/runtime": "^0.1.0",
+    "citty": "^0.2.2",
+    "jiti": "^2.4.2",
+    "mdast-util-directive": "^3.1.0",
+    "remark-directive": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "tinyglobby": "^0.2.17",
+    "unified": "^11.0.5"
+  }
+}
