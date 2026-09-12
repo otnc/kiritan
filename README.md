@@ -36,3 +36,7 @@ Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 ## License
 
 Distributed under the [WTFPL License](./LICENSE).
+
+> [!Note]
+>   
+> The image files (`.png` / `.gal`) under `assets/` are **not** covered by WTFPL. They may be used for purposes such as introducing this library (e.g. blog posts), but may not be used as an application logo/icon or embedded into any product. See [ASSETS_LICENSE.md](./ASSETS_LICENSE.md) for details.
