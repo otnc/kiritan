@@ -1,18 +1,32 @@
 {
-  "name": "<package-name>",
+  "name": "kiritan",
   "version": "0.0.0",
-  "description": "<package-description>",
-  "keywords": [],
-  "homepage": "<package-git>#readme",
+  "description": "Internationalization (i18n) utility for Markdown and other plain-text documents / マークダウンやその他平文ドキュメントのための国際化(i18n)ユーティリティ",
+  "keywords": [
+    "markdown",
+    "md",
+    "i18n",
+    "internationalization",
+    "plain-text",
+    "plain",
+    "text",
+    "txt",
+    "multi-language",
+    "multi",
+    "language",
+    "lang",
+    "rule"
+  ],
+  "homepage": "https://github.com/otnc/kiritan#readme",
   "bugs": {
-    "url": "<package-git>/issues"
+    "url": "https://github.com/otnc/kiritan/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+<package-git>.git"
+    "url": "git+https://github.com/otnc/kiritan.git"
   },
-  "license": "<package-license>",
-  "author": "<package-author>",
+  "license": "WTFPL",
+  "author": "otoneko.",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -50,15 +64,15 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^22.20.1",
+    "@types/node": "^22.20.2",
     "@vitest/coverage-v8": "^4.1.11",
-    "eslint": "^10.9.1",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.11.0",
+    "globals": "^17.12.0",
     "prettier": "^3.9.6",
     "tsdown": "^0.22.14",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.68.0",
+    "typescript-eslint": "^8.70.0",
     "vitest": "^4.1.11"
   }
 }
