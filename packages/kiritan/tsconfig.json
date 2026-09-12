@@ -1,4 +1,15 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Type-check against @kiritan/runtime's source directly, so `tsc
+    // --noEmit` doesn't depend on packages/runtime having been built first
+    // (its package.json "types" only exists under dist/, which a fresh
+    // checkout or a differently-ordered `npm run build --workspaces` won't
+    // have yet). This only affects type resolution; the published package
+    // still resolves @kiritan/runtime through its normal dist/ exports.
+    "paths": {
+      "@kiritan/runtime": ["../runtime/src/index.ts"]
+    }
+  },
   "include": ["src", "tsdown.config.ts"]
 }
