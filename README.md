@@ -1,11 +1,14 @@
-# kiritan
+<div align=center>
+
+![kiritan-logo](./assets/kiritan-logo.png)
+
+# Kiritan
+
+</div>
 
 > Internationalization (i18n) utility for Markdown and other plain-text documents / マークダウンやその他平文ドキュメントのための国際化(i18n)ユーティリティ
 
-[![npm](https://img.shields.io/npm/v/kiritan)](https://www.npmjs.com/package/kiritan)
-[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions)
-[![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE)
-[![Node](https://img.shields.io/node/v/kiritan)](https://www.npmjs.com/package/kiritan)
+[![npm](https://img.shields.io/npm/v/kiritan)](https://www.npmjs.com/package/kiritan) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/kiritan)](https://www.npmjs.com/package/kiritan)
 
 ## Install
 
