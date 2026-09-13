@@ -8,7 +8,7 @@ metadata:
 
 # kiritan
 
-kiritan is an i18n tool that, beyond the usual key→string runtime i18n, also builds localized documents (README, docs, etc.) from a single base file. This skill is the operating manual for working inside a project that already uses it — not for writing kiritan's own source.
+kiritan is an i18n tool that, beyond the usual key→string runtime i18n, also builds localized documents (README, docs, etc.) from a single base file. This is the operating manual for working inside a project that already uses it — not for writing kiritan's own source. It's plain Markdown with no Claude-specific instructions in the body, so any coding agent that can be given extra context works equally well; see [../README.md](../README.md) for how to load it into whichever agent you're using.
 
 ## Recognizing a kiritan project
 
