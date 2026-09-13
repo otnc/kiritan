@@ -25,11 +25,12 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | --- | --- | --- |
 | [`kiritan`](./packages/kiritan) | `packages/kiritan` | The CLI + build pipeline: config, translation stores, renderers, translate middlewares |
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
+| [`kiritan-vscode`](./packages/vscode) | `packages/vscode` | VS Code extension: syntax highlighting for `:::kiritan{...}` directive blocks |
 
 ## Related tooling
 
 - [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) that teaches an AI coding agent how to work inside a kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — see [skills/README.md](./skills/README.md) for how to install it.
-- A VS Code extension and a Vim/Neovim plugin are planned; see [docs/DESIGN.md](./docs/DESIGN.md) chapter 13.
+- A Vim/Neovim plugin covering the same ground as the VS Code extension is planned; see [docs/DESIGN.md](./docs/DESIGN.md) chapter 13.
 :::
 
 :::kiritan{locale=ja}
@@ -41,11 +42,12 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | --- | --- | --- |
 | [`kiritan`](./packages/kiritan) | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
+| [`kiritan-vscode`](./packages/vscode) | `packages/vscode` | VS Code拡張機能: `:::kiritan{...}` ディレクティブブロックのシンタックスハイライト |
 
 ## 関連ツール
 
 - [`skills/kiritan`](./skills/kiritan) — kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
-- VS Code拡張機能とVim/Neovimプラグインを計画中です。[docs/DESIGN.md](./docs/DESIGN.md) 13章を参照。
+- VS Code拡張機能と同じ範囲をカバーするVim/Neovimプラグインを計画中です。[docs/DESIGN.md](./docs/DESIGN.md) 13章を参照。
 :::
 
 :::kiritan{locale=en}

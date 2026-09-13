@@ -20,11 +20,12 @@
 | --- | --- | --- |
 | [`kiritan`](./packages/kiritan) | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
+| [`kiritan-vscode`](./packages/vscode) | `packages/vscode` | VS Code拡張機能: `:::kiritan{...}` ディレクティブブロックのシンタックスハイライト |
 
 ## 関連ツール
 
 - [`skills/kiritan`](./skills/kiritan) — kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
-- VS Code拡張機能とVim/Neovimプラグインを計画中です。[docs/DESIGN.md](./docs/DESIGN.md) 13章を参照。
+- VS Code拡張機能と同じ範囲をカバーするVim/Neovimプラグインを計画中です。[docs/DESIGN.md](./docs/DESIGN.md) 13章を参照。
 
 > [!Warning]
 >

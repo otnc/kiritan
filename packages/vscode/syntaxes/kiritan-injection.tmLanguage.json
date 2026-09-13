@@ -1,0 +1,66 @@
+{
+  "scopeName": "markdown.kiritan.injection",
+  "injectionSelector": "L:text.html.markdown",
+  "patterns": [{ "include": "#kiritan-directive" }],
+  "repository": {
+    "kiritan-directive": {
+      "patterns": [
+        { "include": "#kiritan-container-open" },
+        { "include": "#kiritan-leaf" },
+        { "include": "#kiritan-directive-close" }
+      ]
+    },
+    "kiritan-container-open": {
+      "match": "^(:{3,})(kiritan)(\\{)([^}]*)(\\})\\s*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.directive.begin.kiritan" },
+        "2": { "name": "entity.name.tag.directive.kiritan" },
+        "3": {
+          "name": "punctuation.definition.directive.attributes.begin.kiritan"
+        },
+        "4": { "patterns": [{ "include": "#kiritan-attributes" }] },
+        "5": {
+          "name": "punctuation.definition.directive.attributes.end.kiritan"
+        }
+      }
+    },
+    "kiritan-leaf": {
+      "match": "^(:{2})(kiritan)(\\{)([^}]*)(\\})\\s*$",
+      "captures": {
+        "1": { "name": "punctuation.definition.directive.begin.kiritan" },
+        "2": { "name": "entity.name.tag.directive.kiritan" },
+        "3": {
+          "name": "punctuation.definition.directive.attributes.begin.kiritan"
+        },
+        "4": { "patterns": [{ "include": "#kiritan-attributes" }] },
+        "5": {
+          "name": "punctuation.definition.directive.attributes.end.kiritan"
+        }
+      }
+    },
+    "kiritan-directive-close": {
+      "match": "^(:{2,})\\s*$",
+      "name": "punctuation.definition.directive.end.kiritan"
+    },
+    "kiritan-attributes": {
+      "patterns": [
+        {
+          "match": "#[A-Za-z0-9_-]+",
+          "name": "entity.other.attribute-name.id.kiritan"
+        },
+        {
+          "match": "\\b(locale)(=)([A-Za-z0-9_-]+)",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.kiritan" },
+            "2": { "name": "punctuation.separator.key-value.kiritan" },
+            "3": { "name": "string.unquoted.attribute-value.kiritan" }
+          }
+        },
+        {
+          "match": "\\bswitcher\\b",
+          "name": "keyword.other.switcher.kiritan"
+        }
+      ]
+    }
+  }
+}

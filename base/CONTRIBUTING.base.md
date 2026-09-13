@@ -52,6 +52,7 @@ This is an npm workspaces monorepo (see [docs/DESIGN.md](./docs/DESIGN.md) chapt
 | --- | --- | --- |
 | `kiritan` | `packages/kiritan` | The CLI + build pipeline (config, stores, renderers, translate middlewares) |
 | `@kiritan/runtime` | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
+| `kiritan-vscode` | `packages/vscode` | VS Code extension (syntax highlighting for `:::kiritan{...}` blocks) |
 
 The design and rationale for everything above live in [docs/DESIGN.md](./docs/DESIGN.md) — read it before making a structural change.
 :::
@@ -62,6 +63,7 @@ The design and rationale for everything above live in [docs/DESIGN.md](./docs/DE
 | --- | --- | --- |
 | `kiritan` | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | `@kiritan/runtime` | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
+| `kiritan-vscode` | `packages/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト) |
 
 上記すべての設計と理由は [docs/DESIGN.md](./docs/DESIGN.md) にまとまっています。構造を変更する前に読んでください。
 :::
