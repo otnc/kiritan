@@ -1,7 +1,7 @@
 {
   "name": "kiritan-vscode",
-  "displayName": "kiritan",
-  "description": "Syntax highlighting for kiritan's :::kiritan{...} directive blocks in Markdown",
+  "displayName": "Kiritan",
+  "description": "Syntax highlighting for Kiritan's :::kiritan{...} directive blocks in Markdown",
   "version": "0.1.0",
   "publisher": "otoneko",
   "type": "module",

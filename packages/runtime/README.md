@@ -2,7 +2,7 @@
 
 **English** | [日本語](README.ja.md)
 
-> The minimal runtime i18n half of [kiritan](https://www.npmjs.com/package/kiritan) — `t(key, params)`, with no build-time dependencies (no remark, no CLI). Safe to use on its own, in any project, without pulling in the rest of kiritan.
+> The minimal runtime i18n half of [Kiritan](https://www.npmjs.com/package/kiritan) — `t(key, params)`, with no build-time dependencies (no remark, no CLI). Safe to use on its own, in any project, without pulling in the rest of Kiritan.
 
 [![npm](https://img.shields.io/npm/v/%40kiritan%2Fruntime)](https://www.npmjs.com/package/@kiritan/runtime)
 

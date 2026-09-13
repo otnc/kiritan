@@ -1,0 +1,87 @@
+name: release-vscode
+
+# Not built on the shared _release-package.yml (which is npm-publish specific)
+# since a VS Code extension publishes differently: vsce package + an optional
+# Marketplace publish, rather than `npm publish`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version bump for kiritan-vscode: patch/minor/major/prerelease, or an explicit version (e.g. 0.2.0)'
+        required: true
+        default: patch
+
+permissions:
+  contents: write # push the version commit/tag and create the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ci
+      - run: npm run typecheck
+      - run: npm run test
+
+      - name: Bump version
+        id: bump
+        working-directory: packages/vscode
+        run: |
+          OLD="$(node -p "require('./package.json').version")"
+          npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version >/dev/null
+          NEW="$(node -p "require('./package.json').version")"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=kiritan-vscode@$NEW" >> "$GITHUB_OUTPUT"
+          if [ "$OLD" = "$NEW" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Version is already ${NEW}; skipping the bump commit but still releasing."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "prerelease=$([[ "$NEW" == *-* ]] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # Harmless no-op if base/*.base.md hasn't changed since the last commit;
+      # kept here so a release never ships with stale generated docs.
+      - name: Regenerate generated docs
+        run: node packages/kiritan/dist/cli.mjs build
+
+      - name: Package the extension
+        working-directory: packages/vscode
+        run: npx vsce package --no-dependencies
+
+      # Only runs if a Marketplace publisher token has been configured as a repository secret. Without it, the workflow still tags the release and attaches the .vsix as a downloadable asset — just not published to the Marketplace automatically.
+      - name: Publish to the VS Code Marketplace
+        if: ${{ secrets.VSCE_PAT != '' }}
+        working-directory: packages/vscode
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: npx vsce publish --no-dependencies --packagePath *.vsix
+
+      - name: Commit, tag and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "release: ${{ steps.bump.outputs.tag }}" || echo "::notice::Nothing to commit"
+          if ! git rev-parse -q --verify "refs/tags/${{ steps.bump.outputs.tag }}" >/dev/null; then
+            git tag "${{ steps.bump.outputs.tag }}"
+          fi
+          git push origin HEAD "${{ steps.bump.outputs.tag }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.bump.outputs.tag }}" \
+            --title "${{ steps.bump.outputs.tag }}" \
+            --generate-notes \
+            ${{ steps.bump.outputs.prerelease == 'true' && '--prerelease' || '' }} \
+            packages/vscode/*.vsix

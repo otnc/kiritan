@@ -2,7 +2,7 @@
 
 [English](CONTRIBUTING.md) | **日本語**
 
-kiritan の改善に興味を持っていただきありがとうございます。
+Kiritan の改善に興味を持っていただきありがとうございます。
 このガイドでは、開発環境のセットアップ方法とプロジェクトの構成を説明します。
 分かりにくい点があれば、Issue で質問していただいて構いません。
 
@@ -31,7 +31,7 @@ npm install
 
 ## 生成ドキュメント
 
-ルートの README/CONTRIBUTING/DESIGN、および各パッケージの README は、kiritan自身によって `base/*.base.md` ソース(例: `base/README.base.md`、`packages/kiritan/base/README.base.md`)から生成されています。中で使われている `:::kiritan{locale=...}` ブロック記法は [docs/DESIGN.md](./docs/DESIGN.md) 4.2章を参照してください。`base/*.base.md` を編集したら、出力を再生成して変更と一緒にコミットしてください。
+ルートの README/CONTRIBUTING/DESIGN、および各パッケージの README は、Kiritan自身によって `base/*.base.md` ソース(例: `base/README.base.md`、`packages/kiritan/base/README.base.md`)から生成されています。中で使われている `:::kiritan{locale=...}` ブロック記法は [docs/DESIGN.md](./docs/DESIGN.md) 4.2章を参照してください。`base/*.base.md` を編集したら、出力を再生成して変更と一緒にコミットしてください。
 
 ```sh
 npm run docs:build
@@ -89,7 +89,9 @@ Actions タブから `release` または `release-runtime` を、2つの入力�
 trusted publishing は npmjs.com 上でパッケージごとに一度だけ設定が必要です。
 パッケージの **Settings → Publishing access → Trusted publishers → GitHub** から、そのパッケージ自身のワークフローファイル(`release.yml` または `release-runtime.yml`)を指定してください。
 
-`kiritan` は `@kiritan/runtime` に依存している(現在 `^0.1.0`)ため、runtimeのminor/majorバージョンを上げても kiritan 側の依存範囲は自動更新されません。これは意図的な仕様で、runtime単体のリリースが kiritan の `package.json` に触れることが無いようにするためです。該当する場合は別途手動でPRを出してください。
+`kiritan` は `@kiritan/runtime` に依存している(現在 `^0.1.0`)ため、runtimeのminor/majorバージョンを上げても Kiritan 側の依存範囲は自動更新されません。これは意図的な仕様で、runtime単体のリリースが Kiritan の `package.json` に触れることが無いようにするためです。該当する場合は別途手動でPRを出してください。
+
+`kiritan-vscode`(VS Code拡張機能)はnpmに公開しないため、代わりに専用の `release-vscode.yml` を持っています。入力は `version` のみで、`vsce` で `.vsix` をパッケージし、タグを打ってGitHub Releaseを作成し(`.vsix` を添付)、`VSCE_PAT` リポジトリシークレットが設定されている場合のみVS Code Marketplaceへの公開も行います(Marketplace公開はまだ未設定のため、現状はダウンロード可能な `.vsix` を生成するだけです)。
 
 ## ライセンス
 

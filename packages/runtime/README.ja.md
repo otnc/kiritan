@@ -2,7 +2,7 @@
 
 [English](README.md) | **日本語**
 
-> [kiritan](https://www.npmjs.com/package/kiritan) のうち、ランタイム側の最小限の半分 — `t(key, params)` を、ビルド時依存(remarkやCLI)無しで提供する。kiritan本体を引き込まずに、単体でどんなプロジェクトでも安全に使える。
+> [Kiritan](https://www.npmjs.com/package/kiritan) のうち、ランタイム側の最小限の半分 — `t(key, params)` を、ビルド時依存(remarkやCLI)無しで提供する。Kiritan本体を引き込まずに、単体でどんなプロジェクトでも安全に使える。
 
 [![npm](https://img.shields.io/npm/v/%40kiritan%2Fruntime)](https://www.npmjs.com/package/@kiritan/runtime)
 

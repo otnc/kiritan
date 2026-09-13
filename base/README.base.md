@@ -29,7 +29,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 
 ## Related tooling
 
-- [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) that teaches an AI coding agent how to work inside a kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — see [skills/README.md](./skills/README.md) for how to install it.
+- [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) that teaches an AI coding agent how to work inside a Kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — see [skills/README.md](./skills/README.md) for how to install it.
 - A Vim/Neovim plugin covering the same ground as the VS Code extension is planned; see [docs/DESIGN.md](./docs/DESIGN.md) chapter 13.
 :::
 
@@ -46,19 +46,19 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 
 ## 関連ツール
 
-- [`skills/kiritan`](./skills/kiritan) — kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
+- [`skills/kiritan`](./skills/kiritan) — Kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
 - VS Code拡張機能と同じ範囲をカバーするVim/Neovimプラグインを計画中です。[docs/DESIGN.md](./docs/DESIGN.md) 13章を参照。
 :::
 
 :::kiritan{locale=en}
 > [!Warning]
 >   
-> kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. `build`, `check`, `translate`, `extract`, and `typegen` are all implemented — see each package's README for usage, and [docs/DESIGN.md](./docs/DESIGN.md) chapter 13 for what's still on the roadmap.
+> Kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. `build`, `check`, `translate`, `extract`, and `typegen` are all implemented — see each package's README for usage, and [docs/DESIGN.md](./docs/DESIGN.md) chapter 13 for what's still on the roadmap.
 :::
 :::kiritan{locale=ja}
 > [!Warning]
 >   
-> kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。`build` / `check` / `translate` / `extract` / `typegen` はすべて実装済みです。使い方は各パッケージの README を、今後の展望は [docs/DESIGN.md](./docs/DESIGN.md) 13章を参照してください。
+> Kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。`build` / `check` / `translate` / `extract` / `typegen` はすべて実装済みです。使い方は各パッケージの README を、今後の展望は [docs/DESIGN.md](./docs/DESIGN.md) 13章を参照してください。
 :::
 
 :::kiritan{locale=en}

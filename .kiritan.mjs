@@ -20,5 +20,10 @@ export default {
       strategy: "inline",
       naming: { template: "packages/runtime/{base}.{locale}.{ext}" },
     },
+    {
+      glob: "packages/vscode/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "packages/vscode/{base}.{locale}.{ext}" },
+    },
   ],
 };

@@ -14,7 +14,7 @@
 
 > [!Warning]
 >
-> kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. The full design is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md).
+> Kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. The full design is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md).
 
 ## Install
 
