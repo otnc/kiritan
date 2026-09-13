@@ -128,7 +128,7 @@ packages/runtime/src/
   interpolate.ts    # Shared %{name} implementation (kiritan core also depends on this)
 ```
 
-(i18next-compatible resource loading — `centralized` in 9.4章 — lives in `kiritan` core's `i18n/load.ts`, not in `@kiritan/runtime`, since it's a build-time concern rather than something the runtime itself needs.)
+(i18next-compatible resource loading — `centralized` in chapter 9.4 — lives in `kiritan` core's `i18n/load.ts`, not in `@kiritan/runtime`, since it's a build-time concern rather than something the runtime itself needs.)
 
 - Rather than re-exporting `kiritan/runtime` from `kiritan`, `@kiritan/runtime` is its own independent package (`kiritan` may depend on `@kiritan/runtime`, but never the reverse). This lets a project that only wants the runtime avoid pulling in `kiritan` core (remark and other build-time dependencies) at all.
 - Everything except the CLI (`src/cli.ts`) keeps full CJS/ESM dual-format support. The remark/unified/micromark ecosystem only ships ESM-only packages (going back to a CJS release would mean "using an older version," which is avoided), so `tsdown.config.ts`'s `deps.alwaysBundle` bundles them directly into `dist/index.{cjs,mjs}`, eliminating any scenario where a CJS consumer would need to `require` an ESM-only package. `citty`, which is CLI-only, stays an external dependency and isn't bundled.
@@ -245,12 +245,12 @@ The following is everything configurable via `.kiritan.(base|<mode>|local).(c|m)
 | --- | --- |
 | `locales` | The list of supported locales and the default locale |
 | `sources` | What documents to build (the `TranslationStore` strategies in chapter 4, translation in chapter 7) |
-| `naming` | The template/preset for document output filenames (3.3章) |
+| `naming` | The template/preset for document output filenames (chapter 3.3) |
 | `interpolation` | `%{name}` variable expansion (chapter 5) |
 | `translate` | Defaults for the translate middleware chain (chapter 7) |
 | `runtime` | Placement strategy for runtime i18n resources (chapter 9) |
 | `check` | What `kiritan check` treats as a failure condition (chapter 8) |
-| `switcher` | Automatic insertion of language-switcher links (6.1章) |
+| `switcher` | Automatic insertion of language-switcher links (chapter 6.1) |
 | `plugins` | Registration of custom `TranslationStore` / `Renderer` implementations |
 
 (`ResourceSourceConfig`'s `strategy`, custom middlewares passed to `translate.middlewares`, and custom implementations passed to `plugins` are all `import`ed directly and passed in from within a `.kiritan.*` file — configuration stays pure "wiring," and the actual implementation is written as an ordinary TS/JS module.)
@@ -260,7 +260,7 @@ interface KiritanConfig {
   locales: { default: string; list: string[] };
   sources: SourceConfig[];
   naming?: {
-    preset?: 'dot' | 'dash' | 'prefix' | 'folder'; // A preset from 3.3章. Setting it only swaps out template's default value
+    preset?: 'dot' | 'dash' | 'prefix' | 'folder'; // A preset from chapter 3.3. Setting it only swaps out template's default value
     template?: string; // Default: "{dir}/{base}.{locale}.{ext}" (takes priority over preset)
     defaultTemplate?: string; // A template used only for the default locale (falls back to omitDefaultLocaleSuffix if omitted)
     omitDefaultLocaleSuffix?: boolean; // Default: true. Only effective when defaultTemplate is unset
@@ -278,13 +278,13 @@ interface KiritanConfig {
     auto?: boolean; // Default: false. Auto-translation of missing translations never runs unless this is true
   };
   runtime?: {
-    sources?: ResourceSourceConfig[]; // colocated/split/centralized/embedded may be mixed (9.1章)
+    sources?: ResourceSourceConfig[]; // colocated/split/centralized/embedded may be mixed (chapter 9.1)
     fallbackLocale?: string;
   };
   check?: {
     failOn?: Array<'missing' | 'stale' | 'machine' | 'i18n-key-mismatch'>; // Default: ['missing', 'stale', 'i18n-key-mismatch']
   };
-  switcher?: SwitcherConfig; // Enabled by default (6.1章)
+  switcher?: SwitcherConfig; // Enabled by default (chapter 6.1)
   plugins?: {
     stores?: Record<string, TranslationStore>;
     renderers?: Record<string, Renderer>;
@@ -296,7 +296,7 @@ interface SourceConfig {
   strategy: 'sidecar' | 'inline' | 'catalog' | string; // A string means a custom store ID
   naming?: KiritanConfig['naming']; // Wholesale-overrides naming for this source only (template/outputs, etc.)
   translate?: KiritanConfig['translate']; // Per-source override
-  switcher?: SwitcherConfig; // Wholesale-overrides switcher for this source only (6.1章)
+  switcher?: SwitcherConfig; // Wholesale-overrides switcher for this source only (chapter 6.1)
 }
 ```
 
@@ -642,7 +642,7 @@ The design intent for once these are implemented:
 :::kiritan{locale=en}
 Builds a language-switcher link automatically at build time, of the kind commonly seen in bilingual READMEs: `[English](README.md) | [日本語](README.ja.md)`. Since this is mechanical link generation, a different kind of thing from translation, it's **enabled by default**, unlike `translate.auto` (off by default).
 
-**Specifying where it's inserted**: writing `::kiritan{switcher}` — a remark-directive leaf directive (a content-less `::name` form) — anywhere in the base file inserts it at that spot (the same `remark-directive` mechanism as the container directives in 4.2/4.3章).
+**Specifying where it's inserted**: writing `::kiritan{switcher}` — a remark-directive leaf directive (a content-less `::name` form) — anywhere in the base file inserts it at that spot (the same `remark-directive` mechanism as the container directives in chapters 4.2/4.3).
 :::
 :::kiritan{locale=ja}
 `[English](README.md) | [日本語](README.ja.md)` のような、バイリンガル README でよく見る言語切り替えリンクを build 時に自動生成する。翻訳とは性質が異なる機械的なリンク生成なので、`translate.auto`(既定 off)とは異なり**既定で有効**にする。
@@ -661,7 +661,7 @@ kiritan の説明...
 :::kiritan{locale=en}
 If no explicit marker exists, it's auto-inserted at `switcher.position` (default `'after-heading'`: right after the first heading, or at the top if there's none) when `switcher.enabled` (default `true`). **If a marker exists, it's always used regardless of the `enabled`/`position` values** (an explicit placement wins over the default behavior).
 
-**Generated content**: for each locale in `locales.list`, a link to that locale's output file path (reusing the naming resolution from 3.3章, also honoring a per-source `naming.outputs` override) is **automatically computed** as a path relative to the output file currently being built, then joined with a separator (default `" | "`). There's no way to specify an `href` manually (if you want to write a link by hand, just write it yourself instead of using this feature). The current locale itself isn't linked — it's shown in bold (it can also be turned into a link via `currentLocaleLink: true`).
+**Generated content**: for each locale in `locales.list`, a link to that locale's output file path (reusing the naming resolution from chapter 3.3, also honoring a per-source `naming.outputs` override) is **automatically computed** as a path relative to the output file currently being built, then joined with a separator (default `" | "`). There's no way to specify an `href` manually (if you want to write a link by hand, just write it yourself instead of using this feature). The current locale itself isn't linked — it's shown in bold (it can also be turned into a link via `currentLocaleLink: true`).
 
 **Displayed language labels**: kiritan doesn't maintain its own list of language names (a hand-maintained list risks gaps). The default label uses the standard [`Intl.DisplayNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DisplayNames) (ECMA-402, built into Node.js, based on CLDR data) to automatically display each locale's autonym — the name a locale uses for itself in its own language (e.g. "日本語" for `ja`, "English" for `en`). This needs no extra dependency and no list to maintain.
 
@@ -862,7 +862,7 @@ Groups run in array order, and only the items a group didn't resolve are passed 
 :::kiritan{locale=en}
 - `sidecar` / `inline`: embed a hash comment of the source into the output (or each block), and compare it against the base side's current hash.
 - `catalog`: each segment's translation record keeps the corresponding base hash.
-- `kiritan check` detects the presence of `missing` / `stale` / unreviewed `machine` translations and runtime resource `i18n-key-mismatch` (9.4章), and can exit non-zero in CI. What's checked is configurable:
+- `kiritan check` detects the presence of `missing` / `stale` / unreviewed `machine` translations and runtime resource `i18n-key-mismatch` (chapter 9.4), and can exit non-zero in CI. What's checked is configurable:
 
   ```ts
   check?: {
@@ -926,7 +926,7 @@ interface ResourceSourceConfig {
 | `centralized` | Gathered into a dedicated directory, per locale (or as one file). Also an i18next-compatible input format | `locales/en.json` / `locales/{locale}/common.json` |
 | `embedded` | No dedicated file — written directly inside the component's own file | `export const i18n = {...}` inside `Button.tsx` |
 
-Every strategy is ultimately converted into the same internal shape, `ResourceModule` (`key → { locale: value }`), so `createT`, `kiritan typegen`, and the key-mismatch check in 9.6章 all work identically regardless of strategy. Multiple strategies may be mixed within the same project (by listing multiple entries in `runtime.sources`).
+Every strategy is ultimately converted into the same internal shape, `ResourceModule` (`key → { locale: value }`), so `createT`, `kiritan typegen`, and the key-mismatch check in chapter 9.6 all work identically regardless of strategy. Multiple strategies may be mixed within the same project (by listing multiple entries in `runtime.sources`).
 :::
 :::kiritan{locale=ja}
 | strategy | 置き方 | 例 |
@@ -1152,7 +1152,7 @@ CLI の骨組みは [citty](https://github.com/unjs/citty) を使う(サブコ�
 kiritan build [--mode] [--config]     # Runs the full pipeline (every strategy)
 kiritan extract [--mode] [--config]   # catalog-strategy sources only. Creates/updates catalogs
 kiritan translate [--mode] [--config] # Fills missing/stale via translate.middlewares (every strategy)
-kiritan typegen [--mode] [--config]   # Generates a .d.ts from the runtime.sources aggregation (9.6章)
+kiritan typegen [--mode] [--config]   # Generates a .d.ts from the runtime.sources aggregation (chapter 9.6)
 kiritan check [--mode] [--config]     # For CI. Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
 ```
 
@@ -1169,7 +1169,7 @@ export type { KiritanConfig, TranslationStore, Renderer, TranslateMiddleware, Ba
 ```
 
 :::kiritan{locale=en}
-The runtime portion is provided as the independent package `@kiritan/runtime` (2.1章) rather than a subpath of `kiritan`, so that document-build-related code (remark, etc.) never has to be bundled in at all.
+The runtime portion is provided as the independent package `@kiritan/runtime` (chapter 2.1) rather than a subpath of `kiritan`, so that document-build-related code (remark, etc.) never has to be bundled in at all.
 :::
 :::kiritan{locale=ja}
 ランタイム部分は `kiritan` のサブパスではなく独立パッケージ `@kiritan/runtime`(2.1章)として提供し、ドキュメントビルド関連のコード(remark 等)を一切バンドルに含めずに済むようにする。
@@ -1191,10 +1191,10 @@ export type { CreateTOptions } from '@kiritan/runtime';
 | Kind | Status in v1 |
 | --- | --- |
 | Translation storage strategy | `sidecar` / `inline` / `catalog` are built in, but hardcoded directly into the pipeline rather than dispatched through the declared `TranslationStore` interface. `plugins.stores` isn't wired yet — setting it currently has no effect. |
-| Runtime resource placement strategy | `colocated` / `split` / `centralized` / `embedded` (9.1章) are genuinely dispatched via `ResourceSourceConfig.strategy`. A custom string strategy is accepted by the type but not handled by anything yet. |
+| Runtime resource placement strategy | `colocated` / `split` / `centralized` / `embedded` (chapter 9.1) are genuinely dispatched via `ResourceSourceConfig.strategy`. A custom string strategy is accepted by the type but not handled by anything yet. |
 | Translate middleware | Genuinely extensible today: no built-in providers, wired entirely through the `translate.middlewares` array (users implement freely; examples are provided in `docs/`). |
 | File renderer | Only `markdown` is implemented; every source is processed as Markdown regardless of extension. `.txt`/`.mdx`, the declared `Renderer` interface, and `plugins.renderers` aren't wired yet — setting `plugins.renderers` currently has no effect. |
-| Language-switcher rendering | Genuinely extensible today via `SwitcherConfig.render` (6.1章). |
+| Language-switcher rendering | Genuinely extensible today via `SwitcherConfig.render` (chapter 6.1). |
 
 `TranslationStore`, `Renderer`, and `plugins.{stores,renderers}` are declared today as the shape a future pluggable version will use, but nothing in v1 reads or calls them yet (tracked in chapter 13).
 :::

@@ -56,7 +56,7 @@ npx kiritan build
 # wrote README.ja.md
 ```
 
-A language switcher (`**English** | [日本語](README.ja.md)`) is inserted automatically — see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 6.1章.
+A language switcher (`**English** | [日本語](README.ja.md)`) is inserted automatically — see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 6.1.
 
 Programmatic API:
 
@@ -67,7 +67,7 @@ const config = await resolveConfig({ mode: "production" });
 await build(config);
 ```
 
-`resolveConfig` discovers and merges the `.kiritan.(base|<mode>|local).(c|m)(js|ts)` cascade for the current directory and fills in the documented defaults. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 3章 for the full config shape and cascade rules.
+`resolveConfig` discovers and merges the `.kiritan.(base|<mode>|local).(c|m)(js|ts)` cascade for the current directory and fills in the documented defaults. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 3 for the full config shape and cascade rules.
 
 ## Commands
 
@@ -77,7 +77,7 @@ await build(config);
 | `kiritan check` | Reports missing/stale/machine-translated content; exits non-zero in CI when `check.failOn` matches |
 | `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` (`sidecar`/`catalog`; `inline` isn't supported yet) |
 | `kiritan extract` | Scaffolds new `catalog`-strategy ids and reports orphaned ones |
-| `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9.6章) |
+| `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9.6) |
 
 All of them accept `--mode <mode>` and `--config <path>` to adjust which config layers are applied.
 
