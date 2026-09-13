@@ -43,7 +43,7 @@ export interface BuildContext {
   defaultLocale: string;
 }
 
-/** docs/DESIGN.md 7章. Not implemented yet — declared for config type-checking. */
+/** docs/DESIGN.md 7章. */
 export interface TranslateContext {
   text: string;
   from: string;
