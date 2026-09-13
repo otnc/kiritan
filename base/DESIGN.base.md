@@ -1,9 +1,13 @@
 # kiritan Design Document
 
-**English** | [日本語](DESIGN.ja.md)
-
+:::kiritan{locale=en}
 ## 1. Overview
+:::
+:::kiritan{locale=ja}
+## 1. 概要
+:::
 
+:::kiritan{locale=en}
 kiritan is an internationalization utility that, in addition to the usual "key → string" i18n library scope, also targets document files themselves — Markdown, MDX, and plain text.
 
 You prepare a single "base file" such as `README.base.md`, and a build operation generates each language's file from it: `README.md` (default locale) and `README.ja.md` (other locales), for example.
@@ -20,9 +24,34 @@ You prepare a single "base file" such as `README.base.md`, and a build operation
 
 - Advanced grammar such as plurals or ICU MessageFormat (a path is left open as an extension point, but this isn't handled in v1).
 - Translation quality management or review workflows themselves (state marking is handled, but a review UI etc. is out of scope).
+:::
+:::kiritan{locale=ja}
+kiritan は、通常の「キー→文字列」i18n ライブラリの範囲に加えて、Markdown / MDX / プレーンテキストのようなドキュメントファイルそのものを対象にした国際化ユーティリティである。
 
+`README.base.md` のような「ベースファイル」を1つ用意しておき、ビルド操作によって `README.md`(デフォルトロケール)や `README.ja.md`(他ロケール)のような各言語版ファイルを生成する。
+
+### ゴール
+
+- 翻訳の置き場所(ファイル分割 / インライン / カタログ)を用途に応じて選べること。
+- 機械翻訳(Google 翻訳など)を任意の翻訳プロバイダとして差し込めること。
+- Markdown 内のコードブロックやリンクなど、翻訳してはいけない範囲を自動で保護できること。
+- 出力ファイル名・格納方式・翻訳プロバイダ・設定ファイルの重ね合わせなど、広い範囲を設定可能にすること。
+- 最小限のランタイム i18n(`t(key, params)`)も同梱すること。
+
+### 非ゴール
+
+- 複数形・ICU MessageFormat などの高度な文法(拡張ポイントとして後方に道は残すが v1 では扱わない)。
+- 翻訳の品質管理・レビューワークフロー自体(状態のマーキングまでは行うが、レビューUIなどは範囲外)。
+:::
+
+:::kiritan{locale=en}
 ## 2. Overall pipeline
+:::
+:::kiritan{locale=ja}
+## 2. 全体パイプライン
+:::
 
+:::kiritan{locale=en}
 ```
 discover            Discover base files by glob
   -> parse           A Renderer parses the file content
@@ -38,9 +67,33 @@ discover            Discover base files by glob
 `kiritan build` runs this whole sequence. `extract` / `translate` / `check` are separate commands (described later) built on the same foundation.
 
 **Build behavior when a translation is missing**: with `translate.auto: false` (the default), if a translation is missing for some locale/segment, `build` does not error — it **falls back to the default locale's (base) original text** and writes it, with a marker comment showing it's untranslated (e.g. `<!-- kiritan:untranslated (source: en) -->`). This means build always succeeds and never produces a broken document. Detecting untranslated content and blocking on it in CI is handled separately by `kiritan check` (chapter 8).
+:::
+:::kiritan{locale=ja}
+```
+discover            base ファイルを glob で発見
+  -> parse           Renderer がファイル内容を解析
+     - 通常の Markdown/Text: 文書全体 or 段落単位に分解
+     - :::kiritan{...} ディレクティブ(remark-directive)があればロケール/idごとのブロックに分解
+  -> resolve          TranslationStore が各ロケールの訳文を取得
+  -> interpolate      %{name} 変数展開
+  -> translate(任意)   訳文が missing な箇所を Translator ミドルウェアチェーンで自動翻訳
+  -> reassemble        Renderer が最終的な文書を再構成
+  -> write             命名テンプレートに従い出力ファイルを書き出し
+```
 
+`kiritan build` はこの一連を実行する。`extract` / `translate` / `check` は同じ基盤の上に立つ個別コマンド(後述)。
+
+**missing 時の build 挙動**: `translate.auto: false`(既定)で、あるロケール・セグメントの訳文が無い場合、`build` はエラーにせず**デフォルトロケール(base)の原文にフォールバック**して出力する(未翻訳箇所と分かるようマーカーコメントを付ける。例: `<!-- kiritan:untranslated (source: en) -->`)。これにより build は常に成功し、壊れたドキュメントが生成されることはない。未翻訳の検出・CIでのブロックは `kiritan check`(8章)が別途担う。
+:::
+
+:::kiritan{locale=en}
 ## 2.1 Package layout (workspaces from v1)
+:::
+:::kiritan{locale=ja}
+## 2.1 パッケージ構成(v1 から workspaces 化)
+:::
 
+:::kiritan{locale=en}
 With future mono-repo-ing in mind (chapter 13), npm workspaces are adopted from v1. The root is a private workspace root, and the actual packages live under `packages/*`.
 
 ```
@@ -91,11 +144,75 @@ packages/runtime/src/
      - If no changesets have accumulated, it exits normally doing nothing ("nothing to release")
 
   This keeps the day-to-day feel (press a button, it releases right there) unchanged, while also achieving independent per-package versioning and automatic CHANGELOG generation.
+:::
+:::kiritan{locale=ja}
+将来のモノレポ化(13章)を見据え、v1 から npm workspaces を採用する。ルートは private なワークスペースルートとし、実体は `packages/*` に置く。
 
+```
+packages/
+  kiritan/       # 本体(core + CLI + 組み込み stores/renderers)。npm 公開名 "kiritan"
+  runtime/        # 最小ランタイム i18n(ビルド時依存を持たない)。npm 公開名 "@kiritan/runtime"
+```
+
+`packages/kiritan/src/` の内訳(機能ごとにフォルダを分ける粒度):
+
+```
+packages/kiritan/src/
+  index.ts        # 公開 API(defineConfig, build, extract, translate, check)
+  config/          # 探索・カスケード・merge(.kiritan.*)
+  discover/         # glob で base ファイルを発見、命名テンプレート解決
+  directive/         # remark-directive で :::kiritan{...} を抽出
+  stores/             # sidecar / inline / catalog
+  renderers/           # markdown / mdx / text
+  interpolate/          # %{name} 展開(@kiritan/runtime の実装を利用)
+  translate/             # ミドルウェアchainの実行エンジン(7.1のグルーピング)
+  hash/                   # stale判定用ハッシュ
+  i18n/                    # runtime.sources の集約、typegen、i18n-key-mismatch検出(9章)
+  pipeline/                 # build/extract/check/typegen のオーケストレーション
+  cli/                       # citty コマンド定義
+```
+
+`packages/runtime/src/`:
+
+```
+packages/runtime/src/
+  index.ts         # createT
+  interpolate.ts    # %{name} の共通実装(kiritan 本体もこれに依存する)
+  i18next-compat.ts  # i18next リソース(locales/{locale}/{namespace}.json)の読み込み
+```
+
+- `kiritan` から `kiritan/runtime` を re-export する形は取らず、`@kiritan/runtime` を独立パッケージにする(`kiritan` は `@kiritan/runtime` に依存しても、逆はない)。ランタイムだけを使いたいプロジェクトが `kiritan` 本体(remark 等のビルド時依存)を一切引き込まずに済む。
+- CLI(`src/cli.ts`)以外はすべて CJS/ESM 両対応を維持する。remark/unified/micromark 系の依存は ESM 専用パッケージしか無い(CJS版へ戻すことは「古いバージョンを使う」ことになるため避ける)ため、`tsdown.config.ts` の `deps.alwaysBundle` でこれらを `dist/index.{cjs,mjs}` に直接バンドルし、CJS 利用者が ESM 専用パッケージを `require` する場面自体を無くす。CLI 専用の `citty` はバンドルせず外部依存のままでよい。
+- 将来追加する翻訳ミドルウェアの参考実装(`@kiritan/google-translate` など、13章)も同じワークスペースの `packages/*` に追加していく想定。
+- 既存の `tsdown` / `vitest` / `eslint` / CI(`ci.yml` / `release.yml`)はワークスペース対応に更新が必要(各パッケージごとのビルド・テスト・公開)。これは設計確定後の実装タスクとして扱う。
+- バージョニングは **パッケージごとに独立**させる(lockstep にしない)。変更のあったパッケージだけをリリースできるよう [Changesets](https://github.com/changesets/changesets) を導入するが、標準の「Bot が Version Packages PR を自動作成し、それをマージすると publish される」という2段階PRフローは採用しない。**changeset ファイルの作成(各PRの一部)と、実際のリリース実行(手動 workflow_dispatch)を分離する**:
+
+  1. 通常のPR: パッケージに影響する変更をしたら `npx changeset` を実行し、対象パッケージ・bump種別(patch/minor/major)・変更概要を1行で書いた changeset ファイル(`.changeset/*.md`)をPRに含めてコミットする(CONTRIBUTING.md に手順を追記)。
+  2. `release.yml`(`workflow_dispatch`、引数は無し or `dist_tag` のみ): 手動実行すると、そこまでに溜まっている `.changeset/*.md` を集計して
+     - `changeset version` でパッケージごとにバージョンを確定し、`package.json` と `CHANGELOG.md` を更新(消費した changeset ファイルは削除される)
+     - 変更をコミット
+     - `changeset publish` で、バージョンが上がったパッケージだけを `npm publish`(OIDC trusted publishing はパッケージごとに npmjs.com 側で設定)
+     - パッケージごとに `<name>@<version>` の git tag を打ち、変更のあった各パッケージ分の内容を1つの GitHub Release にまとめる(リリースノートは `changeset` が生成した CHANGELOG の当該エントリを流用し、`--generate-notes` は使わない)
+     - 溜まっている changeset が無ければ「リリース対象なし」として何もせず正常終了する
+
+  これにより、日々の操作感(ボタンを押せばその場でリリースされる)は今のままに、パッケージごとの独立バージョニングと CHANGELOG 自動生成を両立させる。
+:::
+
+:::kiritan{locale=en}
 ## 3. Config files
+:::
+:::kiritan{locale=ja}
+## 3. 設定ファイル
+:::
 
+:::kiritan{locale=en}
 ### 3.1 Discovery and cascading
+:::
+:::kiritan{locale=ja}
+### 3.1 探索とカスケード
+:::
 
+:::kiritan{locale=en}
 Filenames matching `.kiritan.(base|<mode>|local).(c|m)(js|ts)` are recognized (e.g. `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`). `.ts`/`.cts`/`.mts` are loaded directly with a lightweight loader like [jiti](https://github.com/unjs/jiti) (since Node's native type stripping is only flag-free on a limited set of versions, kiritan takes this on as its own dependency to prioritize working regardless of the user's Node version). Merge order (lower entries take priority, deep-merged):
 
 1. `.kiritan.base.(c|m)(js|ts)` (if absent, `.kiritan.(c|m)(js|ts)` is treated as the base layer)
@@ -104,9 +221,26 @@ Filenames matching `.kiritan.(base|<mode>|local).(c|m)(js|ts)` are recognized (e
 4. `--config <path>` / `--overlay <path>` (repeatable) — additional config files can be layered on from the CLI.
 
 Objects are deep-merged; arrays (such as `sources`) are replaced by default. Wrap with the `mergeArray(...)` helper to concatenate instead.
+:::
+:::kiritan{locale=ja}
+ファイル名は `.kiritan.(base|<mode>|local).(c|m)(js|ts)`(例: `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`)を認識する。`.ts`/`.cts`/`.mts` は [jiti](https://github.com/unjs/jiti) のような軽量ローダーで直接読み込む(Node の型ストリッピングはフラグなしで使えるバージョンが限られるため、利用者の Node バージョンを問わず動くことを優先し、kiritan 側の依存として引き受ける)。マージ順(下ほど優先度が高く、深いマージ):
 
+1. `.kiritan.base.(c|m)(js|ts)`(無ければ `.kiritan.(c|m)(js|ts)` を基本レイヤーとして扱う)
+2. `.kiritan.<mode>.(c|m)(js|ts)` — `mode` は `--mode` フラグ、なければ `KIRITAN_MODE` 環境変数。指定が無ければこのレイヤーはスキップ。
+3. `.kiritan.local.(c|m)(js|ts)` — 常に最後に適用。`.gitignore` 対象を想定(APIキー等のローカル上書き用)。
+4. `--config <path>` / `--overlay <path>`(複数指定可)— CLI から任意の設定ファイルを追加で重ねられる。
+
+オブジェクトは深いマージ、配列(`sources` など)はデフォルトで置換。連結したい場合は `mergeArray(...)` ヘルパーで包む。
+:::
+
+:::kiritan{locale=en}
 ### 3.2 Config schema (the scope of `.kiritan.*`)
+:::
+:::kiritan{locale=ja}
+### 3.2 設定スキーマ(`.kiritan.*` のスコープ)
+:::
 
+:::kiritan{locale=en}
 The following is everything configurable via `.kiritan.(base|<mode>|local).(c|m)(js|ts)`. This is the entirety of `KiritanConfig` — there are no configuration items beyond it.
 
 | Top-level key | What it configures |
@@ -169,9 +303,80 @@ interface SourceConfig {
 ```
 
 Since `naming.outputs` (per-locale explicit path overrides) tends to need different values per source in practice, it's written on `SourceConfig.naming` as the primary form (the global `naming` is kept as just "the template's default").
+:::
+:::kiritan{locale=ja}
+`.kiritan.(base|<mode>|local).(c|m)(js|ts)` で設定できる範囲は次の通り。これが `KiritanConfig` の全体像であり、これ以外の設定項目は無い。
 
+| トップレベルキー | 何を設定するか |
+| --- | --- |
+| `locales` | 対応ロケール一覧とデフォルトロケール |
+| `sources` | ドキュメントビルド対象(4章 `TranslationStore` 戦略・7章翻訳) |
+| `naming` | ドキュメント出力ファイル名のテンプレート/プリセット(3.3章) |
+| `interpolation` | `%{name}` 変数展開(5章) |
+| `translate` | 翻訳ミドルウェアchainの既定値(7章) |
+| `runtime` | ランタイム i18n リソースの配置戦略(9章) |
+| `check` | `kiritan check` が何を失敗条件にするか(8章) |
+| `switcher` | 言語切り替えリンクの自動挿入(6.1章) |
+| `plugins` | カスタム `TranslationStore` / `Renderer` の登録 |
+
+(`ResourceSourceConfig` の `strategy`、`translate.middlewares` に渡すカスタムミドルウェア、`plugins` に渡すカスタム実装は、いずれも `.kiritan.*` ファイル内で `import` して直接渡す — 設定は「配線」に徹し、実装本体は普通の TS/JS モジュールとして書く)
+
+```ts
+interface KiritanConfig {
+  locales: { default: string; list: string[] };
+  sources: SourceConfig[];
+  naming?: {
+    preset?: 'dot' | 'dash' | 'prefix' | 'folder'; // 3.3章のプリセット。指定すると template の既定値だけを差し替える
+    template?: string; // 既定: "{dir}/{base}.{locale}.{ext}"(preset より優先)
+    defaultTemplate?: string; // デフォルトロケール専用のテンプレート(省略時は omitDefaultLocaleSuffix に従う)
+    omitDefaultLocaleSuffix?: boolean; // 既定: true。defaultTemplate が無い場合のみ有効
+    baseSuffix?: string; // 既定: ".base"(README.base.md の判定に使う)
+    outputs?: Record<string, string>; // ロケール別の明示的な出力パス上書き。例: { ja: "i18n/ja/README.md" }
+  };
+  interpolation?: {
+    delimiters?: [string, string]; // 既定: ["%{", "}"]
+    variables?: Record<string, string | Record<string, string>> | ((ctx: BuildContext) => Record<string, string>);
+    onMissing?: 'error' | 'keep' | 'empty'; // 既定: 'error'
+    skipCodeBlocks?: boolean; // 既定: true
+  };
+  translate?: {
+    middlewares?: TranslateMiddleware[]; // 既定: [](何もしない = manual 相当)
+    auto?: boolean; // 既定: false。true でないと missing 訳文の自動翻訳は走らない
+  };
+  runtime?: {
+    sources?: ResourceSourceConfig[]; // colocated/split/centralized/embedded を混在可(9.1章)
+    fallbackLocale?: string;
+  };
+  check?: {
+    failOn?: Array<'missing' | 'stale' | 'machine' | 'i18n-key-mismatch'>; // 既定: ['missing', 'stale', 'i18n-key-mismatch']
+  };
+  switcher?: SwitcherConfig; // 既定で有効(6.1章)
+  plugins?: {
+    stores?: Record<string, TranslationStore>;
+    renderers?: Record<string, Renderer>;
+  };
+}
+
+interface SourceConfig {
+  glob: string;
+  strategy: 'sidecar' | 'inline' | 'catalog' | string; // string はカスタムストアID
+  naming?: KiritanConfig['naming']; // このソースについてのみ naming を丸ごと上書き(template/outputs 等)
+  translate?: KiritanConfig['translate']; // ソース単位の上書き
+  switcher?: SwitcherConfig; // このソースについてのみ switcher を丸ごと上書き(6.1章)
+}
+```
+
+`naming.outputs`(ロケール別の明示パス上書き)は用途上ソースごとに違う値を持ちたいことが多いため、基本形としては `SourceConfig.naming` に書く(グローバルな `naming` は「テンプレートの既定値」の位置づけにとどめる)。
+:::
+
+:::kiritan{locale=en}
 ### 3.3 Naming template presets
+:::
+:::kiritan{locale=ja}
+### 3.3 命名テンプレートのプリセット
+:::
 
+:::kiritan{locale=en}
 Since there are several conventions for naming output files (`README.ja.md` style, `README-ja.md` style, `ja.README.md` style, folder-based, etc.), `naming.template` can be written as any completely free-form string template, while the common forms are available via just a `naming.preset` value.
 
 | preset | Actual template | Output example (base="README", ext="md", locale="ja") |
@@ -182,8 +387,26 @@ Since there are several conventions for naming output files (`README.ja.md` styl
 | `folder` | `{dir}/{locale}/{base}.{ext}` | `ja/README.md` |
 
 `preset` is just a shorthand that swaps `template`'s default value; specifying `template` directly allows any arrangement or separator not covered by a preset (e.g. `{base}_{locale}.{ext}`). `naming.defaultTemplate`, `omitDefaultLocaleSuffix`, and `outputs` all work the same way regardless of whether a preset is used.
+:::
+:::kiritan{locale=ja}
+出力ファイル名の付け方には流派があるため(`README.ja.md` 派、`README-ja.md` 派、`ja.README.md` 派、フォルダ分け派など)、`naming.template` は任意の文字列テンプレートとして完全に自由に書けるようにしつつ、よく使う形は `naming.preset` の指定だけで済むようにする。
 
+| preset | 実際のテンプレート | 出力例(base="README", ext="md", locale="ja") |
+| --- | --- | --- |
+| `dot`(既定) | `{dir}/{base}.{locale}.{ext}` | `README.ja.md` |
+| `dash` | `{dir}/{base}-{locale}.{ext}` | `README-ja.md` |
+| `prefix` | `{dir}/{locale}.{base}.{ext}` | `ja.README.md` |
+| `folder` | `{dir}/{locale}/{base}.{ext}` | `ja/README.md` |
+
+`preset` はあくまで `template` の既定値を差し替えるショートハンドであり、`template` を直接指定すればどのプリセットにも無い任意の並び・区切り文字(`{base}_{locale}.{ext}` など)も自由に書ける。`naming.defaultTemplate`・`omitDefaultLocaleSuffix`・`outputs` は preset の有無に関わらず同様に効く。
+:::
+
+:::kiritan{locale=en}
 ## 4. Translation storage strategies (`TranslationStore`)
+:::
+:::kiritan{locale=ja}
+## 4. 翻訳格納戦略(`TranslationStore`)
+:::
 
 ```ts
 interface TranslationStore {
@@ -198,19 +421,48 @@ type TranslatedContent =
   | { kind: 'segments'; segments: Record<string, { text: string; machine?: boolean }> };
 ```
 
+:::kiritan{locale=en}
 Strategies can be mixed within the same config (one document using `inline`, another using `catalog`, and so on).
+:::
+:::kiritan{locale=ja}
+同じ設定内で戦略を混在させられる(あるドキュメントは `inline`、別のドキュメントは `catalog`、など)。
+:::
 
+:::kiritan{locale=en}
 ### 4.1 `sidecar` — split-file approach
+:::
+:::kiritan{locale=ja}
+### 4.1 `sidecar` — ファイル分割方式
+:::
 
+:::kiritan{locale=en}
 For `README.base.md`, an independent file per language, such as `README.ja.md`, is prepared, whether by hand or via machine translation. This is closest to how README translations are conventionally handled today. Stale detection is done via a hash comment embedded at the top of the output file (e.g. `<!-- kiritan:source-hash: xxxx -->`).
+:::
+:::kiritan{locale=ja}
+`README.base.md` に対し、`README.ja.md` のように言語ごとに独立したファイルを人力・機械翻訳問わず用意する。既存の README 翻訳運用にもっとも近い。ステイル検知は、出力ファイル先頭に埋め込むハッシュコメント(例: `<!-- kiritan:source-hash: xxxx -->`)で行う。
+:::
 
+:::kiritan{locale=en}
 ### 4.2 `inline` — laying out every language in one file
+:::
+:::kiritan{locale=ja}
+### 4.2 `inline` — 1ファイル内に各言語を並べる方式
+:::
 
+:::kiritan{locale=en}
 This follows [remark-directive](https://github.com/remarkjs/remark-directive)'s standard container-directive syntax (`:::name{attrs}` ... `:::`) as-is. No custom line parser is written, so it rides directly on the remark ecosystem (syntax highlighting, existing VS Code extensions, etc.).
 
 Each locale is written as its **own, self-contained directive** (never a single block with a "switch"-like structure packing multiple cases together).
 
 **When targeting the whole document:**
+:::
+:::kiritan{locale=ja}
+[remark-directive](https://github.com/remarkjs/remark-directive) の標準的なコンテナディレクティブ構文(`:::name{attrs}` ... `:::`)にそのまま準拠する。独自の行パーサは作らず、remark のエコシステム(構文ハイライト、既存の VS Code 拡張など)にそのまま乗る。
+
+ロケールごとに**独立した1つの directive**として書く(1つのブロックに複数ケースを詰め込む「switch」のような構造にはしない)。
+
+**文書全体を対象にする場合:**
+:::
 
 ```md
 :::kiritan{locale=en}
@@ -226,7 +478,12 @@ Internationalization utility for docs.
 :::
 ```
 
+:::kiritan{locale=en}
 **When targeting individual sections (wrapping only the parts that differ):**
+:::
+:::kiritan{locale=ja}
+**セクション単位で対象にする場合(差分がある部分だけを囲む):**
+:::
 
 ```md
 # Kiritan
@@ -247,15 +504,34 @@ This is the usage section.
 Distributed under the WTFPL License. <!-- A shared section just needs to sit outside a directive -->
 ```
 
+:::kiritan{locale=en}
 Anything outside a directive is copied as-is into every locale's output as "shared content." This supports translating only part of a document while sharing the rest.
 
 **Nesting (using `:::` again inside a block):** just add more colons on the outer fence, per remark-directive's standard behavior (e.g. using `:::note` inside `::::kiritan{locale=en}`). No special handling is needed on kiritan's side.
 
 Specifying a `locale=xx` value not present in `locales.list` is treated as a typo and errors at build time (it is never silently ignored).
+:::
+:::kiritan{locale=ja}
+directive の外側は「共通コンテンツ」として全ロケール出力にそのままコピーされる。ドキュメントの一部だけ翻訳し、残りは共有する運用に対応する。
 
+**ネスト(ブロック内でさらに `:::` を使いたい場合):** remark-directive 標準の挙動どおり、外側のコロンを増やせばよい(`::::kiritan{locale=en}` の中で `:::note` を使う、など)。kiritan 側で特別な処理は不要。
+
+`locale=xx` に `locales.list` に無い値を指定した場合は typo とみなし、build 時にエラーにする(サイレントに無視しない)。
+:::
+
+:::kiritan{locale=en}
 ### 4.3 `catalog` — segment-level catalog approach
+:::
+:::kiritan{locale=ja}
+### 4.3 `catalog` — セグメント単位のカタログ方式
+:::
 
+:::kiritan{locale=en}
 Segment ids are never auto-inferred (position-based or content-hash-based) — the **author assigns them explicitly on the base file side**. remark-directive's `#id` attribute shorthand is used as-is.
+:::
+:::kiritan{locale=ja}
+セグメントIDは自動推定(位置ベース／内容ハッシュベース)にせず、**著者が base ファイル側で明示的に付ける**。remark-directive の `#id` 属性ショートハンドをそのまま使う。
+:::
 
 ```md
 :::kiritan{#usage-intro}
@@ -264,15 +540,34 @@ This is the usage section.
 :::
 ```
 
+:::kiritan{locale=en}
 - The content inside a `:::kiritan{#<id>}` block is the base locale's (`locales.default`) original text itself.
 - Translations are kept in a separate file, such as `locales/README.ja.yaml`, as `id → { text, machine, hash }` (`hash` refers to "what the original text for this id looked like when it was last translated" — it's only used for `stale` detection when it no longer matches the current original, never for id matching itself).
 - Since the author fully controls the id, translations never go "missing" just because the surrounding prose was reworded (the correspondence is pinned by id) — in exchange, assigning and naming ids becomes the author's responsibility (the same mindset as key design in an i18n library).
 - The area outside `:::kiritan{#<id>}` is treated as "shared content," same as `inline`.
 - `kiritan extract` scans the base file's `:::kiritan{#<id>}` blocks and adds any id not yet registered in the catalog (existing translations are never overwritten). If an id disappears from the base file, it's left in the catalog as an orphan, and `kiritan check` warns about it.
+:::
+:::kiritan{locale=ja}
+- `:::kiritan{#<id>}` ブロックの中身は base ロケール(`locales.default`)の原文そのもの。
+- 訳文は `locales/README.ja.yaml` のような別ファイルに `id → { text, machine, hash }` で保持する(`hash` は「この id の原文が最後に翻訳された時点の内容」を指し、現在の原文と食い違えば `stale` 判定に使うだけで、id のマッチング自体には使わない)。
+- id は著者が完全にコントロールするため、文章を多少書き直しても訳文が「迷子」になることはなく(対応関係は id で固定)、その代わり id の採番・命名は著者の責任になる(i18n ライブラリのキー設計と同じ考え方)。
+- `:::kiritan{#<id>}` の外側は `inline` と同様「共通コンテンツ」として扱う。
+- `kiritan extract` は base 内の `:::kiritan{#<id>}` を走査し、カタログに未登録の id を追加する(既存の訳文は上書きしない)。id が base から消えた場合はカタログ側にオーファンとして残し、`kiritan check` で警告する。
+:::
 
+:::kiritan{locale=en}
 ## 5. Variable expansion (`%{name}`)
+:::
+:::kiritan{locale=ja}
+## 5. 変数展開(`%{name}`)
+:::
 
+:::kiritan{locale=en}
 A mechanism for embedding values shared across locales — a version number, a repository URL, a site name, and the like. `{{...}}` collides too easily with Handlebars/Mustache/i18next and similar, so `%{name}`, closer to Ruby/Rails' i18n, is the default (the delimiters themselves can be changed via `interpolation.delimiters`).
+:::
+:::kiritan{locale=ja}
+ロケールをまたいで共通の値(バージョン番号、リポジトリURL、サイト名など)を埋め込むための仕組み。`{{...}}` は Handlebars/Mustache/i18next 等と被りやすいため、Ruby/Rails の i18n に近い `%{name}` を既定にする(区切り文字自体は `interpolation.delimiters` で変更可能)。
+:::
 
 ```md
 Current version: %{version}
@@ -287,13 +582,27 @@ interpolation: {
 }
 ```
 
+:::kiritan{locale=en}
 - A variable's value comes from `interpolation.variables` (or a `variables` function's return value) alone — a catalog translation record, for instance, never supplies a variable's value. If both a per-locale value (`{ en: ..., ja: ... }`) and a shared value are defined for the same variable name, **the per-locale value takes priority**, falling back to the shared value if absent.
 - Can be escaped with a backslash, as in `\%{literal}`.
 - With `interpolation.skipCodeBlocks: true` (the default), expansion is skipped inside code blocks / inline code.
 - How an undefined variable is handled is controlled by `onMissing` (default `'error'`), so a typo can be caught at build time.
 - Making the variable resolution itself a function also allows dynamic values, such as reading a value out of `package.json`.
+:::
+:::kiritan{locale=ja}
+- 変数の値は `interpolation.variables`(または `variables` 関数の戻り値)のみが唯一の情報源であり、catalog 等の訳文レコードから変数値が供給されることはない。同じ変数名に対しロケール別の値(`{ en: ..., ja: ... }`)と共通値が両方定義されている場合は、**ロケール別の値がある方を優先**し、無ければ共通値にフォールバックする。
+- `\%{literal}` のようにバックスラッシュでエスケープ可能。
+- `interpolation.skipCodeBlocks: true`(既定)でコードブロック / インラインコード内は展開しない。
+- 未定義変数の扱いは `onMissing`(既定 `'error'`)で制御し、typo をビルド時に検出できるようにする。
+- 変数解決自体を関数にすれば、`package.json` の値を読むなど動的な値も扱える。
+:::
 
+:::kiritan{locale=en}
 ## 6. Renderers (`Renderer`)
+:::
+:::kiritan{locale=ja}
+## 6. レンダラー(`Renderer`)
+:::
 
 ```ts
 interface Renderer {
@@ -303,17 +612,38 @@ interface Renderer {
 }
 ```
 
+:::kiritan{locale=en}
 - `markdown`: AST parsing via remark + `remark-directive`. Code blocks, inline code, link URLs, and front matter (excluded by default; individual keys can be opted in via `translateFrontmatter`) are protected, and `:::kiritan{...}` directives are also split apart here.
 - `text`: split per blank-line-delimited paragraph. Since `.txt` has no Markdown syntax, `:::kiritan{...}` can't be used, so `inline`/`catalog` strategies aren't supported (only `sidecar` is).
 - `mdx`: a Markdown extension. JSX parts are never translated. `:::kiritan{...}` can be used the same way as in markdown.
 - Custom renderers can be added via `plugins.renderers`.
 - A renderer declares which `strategy` values it supports (e.g. `text` only declares `['sidecar']`). When config is loaded, the combination of `SourceConfig.strategy` and the actual file type (renderer) is validated, and an unsupported combination (e.g. `inline` on a `.txt` file) is rejected with a clear error before build.
+:::
+:::kiritan{locale=ja}
+- `markdown`: remark + `remark-directive` による AST 解析。コードブロック・インラインコード・リンク URL・front matter(既定では非対象、`translateFrontmatter` で個別キーのみ対象化可)を保護し、`:::kiritan{...}` ディレクティブの分解もここで行う。
+- `text`: 空行区切りの段落単位。`.txt` には Markdown 構文が無いため `:::kiritan{...}` は使えず、`inline`/`catalog` 戦略は非対応(`sidecar` のみ)とする。
+- `mdx`: markdown 拡張。JSX 部分は非翻訳。`:::kiritan{...}` は markdown 同様に扱える。
+- `plugins.renderers` でカスタムレンダラーを追加可能。
+- レンダラーは自分が対応できる `strategy` の一覧を宣言する(例: `text` は `['sidecar']` のみ)。設定読み込み時に `SourceConfig.strategy` と実際のファイル種別(レンダラー)の組み合わせを検証し、非対応の組み合わせ(例: `.txt` に `inline`)は build 前に分かりやすいエラーで弾く。
+:::
 
+:::kiritan{locale=en}
 ### 6.1 Automatic insertion of language-switcher links (`switcher`)
+:::
+:::kiritan{locale=ja}
+### 6.1 言語切り替えリンクの自動挿入(`switcher`)
+:::
 
+:::kiritan{locale=en}
 Builds a language-switcher link automatically at build time, of the kind commonly seen in bilingual READMEs: `[English](README.md) | [日本語](README.ja.md)`. Since this is mechanical link generation, a different kind of thing from translation, it's **enabled by default**, unlike `translate.auto` (off by default).
 
 **Specifying where it's inserted**: writing `::kiritan{switcher}` — a remark-directive leaf directive (a content-less `::name` form) — anywhere in the base file inserts it at that spot (the same `remark-directive` mechanism as the container directives in 4.2/4.3章).
+:::
+:::kiritan{locale=ja}
+`[English](README.md) | [日本語](README.ja.md)` のような、バイリンガル README でよく見る言語切り替えリンクを build 時に自動生成する。翻訳とは性質が異なる機械的なリンク生成なので、`translate.auto`(既定 off)とは異なり**既定で有効**にする。
+
+**挿入位置の指定**: remark-directive の leaf directive(内容を持たない `::name` 形式)として `::kiritan{switcher}` を base ファイルの好きな位置に書けば、そこに挿入される(4.2/4.3章のコンテナ directive と同じ `remark-directive` の仕組み)。
+:::
 
 ```md
 # Kiritan
@@ -323,6 +653,7 @@ Builds a language-switcher link automatically at build time, of the kind commonl
 kiritan の説明...
 ```
 
+:::kiritan{locale=en}
 If no explicit marker exists, it's auto-inserted at `switcher.position` (default `'after-heading'`: right after the first heading, or at the top if there's none) when `switcher.enabled` (default `true`). **If a marker exists, it's always used regardless of the `enabled`/`position` values** (an explicit placement wins over the default behavior).
 
 **Generated content**: for each locale in `locales.list`, a link to that locale's output file path (reusing the naming resolution from 3.3章, also honoring a per-source `naming.outputs` override) is **automatically computed** as a path relative to the output file currently being built, then joined with a separator (default `" | "`). There's no way to specify an `href` manually (if you want to write a link by hand, just write it yourself instead of using this feature). The current locale itself isn't linked — it's shown in bold (it can also be turned into a link via `currentLocaleLink: true`).
@@ -335,6 +666,21 @@ new Intl.DisplayNames([locale], { type: "language" }).of(locale);
 ```
 
 `switcher.labels` remains as an opt-in override for cases where this default needs to be replaced (wanting a different name, a custom locale code `Intl.DisplayNames` doesn't know, excluding an unsupported locale from the list, etc.).
+:::
+:::kiritan{locale=ja}
+明示的なマーカーが無い場合、`switcher.enabled`(既定 `true`)なら `switcher.position`(既定 `'after-heading'`: 最初の見出しの直後、無ければ先頭)に自動挿入する。**マーカーが存在する場合は `enabled`/`position` の値に関わらず必ずそこが使われる**(明示指定が既定動作より優先)。
+
+**生成される内容**: `locales.list` の各ロケールについて、そのロケール向け出力ファイルパス(3.3章の命名解決を再利用、`naming.outputs` のソース単位上書きも考慮)へのリンクを、現在ビルド中のロケールの出力ファイルからの相対パスで**自動計算**し、区切り文字(既定 `" | "`)で連結する。href を手動指定する手段は無い(手動でリンクを書きたい場合は、この機能を使わず自分で書けばよい)。現在のロケール自身はリンクにせず太字表示にする(`currentLocaleLink: true` でリンク化も可能)。
+
+**言語名の表示ラベル**: kiritan は言語名一覧を自前で持たない(手作りのリストは抜け漏れが怖いため)。既定のラベルは標準の [`Intl.DisplayNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DisplayNames)(ECMA-402、Node.js に標準搭載、CLDR のデータに基づく)を使い、各ロケールの自称(autonym: そのロケール自身の言語でその言語を呼ぶ名前。例: `ja` なら "日本語"、`en` なら "English")を自動的に表示する。追加の依存もメンテすべき一覧も不要になる。
+
+```ts
+// 既定のラベル解決(labels で明示指定が無いロケールに対して行う)
+new Intl.DisplayNames([locale], { type: "language" }).of(locale);
+```
+
+`switcher.labels` は、この既定を上書きしたい場合(呼び方を変えたい、`Intl.DisplayNames` が知らない独自のロケールコード、対応外のロケールを一覧から外したい、など)のためのオプトインの上書き手段として残す。
+:::
 
 ```ts
 interface SwitcherConfig {
@@ -372,19 +718,41 @@ switcher: {
 }
 ```
 
+:::kiritan{locale=en}
 It can be wholesale-overridden per source via `SourceConfig.switcher` (disabling it for a specific document, changing its labels, etc.).
 
 Generated example (`locales.list: ['en', 'ja', 'es']`, the `labels` above, building `en`):
+:::
+:::kiritan{locale=ja}
+`SourceConfig.switcher` でソース単位に丸ごと上書きできる(特定のドキュメントだけ無効化する、ラベルを変える、など)。
+
+生成例(`locales.list: ['en', 'ja', 'es']`、上記 `labels`、en ビルド時):
+:::
 
 ```md
 **English** | [日本語](README.ja.md)
 ```
 
+:::kiritan{locale=en}
 Since `::kiritan{switcher}` inserts the same content into every locale's output, it should be placed **outside** an `inline`/`catalog` strategy's `:::kiritan{locale=...}`/`:::kiritan{#<id>}` block (in the shared-content area). Placing it inside a block leads to the confusing behavior of the switcher appearing only in that one locale's output, so a warning is issued at build time in that case.
+:::
+:::kiritan{locale=ja}
+`::kiritan{switcher}` はすべてのロケール向け出力に共通で挿入される内容なので、`inline`/`catalog` 戦略の `:::kiritan{locale=...}`/`:::kiritan{#<id>}` ブロックの**外側**(共通コンテンツの領域)に置く。ブロック内側に置いた場合はそのロケールの出力にしか switcher が出ないという分かりにくい挙動になるため、build 時に警告する。
+:::
 
+:::kiritan{locale=en}
 ## 7. Translate middleware chain (`TranslateMiddleware`)
+:::
+:::kiritan{locale=ja}
+## 7. 翻訳ミドルウェアチェーン(`TranslateMiddleware`)
+:::
 
+:::kiritan{locale=en}
 Rather than picking a single provider, this is designed so small pieces of processing can be chained together, Vite/Koa-plugin style. For one `missing` translation, middlewares are applied in order from the front, and processing stops as soon as one of them resolves a value.
+:::
+:::kiritan{locale=ja}
+単一プロバイダを選ぶのではなく、Vite/Koa のプラグインのように「小さな処理を連鎖(chain)」できる設計にする。1つの `missing` 訳文に対して、ミドルウェアを先頭から順に適用し、いずれかが値を確定させた時点で終了する。
+:::
 
 ```ts
 interface TranslateContext {
@@ -423,6 +791,7 @@ translate: {
 }
 ```
 
+:::kiritan{locale=en}
 - The default is `middlewares: []` (equivalent to `manual`), and auto-translation never runs at all unless `translate.auto` is `true`. **This default (off) is kept as the design evolves, and is re-confirmed whenever a new place that needs an on/off decision comes up.**
 - The calling convention (once per paragraph, or all at once as a batch) isn't decided by the core — **middleware authors are free to implement it either way**. Two forms are allowed for this reason:
   - Single form: `(ctx: TranslateContext, next) => Promise<string | null>` — the simplest form, called once per item.
@@ -430,12 +799,37 @@ translate: {
   - kiritan itself doesn't bundle concrete official middlewares like `google`/`deepl` (to avoid adding dependencies). Reference implementation examples are provided in the docs (`docs/`).
 - Anywhere auto-translation fills a gap, it's always marked `machine: true` (a field for `catalog`, a comment marker for `sidecar`/`inline`), so `kiritan check` can detect it as awaiting review.
 - The whole chain can be wholesale-overridden per source (`sources[i].translate`).
+:::
+:::kiritan{locale=ja}
+- 既定は `middlewares: []`(＝ `manual` 相当)で、`translate.auto` が `true` でない限り自動翻訳は一切走らない。**この既定値(off)は今後の設計でも維持し、on/off の判断が必要な箇所が出るたびに都度確認する。**
+- 呼び出し方(段落ごとに1回 or まとめてバッチ)はコアが決め打ちにせず、**ミドルウェア作成者が自由に実装できる**ようにする。そのため2つの形を許容する:
+  - 単発形: `(ctx: TranslateContext, next) => Promise<string | null>` — 1件ずつ呼ばれる、最も単純な形。
+  - バッチ形: `(ctxs: TranslateContext[]) => Promise<(string | null)[]>` — 1回の呼び出しで複数件まとめて処理したい場合用。コアはミドルウェアの形(関数のシグネチャ/フラグ)を見て、単発なら1件ずつ、バッチなら missing 分をまとめて渡す。
+  - kiritan 自体は `google`/`deepl` 等の具体的な公式ミドルウェアを内蔵しない(依存を増やさない)。ドキュメント(`docs/`)にリファレンス実装例を載せる。
+- 自動翻訳で埋まった箇所は必ず `machine: true` としてマーキングし(`catalog` はフィールド、`sidecar`/`inline` はコメントマーカー)、`kiritan check` でレビュー待ちとして検出できるようにする。
+- ソース単位(`sources[i].translate`)でチェーン自体を丸ごと上書きできる。
+:::
 
+:::kiritan{locale=en}
 > Splitting out official reference implementations as separate packages, such as `@kiritan/google-translate` `@kiritan/deepl`, is also under future consideration (see chapter 13).
+:::
+:::kiritan{locale=ja}
+> 将来的に、公式のリファレンス実装を `@kiritan/google-translate` `@kiritan/deepl` のような別パッケージとして切り出すことも検討する(13章参照)。
+:::
 
+:::kiritan{locale=en}
 ### 7.1 Mixing single-form and batch-form middlewares
+:::
+:::kiritan{locale=ja}
+### 7.1 単発形とバッチ形の混在
+:::
 
+:::kiritan{locale=en}
 Single-form and batch-form middlewares may be mixed within the `translate.middlewares` array. The pipeline scans the array from the front, automatically grouping consecutive single-form middlewares into one "single group," while each batch-form middleware forms its own standalone "batch group."
+:::
+:::kiritan{locale=ja}
+`translate.middlewares` 配列には単発形とバッチ形を混在させてよい。パイプラインは配列を先頭から見て、連続する単発形を1つの「単発グループ」として自動的にまとめ、バッチ形はそれ単体で1つの「バッチグループ」として扱う。
+:::
 
 ```ts
 middlewares: [
@@ -446,10 +840,21 @@ middlewares: [
 ]
 ```
 
+:::kiritan{locale=en}
 Groups run in array order, and only the items a group didn't resolve are passed on to the next group. This lets a combination like "check the cache one item at a time first → throw the rest at an API together → format each remaining item one at a time at the end" be expressed naturally.
+:::
+:::kiritan{locale=ja}
+グループは配列順に実行され、あるグループで解決しなかったアイテムだけが次のグループに渡される。これにより「まず1件ずつキャッシュを見る→残りをまとめてAPIに投げる→最後に1件ずつ整形する」のような組み合わせが自然に書ける。
+:::
 
+:::kiritan{locale=en}
 ## 8. Stale detection
+:::
+:::kiritan{locale=ja}
+## 8. ステイル検知
+:::
 
+:::kiritan{locale=en}
 - `sidecar` / `inline`: embed a hash comment of the source into the output (or each block), and compare it against the base side's current hash.
 - `catalog`: each segment's translation record keeps the corresponding base hash.
 - `kiritan check` detects the presence of `missing` / `stale` / unreviewed `machine` translations and runtime resource `i18n-key-mismatch` (9.4章), and can exit non-zero in CI. What's checked is configurable:
@@ -462,12 +867,42 @@ Groups run in array order, and only the items a group didn't resolve are passed 
 - Since the hash function only needs to be good enough for tamper detection and doesn't need cryptographic strength, a lightweight non-cryptographic xxhash-family hash (e.g. [`xxhash-wasm`](https://github.com/jungomi/xxhash-wasm)) is adopted as a dependency. The output is embedded as a hex string in the hash comment/catalog file.
 
   > **Implementation note**: this was ultimately implemented via Node's built-in `node:crypto` instead, to avoid a WASM dependency's bundling complexity in a package that ships both CJS and ESM — see `packages/kiritan/src/hash/index.ts`.
+:::
+:::kiritan{locale=ja}
+- `sidecar` / `inline`: 出力(または各ブロック)にソースのハッシュコメントを埋め込み、base 側の現在のハッシュと比較。
+- `catalog`: 各セグメントの訳文レコードに対応する base ハッシュを保持。
+- `kiritan check` は `missing` / `stale` / 未レビューの `machine` 訳文 / ランタイムリソースの `i18n-key-mismatch`(9.4章)の存在を検出し、CI で非ゼロ終了できるようにする。判定対象は設定可能にする:
 
+  ```ts
+  check?: {
+    failOn?: Array<'missing' | 'stale' | 'machine' | 'i18n-key-mismatch'>; // 既定: ['missing', 'stale', 'i18n-key-mismatch'](machineは既定では警告のみ)
+  };
+  ```
+- ハッシュ関数は改ざん検知目的のみで暗号学的な強度は不要なため、xxhash 系の軽量非暗号ハッシュ(例: [`xxhash-wasm`](https://github.com/jungomi/xxhash-wasm))を依存として採用する。出力は16進文字列でハッシュコメント/カタログファイルに埋め込む。
+
+  > **実装メモ**: 最終的には CJS/ESM 両対応パッケージでの WASM バンドルの複雑さを避けるため、`node:crypto` で実装した(`packages/kiritan/src/hash/index.ts`)。
+:::
+
+:::kiritan{locale=en}
 ## 9. Runtime i18n (`@kiritan/runtime`)
+:::
+:::kiritan{locale=ja}
+## 9. ランタイム i18n(`@kiritan/runtime`)
+:::
 
+:::kiritan{locale=en}
 The classic i18next approach of "aggregate every key into `locales/{lang}.json`" has persistent complaints: the file bloats, unused keys go unnoticed, PR diffs become hard to read, and comparing all languages for a given key is awkward. kiritan doesn't take this as its only assumption — following the same thinking as the document-side `TranslationStore` (chapter 4), it lets the **resource's location be chosen as a strategy**.
+:::
+:::kiritan{locale=ja}
+i18next の定番である「`locales/{lang}.json` に全キーを集約する」形式は、ファイルが肥大化する・使われなくなったキーに気づけない・PRの差分が読みにくい・キーごとの全言語比較がしづらい、といった不満が根強い。kiritan はこれを唯一の前提にせず、ドキュメント側の `TranslationStore`(4章)と同じ考え方で**リソースの置き場所を戦略として選べる**ようにする。
+:::
 
+:::kiritan{locale=en}
 ### 9.1 Resource placement strategies (`ResourceSourceConfig`)
+:::
+:::kiritan{locale=ja}
+### 9.1 リソース配置戦略(`ResourceSourceConfig`)
+:::
 
 ```ts
 interface ResourceSourceConfig {
@@ -478,6 +913,7 @@ interface ResourceSourceConfig {
 }
 ```
 
+:::kiritan{locale=en}
 | strategy | Placement | Example |
 | --- | --- | --- |
 | `colocated` | One file next to the component, holding every locale | `Button.i18n.ts` |
@@ -486,6 +922,17 @@ interface ResourceSourceConfig {
 | `embedded` | No dedicated file — written directly inside the component's own file | `export const i18n = {...}` inside `Button.tsx` |
 
 Every strategy is ultimately converted into the same internal shape, `ResourceModule` (`key → { locale: value }`), so `createT`, `kiritan typegen`, and the key-mismatch check in 9.6章 all work identically regardless of strategy. Multiple strategies may be mixed within the same project (by listing multiple entries in `runtime.sources`).
+:::
+:::kiritan{locale=ja}
+| strategy | 置き方 | 例 |
+| --- | --- | --- |
+| `colocated` | コンポーネントの隣に1ファイル、全ロケールをまとめる | `Button.i18n.ts` |
+| `split` | コンポーネントの隣だが、ロケールごとに別ファイル | `Button.en.i18n.ts` / `Button.ja.i18n.ts` |
+| `centralized` | 専用ディレクトリにロケールごと(または1つ)にまとめる。i18next 互換の入力形式でもある | `locales/en.json` / `locales/{locale}/common.json` |
+| `embedded` | 専用ファイルを作らず、コンポーネント自身のファイル内に直接書く | `Button.tsx` 内の `export const i18n = {...}` |
+
+いずれの戦略も最終的には同じ内部形 `ResourceModule`(`key → { locale: value }`)に変換されるため、`createT`・`kiritan typegen`・9.6章のキー不一致チェックはすべての戦略に対して同じように動く。複数の戦略を同じプロジェクト内で混在させてもよい(`runtime.sources` に複数エントリを並べる)。
+:::
 
 ```ts
 runtime: {
@@ -499,9 +946,19 @@ runtime: {
 }
 ```
 
+:::kiritan{locale=en}
 The default config `kiritan init` generates recommends the `colocated` strategy with `src/**/*.i18n.{js,ts}` (`.json` may also be included) as the default. It doesn't assume `.ts` — it's usable as-is in a JS-only project too.
+:::
+:::kiritan{locale=ja}
+`kiritan init` が生成する既定設定では `colocated` 戦略・`src/**/*.i18n.{js,ts}`(`.json` も対象に含めてよい)を推奨のデフォルトとする。`.ts` 前提にはせず、JS のみのプロジェクトでもそのまま使える形にする。
+:::
 
+:::kiritan{locale=en}
 ### 9.2 `colocated` — colocated, one file for every language (the native form)
+:::
+:::kiritan{locale=ja}
+### 9.2 `colocated` — コロケート×全言語1ファイル(ネイティブ形式)
+:::
 
 ```ts
 // src/components/Button/Button.i18n.ts
@@ -531,6 +988,7 @@ function createT<R extends ResourceModule>(
 };
 ```
 
+:::kiritan{locale=en}
 - The recommended default is `*.i18n.ts` (getting the most benefit from type safety), but `*.i18n.js` (for JS projects) and `*.i18n.json` are supported equally.
 - **Type safety comes for free**: since the `messages` passed to `createT(messages)` is just a plain TS object (`.i18n.ts`) or JSON via `resolveJsonModule` (`.i18n.json`), TypeScript's generic inference alone narrows `t()`'s first argument down to a real key. A typo becomes a compile error with no extra code generation needed (chapter 9.6 covers aggregating multiple files). For `.js`, the benefit of inference is limited unless JSDoc type annotations are present (partially effective in a `checkJs` environment).
 - **A gap between locales is visible at a glance, within the same file**: forgetting to write `ja` as in `submit: { en: 'Submit' }` doesn't require searching across files, i18next-style — it's noticed right there (mechanical detection is covered in chapter 9.7).
@@ -538,8 +996,23 @@ function createT<R extends ResourceModule>(
 - The fallback order is `locale → fallbackLocale → the key itself`.
 - Plurals and ICU are out of scope for v1. Left extensible later via a `formatters` option.
 - Since a component's `.i18n.ts` disappears along with the component itself when it's deleted, the "unused translation keys linger forever" problem common with i18next's centralized management is much less likely to happen here. From a bundler's perspective too, an unused component's translations aren't dragged in (this matches the unit of code splitting).
+:::
+:::kiritan{locale=ja}
+- 推奨のデフォルトは `*.i18n.ts`(型安全の恩恵が最大)だが、`*.i18n.js`(JSプロジェクト向け)や `*.i18n.json` も同格でサポートする。
+- **型安全は無料で手に入る**: `createT(messages)` に渡す `messages` はただの TS オブジェクト(`.i18n.ts`)または `resolveJsonModule` 経由の JSON(`.i18n.json`)なので、TypeScript のジェネリクス推論だけで `t()` の第一引数が実在するキーに絞り込まれる。typo は別途コード生成をしなくてもコンパイルエラーになる(複数ファイルを集約する場合は9.6章)。`.js` の場合は JSDoc 型注釈が無い限り推論の恩恵は限定的(`checkJs` 環境なら一部効く)。
+- **同一ファイル内でロケール間の抜けがひと目で分かる**: `submit: { en: 'Submit' }` のように `ja` を書き忘れても、i18next のようにファイルを跨いで探す必要がなく、その場で気づける(機械的な検出は9.7章)。
+- `%{param}` の単純補間(ドキュメント側の変数展開と同じ記法・実装を共有する)。
+- フォールバック順は `locale → fallbackLocale → key自身`。
+- 複数形・ICU は v1 の範囲外。`formatters` オプションで後から拡張できる形にしておく。
+- 未使用になったコンポーネントの `.i18n.ts` はコンポーネント自体の削除と一緒に消えるため、i18next の集中管理でありがちな「使われていない翻訳キーが残り続ける」問題も起きにくい。バンドラーからも、使われていないコンポーネントの翻訳が巻き込まれない(コード分割の単位と一致する)。
+:::
 
+:::kiritan{locale=en}
 ### 9.3 `split` — colocated, but one file per locale
+:::
+:::kiritan{locale=ja}
+### 9.3 `split` — コロケートだがロケールごとに別ファイル
+:::
 
 ```
 src/components/Button/
@@ -547,18 +1020,46 @@ src/components/Button/
   Button.ja.i18n.ts   // export default { submit: '送信', cancel: 'キャンセル' }
 ```
 
+:::kiritan{locale=en}
 Files matching a `glob` that includes a locale token (e.g. extracting the `{locale}` part from an actual filename matching `*.{locale}.i18n.ts`) are bundled together as one set and internally merged into the same `ResourceModule` as 9.2. This is an option for when you want to stay colocated but avoid one file growing long with every language in it. Unlike 9.2, the benefit of "noticing a gap within the same file" is lost, so gap detection relies on the mechanical check in chapter 9.7.
+:::
+:::kiritan{locale=ja}
+`glob` にロケールトークンを含む形(例: `*.{locale}.i18n.ts` に対応する実ファイル名から `{locale}` 部分を抽出)で対応するファイル群を1セットとして束ね、内部的に 9.2 と同じ `ResourceModule` へマージする。コロケートはしたいが、1ファイルが多言語で長くなるのを避けたい場合の選択肢。9.2 と違い「同一ファイル内で抜けに気づける」利点は無くなるため、抜けの検出は 9.7 章の機械チェックに頼ることになる。
+:::
 
+:::kiritan{locale=en}
 ### 9.4 `centralized` — gathered into a dedicated directory (i18next-compatible)
+:::
+:::kiritan{locale=ja}
+### 9.4 `centralized` — 専用ディレクトリに集約(i18next 互換)
+:::
 
+:::kiritan{locale=en}
 To ease migration to and from i18next, its convention (per-locale centralized files like `locales/{locale}/{namespace}.json`) is supported as-is as an input format. Once loaded, the content is internally converted into a `ResourceModule` before being passed to `createT`/`typegen`.
 
 - i18next's plural suffixes (`key_one` / `key_other`, etc.) are **kept and passed through as values, but not interpreted** (since `t()` has no plural-selection logic in v1, the caller has to explicitly pick the right key).
 - The namespace follows i18next's own file layout (`{namespace}.json`) as-is.
+:::
+:::kiritan{locale=ja}
+i18next からの移行・i18next への移行を容易にするため、i18next の慣習(`locales/{locale}/{namespace}.json` のようなロケール別集中ファイル)もそのまま入力形式としてサポートする。読み込んだ内容は内部的に `ResourceModule` へ変換してから `createT`/`typegen` に渡す。
 
+- i18next の複数形サフィックス(`key_one` / `key_other` 等)は **解釈はしないが値としては保持・パススルー**する(v1 では `t()` は複数形選択ロジックを持たないため、呼び出し側が明示的にキーを選ぶ運用になる)。
+- namespace は i18next 側のファイル配置(`{namespace}.json`)をそのまま踏襲する。
+:::
+
+:::kiritan{locale=en}
 ### 9.5 `embedded` — written directly inside a component file
+:::
+:::kiritan{locale=ja}
+### 9.5 `embedded` — コンポーネントファイル内に直書き
+:::
 
+:::kiritan{locale=en}
 For when you don't even want a dedicated translation file — you want to write it directly into the component's implementation file.
+:::
+:::kiritan{locale=ja}
+専用の翻訳ファイルすら作らず、コンポーネントの実装ファイルに直接書きたい場合向け。
+:::
 
 ```tsx
 // src/components/Button/Button.tsx
@@ -573,29 +1074,74 @@ export function Button() {
 }
 ```
 
+:::kiritan{locale=en}
 - If you're just calling `createT(i18n)` directly within the app, no involvement from kiritan is needed (same as 9.2, it's just a plain TS object).
 - Registering `strategy: 'embedded'` in `runtime.sources` makes `kiritan typegen`/`kiritan check` read that file at build time (the same jiti-based dynamic import as reading a config file's `.ts`), pull out just the named export specified by `exportName` (default `"i18n"`), and include it for aggregation/checking.
 - Since the component's logic and its translations live in the same file, the file count doesn't grow, but there's a trade-off: files tend to get larger, and importing a large number of `embedded` files raises import cost.
+:::
+:::kiritan{locale=ja}
+- アプリ内で直接 `createT(i18n)` するだけなら kiritan 側の関与は不要(9.2 と同じくただの TS オブジェクト)。
+- `runtime.sources` に `strategy: 'embedded'` を登録すると、`kiritan typegen`/`kiritan check` がビルド時にそのファイルを読み込み(設定ファイルの `.ts` 読み込みと同じ jiti ベースの動的 import)、`exportName`(既定 `"i18n"`)で指定した named export だけを取り出して集約・チェック対象にする。
+- コンポーネントのロジックと翻訳が同じファイルに同居するため、ファイル数は増えないが、ファイルが大きくなりやすい・`embedded` を大量に集めると import コストが上がる、という trade-off がある。
+:::
 
+:::kiritan{locale=en}
 ### 9.6 Aggregating multiple files and generating types (`kiritan typegen`)
+:::
+:::kiritan{locale=ja}
+### 9.6 複数ファイルの集約と型生成(`kiritan typegen`)
+:::
 
+:::kiritan{locale=en}
 Importing a single file directly (9.2/9.5) gets type safety from TS inference alone, but when `runtime.sources` **aggregates multiple files into one shared `t()`** (e.g. wanting one common `t()` across the whole app), there's no longer a way to statically know the shape of the aggregated result. `kiritan typegen` exists for exactly this case.
 
 - The namespace is auto-derived from the file path (e.g. `src/components/Button/Button.i18n.ts` → `components/Button`). No manual namespace management is needed (it can be overridden via a `namespace` function).
 - `kiritan typegen` generates a `.d.ts` from the aggregated resource's shape (namespace × key × locale), bringing calls like `t('components/Button.submit')` after aggregation under type checking too.
 - The generated type information also feeds into the cross-locale key-mismatch check in chapter 9.7.
+:::
+:::kiritan{locale=ja}
+1ファイル直import(9.2/9.5)は TS の推論だけで型安全になるが、`runtime.sources` で**複数ファイルをまとめて1つの `t()` にする**場合(アプリ全体で共通の `t()` を使いたい場合など)は、集約結果の型を静的に知る手段が無くなる。ここでのみ `kiritan typegen` を使う。
 
+- ファイルパスから名前空間を自動導出する(例: `src/components/Button/Button.i18n.ts` → `components/Button`)。手動でのnamespace管理は不要(`namespace` 関数で上書き可)。
+- `kiritan typegen` は集約済みリソースの形(namespace × key × locale)から `.d.ts` を生成し、集約後の `t('components/Button.submit')` のような呼び出しも型チェック対象にする。
+- 生成した型情報は 9.7 章のロケール間キー不一致チェックの入力にもなる。
+:::
+
+:::kiritan{locale=en}
 ### 9.7 Cross-locale key-mismatch check
+:::
+:::kiritan{locale=ja}
+### 9.7 ロケール間キー不一致チェック
+:::
 
+:::kiritan{locale=en}
 Adds an item to `kiritan check` (chapter 8) that detects **cross-locale key mismatches** in runtime resources (a key missing from, or extra in, only one locale).
 
 - `colocated`/`embedded` (every locale in one file) can spot a gap just by statically looking at a single file (no cross-file matching needed).
 - `split`/`centralized` (one file per locale) requires matching up the key sets of the corresponding files to detect a mismatch.
 - Via `check.failOn`'s `'i18n-key-mismatch'`, it can be wired into CI the same way as the document-side `missing`/`stale`.
+:::
+:::kiritan{locale=ja}
+`kiritan check`(8章)に、ランタイムリソースの**ロケール間キー不一致**(あるロケールにだけキーが無い/余分にある)を検出する項目を追加する。
 
+- `colocated`/`embedded`(1ファイル内に全ロケール)は、ファイル単体を静的に見るだけで抜けが分かる(クロスファイルの突き合わせが不要)。
+- `split`/`centralized`(ロケールごとに別ファイル)は、対応するファイル同士のキー集合を突き合わせて不一致を検出する。
+- `check.failOn` の `'i18n-key-mismatch'` で、ドキュメント側の `missing`/`stale` と同じ扱いで CI に組み込める。
+:::
+
+:::kiritan{locale=en}
 ## 10. CLI / programmatic API
+:::
+:::kiritan{locale=ja}
+## 10. CLI / プログラム API
+:::
 
+:::kiritan{locale=en}
 The CLI's skeleton uses [citty](https://github.com/unjs/citty) (subcommand definitions, help output, and typed args aren't hand-rolled).
+:::
+:::kiritan{locale=ja}
+CLI の骨組みは [citty](https://github.com/unjs/citty) を使う(サブコマンド定義・ヘルプ表示・型付き引数を自前実装しない)。
+:::
 
 ```
 kiritan init                                     # Appends to .kiritan.base.mjs / README.base.md / .gitignore (.kiritan.local.*)
@@ -611,15 +1157,26 @@ export { defineConfig, build } from 'kiritan';
 export type { KiritanConfig, TranslationStore, Renderer, TranslateMiddleware, BatchTranslateMiddleware } from 'kiritan';
 ```
 
+:::kiritan{locale=en}
 The runtime portion is provided as the independent package `@kiritan/runtime` (2.1章) rather than a subpath of `kiritan`, so that document-build-related code (remark, etc.) never has to be bundled in at all.
+:::
+:::kiritan{locale=ja}
+ランタイム部分は `kiritan` のサブパスではなく独立パッケージ `@kiritan/runtime`(2.1章)として提供し、ドキュメントビルド関連のコード(remark 等)を一切バンドルに含めずに済むようにする。
+:::
 
 ```ts
 export { createT } from '@kiritan/runtime';
 export type { CreateTOptions } from '@kiritan/runtime';
 ```
 
+:::kiritan{locale=en}
 ## 11. Extension points
+:::
+:::kiritan{locale=ja}
+## 11. 拡張ポイント一覧
+:::
 
+:::kiritan{locale=en}
 | Kind | Interface | Built-in implementations |
 | --- | --- | --- |
 | Translation storage strategy | `TranslationStore` | `sidecar` / `inline` / `catalog` |
@@ -629,12 +1186,45 @@ export type { CreateTOptions } from '@kiritan/runtime';
 | Language-switcher rendering | `SwitcherConfig.render` (6.1章) | Built-in label/separator-based rendering |
 
 Translation storage strategies and renderers can be swapped or added to via registering them under `plugins.{stores,renderers}`; translate middlewares, by simply listing them in the `translate.middlewares` array.
+:::
+:::kiritan{locale=ja}
+| 種別 | インターフェース | 組み込み実装 |
+| --- | --- | --- |
+| 翻訳格納戦略 | `TranslationStore` | `sidecar` / `inline` / `catalog` |
+| ランタイムリソース配置戦略 | `ResourceSourceConfig.strategy`(9.1章) | `colocated` / `split` / `centralized` / `embedded` |
+| 翻訳ミドルウェア | `TranslateMiddleware` / `BatchTranslateMiddleware` | 組み込みなし(利用者が自由に実装。`docs/` に実装例を掲載) |
+| ファイルレンダラー | `Renderer` | `markdown` / `mdx` / `text` |
+| 言語切り替えリンクの描画 | `SwitcherConfig.render`(6.1章) | ラベル/区切り文字ベースの組み込みレンダリング |
 
+翻訳格納戦略・レンダラーは `plugins.{stores,renderers}` に登録することで、翻訳ミドルウェアは `translate.middlewares` 配列にそのまま並べることで、任意の実装に差し替え・追加ができる。
+:::
+
+:::kiritan{locale=en}
 ## 12. Open questions (to be settled as implementation proceeds)
+:::
+:::kiritan{locale=ja}
+## 12. 未決事項(実装しながら詰める)
+:::
 
+:::kiritan{locale=en}
 None at this time. Anything that comes up during implementation will be appended here.
+:::
+:::kiritan{locale=ja}
+現時点で無し。実装を進める中で出てきたものをここに追記する。
+:::
 
+:::kiritan{locale=en}
 ## 13. Roadmap / future considerations
+:::
+:::kiritan{locale=ja}
+## 13. ロードマップ / 将来検討
+:::
 
+:::kiritan{locale=en}
 - **Official translate-middleware packages**: adding reference implementations like Google Translate / DeepL as separate packages (`@kiritan/google-translate`, `@kiritan/deepl`) under `packages/*`. Not added in v1 — only implementation examples are provided in the docs.
 - **VS Code extension**: a `@kiritan/vscode` addition to `packages/*` is envisioned. Expected to cover syntax highlighting/folding for `:::kiritan` blocks, highlighting and undefined-variable detection for `%{name}`, jumping between `:::kiritan{#<id>}` and its catalog file, and inline display of `missing`/`stale` segments. When settling v1's core design (especially the block notation in chapter 4 and how stale-detection information is held in chapter 8), keep in mind whether it stays easy for an extension to parse.
+:::
+:::kiritan{locale=ja}
+- **翻訳ミドルウェアの公式パッケージ化**: Google 翻訳 / DeepL などの参考実装を `@kiritan/google-translate` `@kiritan/deepl` のような別パッケージとして `packages/*` に追加する。v1 では追加せず、ドキュメントに実装例を載せるだけに留める。
+- **VS Code 拡張機能**: `@kiritan/vscode` として `packages/*` に追加する構想。`:::kiritan` ブロックのシンタックスハイライト・折りたたみ、`%{name}` 変数のハイライトや未定義検出、`:::kiritan{#<id>}` と catalog ファイル間のジャンプ、`missing`/`stale` セグメントのインライン表示などを想定。v1 のコア設計(特に4章のブロック記法・8章のステイル検知情報の持ち方)が、拡張機能から見て解析しやすい形になっているかを意識して詰める。
+:::

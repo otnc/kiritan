@@ -5,5 +5,10 @@ export default {
   sources: [
     { glob: "base/README.base.md", strategy: "inline" },
     { glob: "base/CONTRIBUTING.base.md", strategy: "inline" },
+    {
+      glob: "base/DESIGN.base.md",
+      strategy: "inline",
+      naming: { template: "docs/{base}.{locale}.{ext}" },
+    },
   ],
 };
