@@ -1,0 +1,25 @@
+name: release-runtime
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version bump for @kiritan/runtime: patch/minor/major/prerelease, or an explicit version (e.g. 0.2.0)'
+        required: true
+        default: patch
+      dist_tag:
+        description: 'npm dist-tag to publish under. Leave empty to auto-detect: the prerelease identifier (e.g. "beta" from 0.2.0-beta.0), or "latest" for a stable version.'
+        required: false
+        default: ''
+
+jobs:
+  release:
+    uses: ./.github/workflows/_release-package.yml
+    with:
+      package_dir: packages/runtime
+      npm_package_name: '@kiritan/runtime'
+      version: ${{ inputs.version }}
+      dist_tag: ${{ inputs.dist_tag }}
+    permissions:
+      contents: write
+      id-token: write

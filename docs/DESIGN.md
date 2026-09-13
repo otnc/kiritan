@@ -80,18 +80,16 @@ packages/runtime/src/
 - Rather than re-exporting `kiritan/runtime` from `kiritan`, `@kiritan/runtime` is its own independent package (`kiritan` may depend on `@kiritan/runtime`, but never the reverse). This lets a project that only wants the runtime avoid pulling in `kiritan` core (remark and other build-time dependencies) at all.
 - Everything except the CLI (`src/cli.ts`) keeps full CJS/ESM dual-format support. The remark/unified/micromark ecosystem only ships ESM-only packages (going back to a CJS release would mean "using an older version," which is avoided), so `tsdown.config.ts`'s `deps.alwaysBundle` bundles them directly into `dist/index.{cjs,mjs}`, eliminating any scenario where a CJS consumer would need to `require` an ESM-only package. `citty`, which is CLI-only, stays an external dependency and isn't bundled.
 - Reference implementations of translate middlewares to be added later (e.g. `@kiritan/google-translate`, chapter 13) are also expected to be added to the same workspace under `packages/*`.
-- The existing `tsdown` / `vitest` / `eslint` / CI (`ci.yml` / `release.yml`) setups need updating for workspace support (per-package build/test/publish). This is treated as an implementation task once the design is finalized.
-- Versioning is **independent per package** (no lockstep). [Changesets](https://github.com/changesets/changesets) is adopted so only the packages that changed can be released, but the standard two-stage PR flow ("a bot auto-creates a Version Packages PR, and merging it publishes") is not used. **Creating changeset files (part of each PR) is separated from actually running a release (manual `workflow_dispatch`)**:
+- The existing `tsdown` / `vitest` / `eslint` / CI (`ci.yml` and the release workflows) setups need updating for workspace support (per-package build/test/publish). This is treated as an implementation task once the design is finalized.
+- Versioning is **independent per package** (no lockstep, no shared changelog-generation tool). Each package has its own `workflow_dispatch` GitHub Actions workflow (`release-kiritan.yml`, `release-runtime.yml`) — thin wrappers around a shared reusable workflow (`_release-package.yml`) that does the actual work — so releasing one package can never touch the other by accident:
 
-  1. A normal PR: when a change affects a package, run `npx changeset` and commit the generated changeset file (`.changeset/*.md`) — which records the affected package(s), the bump type (patch/minor/major), and a one-line summary — with the PR (the procedure is documented in CONTRIBUTING.md).
-  2. `release.yml` (`workflow_dispatch`, taking no arguments, or only `dist_tag`): running it manually aggregates whatever `.changeset/*.md` files have accumulated so far, and:
-     - Runs `changeset version` to settle each package's version and update `package.json` and `CHANGELOG.md` (the consumed changeset files are deleted)
-     - Commits the changes
-     - Runs `changeset publish`, `npm publish`-ing only the packages whose version bumped (OIDC trusted publishing is configured per-package on npmjs.com)
-     - Tags each released package as `<name>@<version>` and bundles the content for every changed package into a single GitHub Release (release notes reuse the corresponding CHANGELOG entries `changeset` generated, rather than `--generate-notes`)
-     - If no changesets have accumulated, it exits normally doing nothing ("nothing to release")
+  1. Trigger `release-<package>` from the Actions tab with two inputs: `version` (a semver bump — `patch`/`minor`/`major`/`prerelease` — or an explicit version, passed straight to `npm version`) and `dist_tag` (npm dist-tag; empty auto-detects).
+  2. The workflow bumps that package's `package.json` (no changeset file, no per-package CHANGELOG.md — GitHub's auto-generated release notes from merged PRs are used instead), regenerates every `base/*.base.md`-derived doc, and runs `npm publish` with **trusted publishing** (OIDC — no `NPM_TOKEN` needed, configured per-package on npmjs.com pointing at that package's own workflow file).
+  3. It commits the version bump + regenerated docs, tags the release as `<name>@<version>`, pushes, and creates a GitHub Release.
 
-  This keeps the day-to-day feel (press a button, it releases right there) unchanged, while also achieving independent per-package versioning and automatic CHANGELOG generation.
+  Since `kiritan` depends on `@kiritan/runtime`, bumping runtime's minor/major version doesn't automatically update kiritan's dependency range — that's a deliberate manual follow-up, so that releasing runtime alone never touches kiritan's `package.json`.
+
+  (An earlier iteration of this design used [Changesets](https://github.com/changesets/changesets), with a changeset file committed per PR driving both the version bump and CHANGELOG generation at release time. It was replaced with the simpler `npm version`-based flow above — modeled after [oto-lab/npm-biome-ts](https://github.com/oto-lab/npm-biome-ts)'s single-package release workflow — to remove the per-PR changeset-writing step entirely.)
 
 ## 3. Config files
 

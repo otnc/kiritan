@@ -1,0 +1,113 @@
+name: _release-package
+
+# Reusable workflow: the common release steps shared by release-kiritan.yml and
+# release-runtime.yml. Not runnable on its own (workflow_call only) — this keeps
+# each package's own workflow file thin, so triggering one can never touch the
+# other package by accident.
+
+on:
+  workflow_call:
+    inputs:
+      package_dir:
+        description: 'Path to the package to release, e.g. "packages/kiritan"'
+        required: true
+        type: string
+      npm_package_name:
+        description: 'The npm package name, e.g. "kiritan" or "@kiritan/runtime"'
+        required: true
+        type: string
+      version:
+        description: 'A semver bump (patch/minor/major/prerelease) or an explicit version'
+        required: true
+        type: string
+      dist_tag:
+        description: 'npm dist-tag to publish under. Empty auto-detects.'
+        required: false
+        type: string
+        default: ''
+
+# Trusted publishing: npm authenticates this workflow via OIDC, so no NPM_TOKEN
+# secret is needed. Configure the link on npmjs.com first, for this package:
+#   package Settings -> Publishing access -> Trusted publishers -> GitHub.
+permissions:
+  contents: write # push the version commit/tag and create the GitHub Release
+  id-token: write # npm trusted publishing (OIDC)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run ci
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+      - name: Bump version
+        id: bump
+        working-directory: ${{ inputs.package_dir }}
+        run: |
+          OLD="$(node -p "require('./package.json').version")"
+          npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version >/dev/null
+          NEW="$(node -p "require('./package.json').version")"
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=${{ inputs.npm_package_name }}@$NEW" >> "$GITHUB_OUTPUT"
+          if [ "$OLD" = "$NEW" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Version is already ${NEW}; skipping the bump commit but still releasing."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [[ "$NEW" == *-* ]]; then
+            REST="${NEW#*-}"
+            PRERELEASE_ID="${REST%%.*}"
+          else
+            PRERELEASE_ID=""
+          fi
+
+          TAG="${{ inputs.dist_tag }}"
+          if [ -z "$TAG" ]; then
+            if [ -n "$PRERELEASE_ID" ]; then TAG="$PRERELEASE_ID"; else TAG="latest"; fi
+          fi
+          echo "npm_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$([ "$TAG" = "latest" ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+
+      # Harmless no-op if base/*.base.md hasn't changed since the last commit;
+      # kept here so a release never ships with stale generated docs.
+      - name: Regenerate generated docs
+        run: node packages/kiritan/dist/cli.mjs build
+
+      # Trusted publishing: no NODE_AUTH_TOKEN — npm exchanges the OIDC token
+      # issued by GitHub for a short-lived publish credential.
+      - run: npm install -g npm@11
+      - name: Publish
+        working-directory: ${{ inputs.package_dir }}
+        run: npm publish --access public --provenance --tag "${{ steps.bump.outputs.npm_tag }}"
+
+      - name: Commit, tag and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "release: ${{ steps.bump.outputs.tag }}" || echo "::notice::Nothing to commit"
+          if ! git rev-parse -q --verify "refs/tags/${{ steps.bump.outputs.tag }}" >/dev/null; then
+            git tag "${{ steps.bump.outputs.tag }}"
+          fi
+          git push origin HEAD "${{ steps.bump.outputs.tag }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.bump.outputs.tag }}" \
+            --title "${{ steps.bump.outputs.tag }}" \
+            --generate-notes \
+            ${{ steps.bump.outputs.prerelease == 'true' && '--prerelease' || '' }}

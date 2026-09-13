@@ -144,13 +144,6 @@ npm run ci && npm run typecheck && npm run test && npm run build
 ```
 
 :::kiritan{locale=en}
-If your change should ship a release, also add a changeset (see below) before opening the PR.
-:::
-:::kiritan{locale=ja}
-変更をリリースに含めたい場合は、PR を開く前に changeset も追加してください(詳細は後述)。
-:::
-
-:::kiritan{locale=en}
 ## Conventions
 
 - **Formatting is Prettier** (default settings, no overrides) and **linting is ESLint**
@@ -173,55 +166,45 @@ If your change should ship a release, also add a changeset (see below) before op
 :::kiritan{locale=en}
 ## Pull requests
 
-Keep each change focused and add tests for any new behaviour.
-
-### Adding a changeset
+Keep each change focused and add tests for any new behaviour. There's no changeset or similar file to add — versioning happens entirely at release time (see below), not per PR.
 :::
 :::kiritan{locale=ja}
 ## プルリクエスト
 
-各変更は焦点を絞り、新しい振る舞いにはテストを追加してください。
-
-### changeset の追加
-:::
-
-:::kiritan{locale=en}
-If your PR changes the behaviour of `kiritan` or `@kiritan/runtime` in a way users should know about, run:
-:::
-:::kiritan{locale=ja}
-PR が `kiritan` や `@kiritan/runtime` の振る舞いを、利用者が知っておくべき形で変更する場合は、以下を実行してください。
-:::
-
-```sh
-npx changeset
-```
-
-:::kiritan{locale=en}
-and pick the affected package(s), the bump type (patch/minor/major), and write a one-line summary. Commit the generated file under `.changeset/` with your PR — this is what drives each package's version and CHANGELOG entry at release time (docs/DESIGN.md 2.1章). Skip this for internal-only changes (docs, CI, tests) that shouldn't trigger a release.
-:::
-:::kiritan{locale=ja}
-影響を受けるパッケージ・バージョンの上げ方(patch/minor/major)・一行の要約を選択・記入します。生成された `.changeset/` 配下のファイルは PR に含めてコミットしてください。これがリリース時の各パッケージのバージョンと CHANGELOG エントリの元になります(docs/DESIGN.md 2.1章)。リリースを伴わない内部的な変更(ドキュメント・CI・テストのみ)ではこの手順は不要です。
+各変更は焦点を絞り、新しい振る舞いにはテストを追加してください。changesetのような追加ファイルは不要です — バージョニングはPRごとではなく、リリース実行時(後述)にまとめて行います。
 :::
 
 :::kiritan{locale=en}
 ## Releasing (maintainers)
 
-Releasing is still one manual step, but versions are per-package now (via [Changesets](https://github.com/changesets/changesets)) rather than a single version across the repo.
-From the Actions tab, run the `release` workflow (`workflow_dispatch`). It applies whatever changesets have accumulated on `main` (`changeset version`: bumps each affected package's `package.json` and `CHANGELOG.md`), regenerates every `base/*.base.md`-derived doc (`npm run docs:build`, folded into the same commit as the version bump), publishes only the packages that changed to npm with provenance via **trusted publishing** (OIDC — no `NPM_TOKEN` needed), pushes the version commit and a `<package>@<version>` tag per released package, and creates a GitHub Release for each.
-If no changesets are pending, the workflow does nothing (including the doc regeneration).
+`kiritan` and `@kiritan/runtime` each have their own `workflow_dispatch` GitHub Actions workflow — `release-kiritan.yml` and `release-runtime.yml` — so releasing one package can never accidentally touch the other. Both are thin wrappers around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
+
+From the Actions tab, run `release-kiritan` or `release-runtime` with two inputs:
+- `version`: a semver bump (`patch` / `minor` / `major` / `prerelease`) or an explicit version (e.g. `0.2.0`), passed straight to `npm version`.
+- `dist_tag`: the npm dist-tag to publish under. Leave empty to auto-detect — the prerelease identifier (e.g. `beta` from `0.2.0-beta.0`), or `latest` for a stable version.
+
+The workflow bumps that package's `package.json` (no changelog file — GitHub's auto-generated release notes, from merged PRs, are used instead), regenerates every `base/*.base.md`-derived doc (`kiritan build`, folded into the same commit), publishes to npm with provenance via **trusted publishing** (OIDC — no `NPM_TOKEN` needed), pushes the version commit and a `<package>@<version>` tag, and creates a GitHub Release.
 
 Trusted publishing must be configured once per package on npmjs.com:
-package **Settings → Publishing access → Trusted publishers → GitHub**, pointing at this repository's `release.yml` workflow.
+package **Settings → Publishing access → Trusted publishers → GitHub**, pointing at that package's own workflow file (`release-kiritan.yml` or `release-runtime.yml`).
+
+Since `kiritan` depends on `@kiritan/runtime` (currently `^0.1.0`), bumping runtime's minor or major version doesn't automatically update kiritan's dependency range — that's a manual follow-up PR when it happens, on purpose, so releasing runtime alone never touches kiritan's `package.json`.
 :::
 :::kiritan{locale=ja}
 ## リリース(メンテナー向け)
 
-リリースは今も手動のステップですが、バージョンはリポジトリ全体で単一ではなく、([Changesets](https://github.com/changesets/changesets) による)パッケージごとの管理になっています。
-Actions タブから `release` ワークフロー(`workflow_dispatch`)を実行してください。`main` に蓄積された changeset を適用し(`changeset version`: 影響を受ける各パッケージの `package.json` と `CHANGELOG.md` を更新)、`base/*.base.md` から生成される全ドキュメントを再生成し(`npm run docs:build`。バージョンアップと同じコミットにまとめられます)、変更のあったパッケージのみを **trusted publishing**(OIDC。`NPM_TOKEN` 不要)で npm に provenance 付きで公開し、バージョンコミットとパッケージごとの `<package>@<version>` タグを push した上で、それぞれについて GitHub Release を作成します。
-保留中の changeset が無い場合、このワークフロー(ドキュメント再生成も含めて)は何も行いません。
+`kiritan` と `@kiritan/runtime` はそれぞれ専用の `workflow_dispatch` ワークフロー(`release-kiritan.yml` / `release-runtime.yml`)を持っており、片方をリリースしてももう片方に誤って影響することはありません。どちらも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`。単体では実行不可)への薄いラッパーです。
+
+Actions タブから `release-kiritan` または `release-runtime` を、2つの入力で実行してください:
+- `version`: semverのbump種別(`patch` / `minor` / `major` / `prerelease`)、または明示的なバージョン(例: `0.2.0`)。そのまま `npm version` に渡されます。
+- `dist_tag`: 公開先のnpm dist-tag。空なら自動判定(プレリリースならそのタグ、例えば `0.2.0-beta.0` なら `beta`。安定版なら `latest`)。
+
+ワークフローは対象パッケージの `package.json` を更新し(changelogファイルは無く、代わりにマージ済みPRから生成されるGitHubの自動リリースノートを使用)、`base/*.base.md` から生成される全ドキュメントを再生成し(`kiritan build`。バージョンアップと同じコミットにまとめられます)、**trusted publishing**(OIDC。`NPM_TOKEN` 不要)で npm に provenance 付きで公開し、バージョンコミットと `<package>@<version>` タグを push した上で、GitHub Release を作成します。
 
 trusted publishing は npmjs.com 上でパッケージごとに一度だけ設定が必要です。
-パッケージの **Settings → Publishing access → Trusted publishers → GitHub** から、このリポジトリの `release.yml` ワークフローを指定してください。
+パッケージの **Settings → Publishing access → Trusted publishers → GitHub** から、そのパッケージ自身のワークフローファイル(`release-kiritan.yml` または `release-runtime.yml`)を指定してください。
+
+`kiritan` は `@kiritan/runtime` に依存している(現在 `^0.1.0`)ため、runtimeのminor/majorバージョンを上げても kiritan 側の依存範囲は自動更新されません。これは意図的な仕様で、runtime単体のリリースが kiritan の `package.json` に触れることが無いようにするためです。該当する場合は別途手動でPRを出してください。
 :::
 
 :::kiritan{locale=en}

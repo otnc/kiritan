@@ -32,5 +32,4 @@ closes
 - [ ] Run `npm run typecheck`
 - [ ] Run `npm run test` (functions test)
 - [ ] Run `npm run build` (`dist/`)
-- [ ] Add a changeset (`npx changeset`) if this should ship a release — see `CONTRIBUTING.md`
 - [ ] (optional) Run `npm run test:coverage` and check nothing new went uncovered
