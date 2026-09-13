@@ -28,6 +28,16 @@ npm install
 
 上記すべての設計と理由は [docs/DESIGN.md](./docs/DESIGN.md) にまとまっています。構造を変更する前に読んでください。
 
+## 生成ドキュメント
+
+ルートの README/CONTRIBUTING/DESIGN、および各パッケージの README は、kiritan自身によって `base/*.base.md` ソース(例: `base/README.base.md`、`packages/kiritan/base/README.base.md`)から生成されています。中で使われている `:::kiritan{locale=...}` ブロック記法は [docs/DESIGN.md](./docs/DESIGN.md) 4.2章を参照してください。`base/*.base.md` を編集したら、出力を再生成して変更と一緒にコミットしてください。
+
+```sh
+npm run docs:build
+```
+
+`npm run docs:check` は、何も書き込まずに未翻訳・stale(前回生成後にソースが変更された)なソースを報告します。コミット前に実行しておくと安心です。生成は後述の `release` ワークフローの一部としても自動的に行われるため、`base/*.base.md` の変更がバージョンアップと同時にリリースされる場合は事前の手動再生成が必須というわけではありませんが、自分で実行しておくとPRの差分が正確でレビューしやすくなります。
+
 ## スクリプト
 
 | コマンド | 内容 |
@@ -42,6 +52,8 @@ npm install
 | `npm run lint:fix` | 修正を書き込みながらコードをリント(ESLint) |
 | `npm run check` | フォーマットとリントの修正を書き込む(Prettier + ESLint) |
 | `npm run ci` | 書き込みなしで同じチェックを実行(CI が実行するもの) |
+| `npm run docs:build` | `base/*.base.md` から生成される全ドキュメントを再生成する(上記「生成ドキュメント」参照) |
+| `npm run docs:check` | 何も書き込まずに、未翻訳・staleな生成ドキュメントを報告する |
 
 `build` と `typecheck` は `packages/*` 配下の全パッケージに展開されます。`test` / `format` / `lint` はルートから既にワークスペース全体に対して実行されます。
 
@@ -77,8 +89,8 @@ npx changeset
 ## リリース(メンテナー向け)
 
 リリースは今も手動のステップですが、バージョンはリポジトリ全体で単一ではなく、([Changesets](https://github.com/changesets/changesets) による)パッケージごとの管理になっています。
-Actions タブから `release` ワークフロー(`workflow_dispatch`)を実行してください。`main` に蓄積された changeset を適用し(`changeset version`: 影響を受ける各パッケージの `package.json` と `CHANGELOG.md` を更新)、変更のあったパッケージのみを **trusted publishing**(OIDC。`NPM_TOKEN` 不要)で npm に provenance 付きで公開し、バージョンコミットとパッケージごとの `<package>@<version>` タグを push した上で、それぞれについて GitHub Release を作成します。
-保留中の changeset が無い場合、このワークフローは何も行いません。
+Actions タブから `release` ワークフロー(`workflow_dispatch`)を実行してください。`main` に蓄積された changeset を適用し(`changeset version`: 影響を受ける各パッケージの `package.json` と `CHANGELOG.md` を更新)、`base/*.base.md` から生成される全ドキュメントを再生成し(`npm run docs:build`。バージョンアップと同じコミットにまとめられます)、変更のあったパッケージのみを **trusted publishing**(OIDC。`NPM_TOKEN` 不要)で npm に provenance 付きで公開し、バージョンコミットとパッケージごとの `<package>@<version>` タグを push した上で、それぞれについて GitHub Release を作成します。
+保留中の changeset が無い場合、このワークフロー(ドキュメント再生成も含めて)は何も行いません。
 
 trusted publishing は npmjs.com 上でパッケージごとに一度だけ設定が必要です。
 パッケージの **Settings → Publishing access → Trusted publishers → GitHub** から、このリポジトリの `release.yml` ワークフローを指定してください。
