@@ -8,3 +8,9 @@ export type {
   CheckOptions,
   CheckResult,
 } from "./pipeline/check.js";
+export { translate } from "./pipeline/translate.js";
+export type {
+  TranslatedEntry,
+  TranslateOptions,
+  TranslateResult,
+} from "./pipeline/translate.js";
