@@ -14,3 +14,9 @@ export type {
   TranslateOptions,
   TranslateResult,
 } from "./pipeline/translate.js";
+export { extract } from "./pipeline/extract.js";
+export type {
+  ExtractChange,
+  ExtractOptions,
+  ExtractResult,
+} from "./pipeline/extract.js";
