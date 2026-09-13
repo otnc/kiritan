@@ -1,13 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { KiritanConfig } from "../config/types.js";
-import { parseMarkdown } from "../directive/parse.js";
-import { collectCatalogIds, collectLocaleBlocks } from "../directive/render.js";
+import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
+import {
+  collectCatalogIds,
+  collectCatalogSegments,
+  collectLocaleBlocks,
+} from "../directive/render.js";
 import { resolveNamingOptions, resolveOutputPath } from "../discover/naming.js";
 import {
   discoverSourceFiles,
   type DiscoveredFile,
 } from "../discover/sources.js";
+import { extractHashComment, hashText } from "../hash/index.js";
 import { aggregateResources } from "../i18n/aggregate.js";
 import { findKeyMismatches } from "../i18n/mismatch.js";
 import { catalogPathFor, readCatalogFile } from "../stores/catalog.js";
@@ -39,22 +44,23 @@ const DEFAULT_FAIL_ON: CheckIssueKind[] = [
   "i18n-key-mismatch",
 ];
 
-async function fileExists(path: string): Promise<boolean> {
+async function readFileIfExists(path: string): Promise<string | undefined> {
   try {
-    await readFile(path, "utf8");
-    return true;
+    return await readFile(path, "utf8");
   } catch {
-    return false;
+    return undefined;
   }
 }
 
 async function checkSidecar(
   file: DiscoveredFile,
+  sourceText: string,
   config: KiritanConfig,
   cwd: string,
   issues: CheckIssue[]
 ): Promise<void> {
   const naming = resolveNamingOptions(file.source.naming ?? config.naming);
+  const sourceHash = hashText(sourceText);
   for (const locale of config.locales.list) {
     if (locale === config.locales.default) continue;
     const outPath = resolveOutputPath(
@@ -63,12 +69,25 @@ async function checkSidecar(
       config.locales.default,
       naming
     );
-    if (!(await fileExists(join(cwd, outPath)))) {
+    const outputText = await readFileIfExists(join(cwd, outPath));
+    if (outputText === undefined) {
       issues.push({
         kind: "missing",
         source: file.path,
         locale,
         detail: `sidecar file "${outPath}" does not exist`,
+      });
+      continue;
+    }
+
+    // No hash comment means the file predates this feature (or was hand-authored without one) — only flag staleness once a hash comment exists and no longer matches.
+    const existingHash = extractHashComment(outputText);
+    if (existingHash && existingHash !== sourceHash) {
+      issues.push({
+        kind: "stale",
+        source: file.path,
+        locale,
+        detail: `sidecar file "${outPath}" is stale (source changed since it was last translated)`,
       });
     }
   }
@@ -101,7 +120,9 @@ async function checkCatalog(
   cwd: string,
   issues: CheckIssue[]
 ): Promise<void> {
-  const ids = collectCatalogIds(parseMarkdown(sourceText));
+  const tree = parseMarkdown(sourceText);
+  const ids = collectCatalogIds(tree);
+  const segments = collectCatalogSegments(tree);
   for (const locale of config.locales.list) {
     if (locale === config.locales.default) continue;
     const catalogData = await readCatalogFile(
@@ -116,13 +137,31 @@ async function checkCatalog(
           locale,
           detail: `catalog id "${id}" has no translation`,
         });
-      } else if (entry.machine) {
+        continue;
+      }
+
+      if (entry.machine) {
         issues.push({
           kind: "machine",
           source: file.path,
           locale,
           detail: `catalog id "${id}" is machine-translated and needs review`,
         });
+      }
+
+      // No stored hash means the entry predates this feature (or was written by hand) — only flag staleness once a hash exists and no longer matches.
+      if (entry.hash) {
+        const currentHash = hashText(
+          stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] })
+        );
+        if (currentHash !== entry.hash) {
+          issues.push({
+            kind: "stale",
+            source: file.path,
+            locale,
+            detail: `catalog id "${id}" is stale (source changed since it was last translated)`,
+          });
+        }
       }
     }
   }
@@ -154,8 +193,9 @@ async function checkRuntimeResources(
 }
 
 /**
- * `kiritan check` (docs/DESIGN.md 8章): finds missing/machine-translated content across every source, plus `i18n-key-mismatch` for every `runtime.sources` strategy (`colocated`/`split`/`centralized`/`embedded`).
- * Stale detection (hash-based) isn't implemented yet, so `"stale"` never appears in `issues`.
+ * `kiritan check` (docs/DESIGN.md 8章): finds missing/stale/machine-translated content across every source, plus `i18n-key-mismatch` for every `runtime.sources` strategy (`colocated`/`split`/`centralized`/`embedded`).
+ * Stale detection compares a hash embedded at translation time (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) against the source's current hash; a file/entry with no hash yet (predating this feature, or hand-authored) is never flagged.
+ * `inline` has no stale detection yet, since there's no per-block place to embed a hash without kiritan owning the base file's translated content.
  */
 export async function check(
   config: KiritanConfig,
@@ -169,12 +209,12 @@ export async function check(
   const issues: CheckIssue[] = [];
 
   for (const file of files) {
+    const sourceText = await readFile(join(cwd, file.path), "utf8");
+
     if (file.source.strategy === "sidecar") {
-      await checkSidecar(file, config, cwd, issues);
+      await checkSidecar(file, sourceText, config, cwd, issues);
       continue;
     }
-
-    const sourceText = await readFile(join(cwd, file.path), "utf8");
 
     if (file.source.strategy === "inline") {
       checkInline(file, sourceText, config, issues);

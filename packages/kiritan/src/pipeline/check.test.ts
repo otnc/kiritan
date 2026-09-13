@@ -3,7 +3,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { KiritanConfig } from "../config/types.js";
+import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
+import { collectCatalogSegments } from "../directive/render.js";
+import { hashText, withHashComment } from "../hash/index.js";
 import { check } from "./check.js";
+
+/** Matches how `checkCatalog` hashes a segment, so tests can assert against a real hash without guessing the exact stringified form. */
+function catalogSegmentHash(baseMarkdown: string, id: string): string {
+  const segments = collectCatalogSegments(parseMarkdown(baseMarkdown));
+  return hashText(
+    stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] })
+  );
+}
 
 let cwd: string;
 
@@ -98,6 +109,43 @@ describe("check (sidecar strategy)", () => {
     const result = await check(config, { cwd });
     expect(result.issues).toEqual([]);
   });
+
+  it("does not flag a translated file with no hash comment as stale", async () => {
+    await writeFile(join(cwd, "README.base.md"), "English content.\n", "utf8");
+    await writeFile(
+      join(cwd, "README.ja.md"),
+      "手動翻訳、ハッシュコメント無し。\n",
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([]);
+  });
+
+  it("reports a stale issue once the base content no longer matches the hash comment", async () => {
+    await writeFile(join(cwd, "README.base.md"), "Updated content.\n", "utf8");
+    await writeFile(
+      join(cwd, "README.ja.md"),
+      withHashComment("翻訳済み。\n", hashText("Old content.\n")),
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "stale",
+        source: "README.base.md",
+        locale: "ja",
+        detail:
+          'sidecar file "README.ja.md" is stale (source changed since it was last translated)',
+      },
+    ]);
+    expect(result.failed).toBe(true);
+  });
 });
 
 describe("check (catalog strategy)", () => {
@@ -166,6 +214,70 @@ describe("check (catalog strategy)", () => {
       },
     ]);
     expect(result.failed).toBe(false);
+  });
+
+  it("does not flag an entry with no stored hash as stale", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "Original.", ":::"].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      join(cwd, "README.ja.catalog.json"),
+      JSON.stringify({ intro: { text: "翻訳済み" } }),
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "catalog" }],
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([]);
+  });
+
+  it("reports a stale issue once the segment's stored hash no longer matches the source", async () => {
+    const baseMarkdown = [":::kiritan{#intro}", "Updated.", ":::"].join("\n");
+    await writeFile(join(cwd, "README.base.md"), baseMarkdown, "utf8");
+    await writeFile(
+      join(cwd, "README.ja.catalog.json"),
+      JSON.stringify({
+        intro: { text: "翻訳済み", hash: "0000000000000000" },
+      }),
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "catalog" }],
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "stale",
+        source: "README.base.md",
+        locale: "ja",
+        detail:
+          'catalog id "intro" is stale (source changed since it was last translated)',
+      },
+    ]);
+    expect(result.failed).toBe(true);
+  });
+
+  it("reports no issues once the segment's stored hash matches the source", async () => {
+    const baseMarkdown = [":::kiritan{#intro}", "Original.", ":::"].join("\n");
+    await writeFile(join(cwd, "README.base.md"), baseMarkdown, "utf8");
+    await writeFile(
+      join(cwd, "README.ja.catalog.json"),
+      JSON.stringify({
+        intro: {
+          text: "翻訳済み",
+          hash: catalogSegmentHash(baseMarkdown, "intro"),
+        },
+      }),
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "catalog" }],
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([]);
   });
 });
 

@@ -13,6 +13,11 @@ import {
   type DiscoveredFile,
 } from "../discover/sources.js";
 import {
+  extractHashComment,
+  hashText,
+  withHashComment,
+} from "../hash/index.js";
+import {
   catalogPathFor,
   readCatalogFile,
   type CatalogData,
@@ -33,12 +38,11 @@ export interface TranslateResult {
   translated: TranslatedEntry[];
 }
 
-async function fileExists(path: string): Promise<boolean> {
+async function readFileIfExists(path: string): Promise<string | undefined> {
   try {
-    await readFile(path, "utf8");
-    return true;
+    return await readFile(path, "utf8");
   } catch {
-    return false;
+    return undefined;
   }
 }
 
@@ -57,7 +61,8 @@ async function translateSidecar(
 
   const naming = resolveNamingOptions(file.source.naming ?? config.naming);
   const sourceText = await readFile(join(cwd, file.path), "utf8");
-  const missingLocales: string[] = [];
+  const sourceHash = hashText(sourceText);
+  const targetLocales: string[] = [];
   for (const locale of config.locales.list) {
     if (locale === config.locales.default) continue;
     const outPath = resolveOutputPath(
@@ -66,11 +71,17 @@ async function translateSidecar(
       config.locales.default,
       naming
     );
-    if (!(await fileExists(join(cwd, outPath)))) missingLocales.push(locale);
+    const existing = await readFileIfExists(join(cwd, outPath));
+    if (existing === undefined) {
+      targetLocales.push(locale);
+      continue;
+    }
+    const existingHash = extractHashComment(existing);
+    if (existingHash && existingHash !== sourceHash) targetLocales.push(locale);
   }
-  if (missingLocales.length === 0) return;
+  if (targetLocales.length === 0) return;
 
-  const contexts: TranslateContext[] = missingLocales.map((locale) => ({
+  const contexts: TranslateContext[] = targetLocales.map((locale) => ({
     text: sourceText,
     from: config.locales.default,
     to: locale,
@@ -78,7 +89,7 @@ async function translateSidecar(
   }));
   const results = await runTranslateMiddlewares(middlewares, contexts);
 
-  for (const [index, locale] of missingLocales.entries()) {
+  for (const [index, locale] of targetLocales.entries()) {
     const result = results[index];
     if (result == null) continue;
     const outPath = resolveOutputPath(
@@ -88,7 +99,11 @@ async function translateSidecar(
       naming
     );
     await mkdir(dirname(join(cwd, outPath)), { recursive: true });
-    await writeFile(join(cwd, outPath), result, "utf8");
+    await writeFile(
+      join(cwd, outPath),
+      withHashComment(result, sourceHash),
+      "utf8"
+    );
     translated.push({ source: file.path, locale, detail: `wrote ${outPath}` });
   }
 }
@@ -104,6 +119,9 @@ async function translateCatalog(
 
   const sourceText = await readFile(join(cwd, file.path), "utf8");
   const segments = collectCatalogSegments(parseMarkdown(sourceText));
+  const segmentTextFor = (id: string) =>
+    stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] });
+  const segmentHashFor = (id: string) => hashText(segmentTextFor(id));
 
   for (const locale of config.locales.list) {
     if (locale === config.locales.default) continue;
@@ -112,11 +130,15 @@ async function translateCatalog(
       catalogPathFor(file.base.dir, file.base.base, locale)
     );
     const existing: CatalogData = (await readCatalogFile(catalogPath)) ?? {};
-    const missingIds = [...segments.keys()].filter((id) => !existing[id]?.text);
-    if (missingIds.length === 0) continue;
+    const staleOrMissingIds = [...segments.keys()].filter((id) => {
+      const entry = existing[id];
+      if (!entry?.text) return true;
+      return entry.hash !== undefined && entry.hash !== segmentHashFor(id);
+    });
+    if (staleOrMissingIds.length === 0) continue;
 
-    const contexts: TranslateContext[] = missingIds.map((id) => ({
-      text: stringifyMarkdown({ type: "root", children: segments.get(id)! }),
+    const contexts: TranslateContext[] = staleOrMissingIds.map((id) => ({
+      text: segmentTextFor(id),
       from: config.locales.default,
       to: locale,
       source: file.source,
@@ -125,10 +147,10 @@ async function translateCatalog(
     const results = await runTranslateMiddlewares(middlewares, contexts);
 
     let changed = false;
-    for (const [index, id] of missingIds.entries()) {
+    for (const [index, id] of staleOrMissingIds.entries()) {
       const result = results[index];
       if (result == null) continue;
-      existing[id] = { text: result, machine: true };
+      existing[id] = { text: result, machine: true, hash: segmentHashFor(id) };
       changed = true;
       translated.push({
         source: file.path,
@@ -148,7 +170,8 @@ async function translateCatalog(
 }
 
 /**
- * `kiritan translate` (docs/DESIGN.md 7章): fills in missing translations via `translate.middlewares`.
+ * `kiritan translate` (docs/DESIGN.md 7章): fills in missing translations, and re-translates stale ones, via `translate.middlewares`.
+ * A translation only counts as stale once it carries a hash (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) that no longer matches the current source — one written by hand, with no hash yet, is left untouched.
  * Only runs for sources that actually configure middlewares — the default `middlewares: []` means nothing happens.
  * `inline` isn't supported yet (inserting a new locale block into the shared base file needs placement logic this doesn't have).
  */
