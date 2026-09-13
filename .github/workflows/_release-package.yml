@@ -1,9 +1,9 @@
 name: _release-package
 
-# Reusable workflow: the common release steps shared by release-kiritan.yml and
-# release-runtime.yml. Not runnable on its own (workflow_call only) — this keeps
-# each package's own workflow file thin, so triggering one can never touch the
-# other package by accident.
+# Reusable workflow: the common release steps shared by release.yml (kiritan)
+# and release-runtime.yml (@kiritan/runtime). Not runnable on its own
+# (workflow_call only) — this keeps each package's own workflow file thin, so
+# triggering one can never touch the other package by accident.
 
 on:
   workflow_call:

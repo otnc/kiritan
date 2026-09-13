@@ -79,9 +79,9 @@ Keep each change focused and add tests for any new behaviour. There's no changes
 
 ## Releasing (maintainers)
 
-`kiritan` and `@kiritan/runtime` each have their own `workflow_dispatch` GitHub Actions workflow — `release-kiritan.yml` and `release-runtime.yml` — so releasing one package can never accidentally touch the other. Both are thin wrappers around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
+`kiritan` and `@kiritan/runtime` each have their own `workflow_dispatch` GitHub Actions workflow — `release.yml` and `release-runtime.yml` — so releasing one package can never accidentally touch the other. Both are thin wrappers around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
 
-From the Actions tab, run `release-kiritan` or `release-runtime` with two inputs:
+From the Actions tab, run `release` or `release-runtime` with two inputs:
 
 - `version`: a semver bump (`patch` / `minor` / `major` / `prerelease`) or an explicit version (e.g. `0.2.0`), passed straight to `npm version`.
 - `dist_tag`: the npm dist-tag to publish under. Leave empty to auto-detect — the prerelease identifier (e.g. `beta` from `0.2.0-beta.0`), or `latest` for a stable version.
@@ -89,7 +89,7 @@ From the Actions tab, run `release-kiritan` or `release-runtime` with two inputs
 The workflow bumps that package's `package.json` (no changelog file — GitHub's auto-generated release notes, from merged PRs, are used instead), regenerates every `base/*.base.md`-derived doc (`kiritan build`, folded into the same commit), publishes to npm with provenance via **trusted publishing** (OIDC — no `NPM_TOKEN` needed), pushes the version commit and a `<package>@<version>` tag, and creates a GitHub Release.
 
 Trusted publishing must be configured once per package on npmjs.com:
-package **Settings → Publishing access → Trusted publishers → GitHub**, pointing at that package's own workflow file (`release-kiritan.yml` or `release-runtime.yml`).
+package **Settings → Publishing access → Trusted publishers → GitHub**, pointing at that package's own workflow file (`release.yml` or `release-runtime.yml`).
 
 Since `kiritan` depends on `@kiritan/runtime` (currently `^0.1.0`), bumping runtime's minor or major version doesn't automatically update kiritan's dependency range — that's a manual follow-up PR when it happens, on purpose, so releasing runtime alone never touches kiritan's `package.json`.
 
