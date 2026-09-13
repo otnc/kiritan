@@ -38,7 +38,8 @@ const buildCommand = defineCommand({
 const checkCommand = defineCommand({
   meta: {
     name: "check",
-    description: "Check for missing/machine-translated content (CI-friendly)",
+    description:
+      "Check for missing/stale/machine-translated content (CI-friendly)",
   },
   args: configArgs,
   async run({ args }) {
@@ -64,7 +65,7 @@ const checkCommand = defineCommand({
 const translateCommand = defineCommand({
   meta: {
     name: "translate",
-    description: "Fill in missing translations via translate.middlewares",
+    description: "Fill in missing/stale translations via translate.middlewares",
   },
   args: configArgs,
   async run({ args }) {

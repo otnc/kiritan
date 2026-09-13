@@ -41,12 +41,12 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 :::kiritan{locale=en}
 > [!Warning]
 >   
-> kiritan is early and under active development (pre-1.0). `kiritan build` currently supports the `sidecar`, `inline`, and `catalog` strategies; `extract`, `translate`, `check`, and `typegen` aren't implemented yet — see each package's README for what actually works today.
+> kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. `build`, `check`, `translate`, `extract`, and `typegen` are all implemented — see each package's README for usage, and [docs/DESIGN.md](./docs/DESIGN.md) 13章 for what's still on the roadmap.
 :::
 :::kiritan{locale=ja}
 > [!Warning]
 >   
-> kiritan はまだ開発初期段階です(pre-1.0)。`kiritan build` は `sidecar` / `inline` / `catalog` 戦略に対応していますが、`extract` / `translate` / `check` / `typegen` はまだ未実装です。実際に使える機能は各パッケージの README を参照してください。
+> kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。`build` / `check` / `translate` / `extract` / `typegen` はすべて実装済みです。使い方は各パッケージの README を、今後の展望は [docs/DESIGN.md](./docs/DESIGN.md) 13章を参照してください。
 :::
 
 :::kiritan{locale=en}
