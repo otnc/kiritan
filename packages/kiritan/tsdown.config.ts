@@ -21,6 +21,10 @@ function isExternal(id: string): boolean {
 }
 
 export default defineConfig({
+  // Both entries are built in every format together (rather than splitting the CLI into its
+  // own ESM-only build) so the large remark/unified bundle is chunk-shared once per format
+  // instead of being duplicated into a standalone cli.mjs — this outweighs the small unused
+  // dist/cli.cjs stub the CLI itself never needs.
   entry: ["src/index.ts", "src/cli.ts"],
   format: ["esm", "cjs"],
   dts: true,

@@ -1,5 +1,8 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { resolveCascadePaths, resolveConfig } from "./load.js";
 
 const fixturesDir = fileURLToPath(
@@ -59,5 +62,23 @@ describe("resolveConfig", () => {
   it("omits the mode layer when the mode doesn't match a file", async () => {
     const config = await resolveConfig({ cwd: fixturesDir, mode: "staging" });
     expect(config.translate?.auto).toBe(false);
+  });
+
+  describe("with no .kiritan.* file present", () => {
+    let emptyDir: string;
+
+    beforeEach(async () => {
+      emptyDir = await mkdtemp(join(tmpdir(), "kiritan-no-config-"));
+    });
+
+    afterEach(async () => {
+      await rm(emptyDir, { recursive: true, force: true });
+    });
+
+    it("throws a clear error instead of silently producing an invalid config", async () => {
+      await expect(resolveConfig({ cwd: emptyDir })).rejects.toThrow(
+        /no config found/
+      );
+    });
   });
 });

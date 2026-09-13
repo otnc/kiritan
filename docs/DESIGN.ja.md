@@ -73,8 +73,9 @@ packages/kiritan/src/
 packages/runtime/src/
   index.ts         # createT
   interpolate.ts    # %{name} の共通実装(kiritan 本体もこれに依存する)
-  i18next-compat.ts  # i18next リソース(locales/{locale}/{namespace}.json)の読み込み
 ```
+
+(i18next互換のリソース読み込み — 9.4章の `centralized` — は `@kiritan/runtime` ではなく `kiritan` 本体の `i18n/load.ts` にある。ランタイム自身が必要とするものではなく、ビルド時の関心事のため。)
 
 - `kiritan` から `kiritan/runtime` を re-export する形は取らず、`@kiritan/runtime` を独立パッケージにする(`kiritan` は `@kiritan/runtime` に依存しても、逆はない)。ランタイムだけを使いたいプロジェクトが `kiritan` 本体(remark 等のビルド時依存)を一切引き込まずに済む。
 - CLI(`src/cli.ts`)以外はすべて CJS/ESM 両対応を維持する。remark/unified/micromark 系の依存は ESM 専用パッケージしか無い(CJS版へ戻すことは「古いバージョンを使う」ことになるため避ける)ため、`tsdown.config.ts` の `deps.alwaysBundle` でこれらを `dist/index.{cjs,mjs}` に直接バンドルし、CJS 利用者が ESM 専用パッケージを `require` する場面自体を無くす。CLI 専用の `citty` はバンドルせず外部依存のままでよい。
@@ -303,11 +304,14 @@ interface Renderer {
 }
 ```
 
-- `markdown`: remark + `remark-directive` による AST 解析。コードブロック・インラインコード・リンク URL・front matter(既定では非対象、`translateFrontmatter` で個別キーのみ対象化可)を保護し、`:::kiritan{...}` ディレクティブの分解もここで行う。
-- `text`: 空行区切りの段落単位。`.txt` には Markdown 構文が無いため `:::kiritan{...}` は使えず、`inline`/`catalog` 戦略は非対応(`sidecar` のみ)とする。
-- `mdx`: markdown 拡張。JSX 部分は非翻訳。`:::kiritan{...}` は markdown 同様に扱える。
-- `plugins.renderers` でカスタムレンダラーを追加可能。
-- レンダラーは自分が対応できる `strategy` の一覧を宣言する(例: `text` は `['sidecar']` のみ)。設定読み込み時に `SourceConfig.strategy` と実際のファイル種別(レンダラー)の組み合わせを検証し、非対応の組み合わせ(例: `.txt` に `inline`)は build 前に分かりやすいエラーで弾く。
+- `markdown`: remark + `remark-directive` による AST 解析。コードブロック・インラインコード・リンク URL を保護し、`:::kiritan{...}` ディレクティブの分解もここで行う。v1で実際に実装されているレンダラーはこれのみで、拡張子に関わらず全ソースをMarkdownとして処理する。
+- `text`・`mdx`・front matter保護(`translateFrontmatter`)・カスタムレンダラー用の `plugins.renderers`、および後述のstrategy/レンダラー組み合わせ検証は、いずれもまだ設計段階でv1では未実装(13章で追跡)。
+
+実装された場合の設計意図:
+
+- `text`: 空行区切りの段落単位。`.txt` には Markdown 構文が無いため `:::kiritan{...}` は使えず、`inline`/`catalog` 戦略は非対応(`sidecar` のみ)になる想定。
+- `mdx`: markdown 拡張。JSX 部分は非翻訳。`:::kiritan{...}` は markdown 同様に扱えるようにする想定。
+- レンダラーは自分が対応できる `strategy` の一覧を宣言する(例: `text` は `['sidecar']` のみ)。設定読み込み時に `SourceConfig.strategy` と実際のファイル種別(レンダラー)の組み合わせを検証し、非対応の組み合わせ(例: `.txt` に `inline`)は build 前に分かりやすいエラーで弾く想定。
 
 ### 6.1 言語切り替えリンクの自動挿入(`switcher`)
 
@@ -598,13 +602,14 @@ export function Button() {
 CLI の骨組みは [citty](https://github.com/unjs/citty) を使う(サブコマンド定義・ヘルプ表示・型付き引数を自前実装しない)。
 
 ```
-kiritan init                                     # Appends to .kiritan.base.mjs / README.base.md / .gitignore (.kiritan.local.*)
-kiritan build [--mode] [--config] [--locale]     # Runs the full pipeline (every strategy)
-kiritan extract                                  # catalog-strategy sources only. Creates/updates catalogs
-kiritan translate [--locale]                     # Fills missing/stale via translate.middlewares (every strategy)
-kiritan typegen                                  # Generates a .d.ts from the runtime.sources aggregation (9.6章)
-kiritan check                                    # For CI. Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
+kiritan build [--mode] [--config]     # Runs the full pipeline (every strategy)
+kiritan extract [--mode] [--config]   # catalog-strategy sources only. Creates/updates catalogs
+kiritan translate [--mode] [--config] # Fills missing/stale via translate.middlewares (every strategy)
+kiritan typegen [--mode] [--config]   # Generates a .d.ts from the runtime.sources aggregation (9.6章)
+kiritan check [--mode] [--config]     # For CI. Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
 ```
+
+`kiritan init`(`.kiritan.base.mjs` / `README.base.md` の雛形生成、`.kiritan.local.*` の `.gitignore` への追記)と、各コマンド共通の `--locale` フラグ(実行対象を1ロケールに絞る)は、いずれもまだ設計段階でv1では未実装(13章で追跡)。
 
 ```ts
 export { defineConfig, build } from 'kiritan';
@@ -620,15 +625,15 @@ export type { CreateTOptions } from '@kiritan/runtime';
 
 ## 11. 拡張ポイント一覧
 
-| 種別 | インターフェース | 組み込み実装 |
-| --- | --- | --- |
-| 翻訳格納戦略 | `TranslationStore` | `sidecar` / `inline` / `catalog` |
-| ランタイムリソース配置戦略 | `ResourceSourceConfig.strategy`(9.1章) | `colocated` / `split` / `centralized` / `embedded` |
-| 翻訳ミドルウェア | `TranslateMiddleware` / `BatchTranslateMiddleware` | 組み込みなし(利用者が自由に実装。`docs/` に実装例を掲載) |
-| ファイルレンダラー | `Renderer` | `markdown` / `mdx` / `text` |
-| 言語切り替えリンクの描画 | `SwitcherConfig.render`(6.1章) | ラベル/区切り文字ベースの組み込みレンダリング |
+| 種別 | v1での状況 |
+| --- | --- |
+| 翻訳格納戦略 | `sidecar` / `inline` / `catalog` は組み込みだが、宣言されている `TranslationStore` インターフェース経由ではなく、パイプラインに直接ハードコードされている。`plugins.stores` はまだ配線されておらず、設定しても現状は何も効果が無い。 |
+| ランタイムリソース配置戦略 | `colocated` / `split` / `centralized` / `embedded`(9.1章)は `ResourceSourceConfig.strategy` 経由で実際にディスパッチされている。カスタムの文字列戦略は型としては受け付けるが、処理する実装はまだ無い。 |
+| 翻訳ミドルウェア | 現状で実際に拡張可能: 組み込みプロバイダは無く、`translate.middlewares` 配列だけで完結する(利用者が自由に実装。`docs/` に実装例を掲載)。 |
+| ファイルレンダラー | 実装されているのは `markdown` のみで、拡張子に関わらず全ソースをMarkdownとして処理する。`.txt`/`.mdx`、宣言されている `Renderer` インターフェース、`plugins.renderers` はまだ配線されておらず、`plugins.renderers` を設定しても現状は何も効果が無い。 |
+| 言語切り替えリンクの描画 | `SwitcherConfig.render`(6.1章)経由で現状も実際に拡張可能。 |
 
-翻訳格納戦略・レンダラーは `plugins.{stores,renderers}` に登録することで、翻訳ミドルウェアは `translate.middlewares` 配列にそのまま並べることで、任意の実装に差し替え・追加ができる。
+`TranslationStore`・`Renderer`・`plugins.{stores,renderers}` は、将来のプラグイン可能なバージョンが使う形として現時点でも宣言されているが、v1ではまだ何もこれらを読み書きしていない(13章で追跡)。
 
 ## 12. 未決事項(実装しながら詰める)
 
@@ -638,3 +643,7 @@ export type { CreateTOptions } from '@kiritan/runtime';
 
 - **翻訳ミドルウェアの公式パッケージ化**: Google 翻訳 / DeepL などの参考実装を `@kiritan/google-translate` `@kiritan/deepl` のような別パッケージとして `packages/*` に追加する。v1 では追加せず、ドキュメントに実装例を載せるだけに留める。
 - **VS Code 拡張機能**: `@kiritan/vscode` として `packages/*` に追加する構想。`:::kiritan` ブロックのシンタックスハイライト・折りたたみ、`%{name}` 変数のハイライトや未定義検出、`:::kiritan{#<id>}` と catalog ファイル間のジャンプ、`missing`/`stale` セグメントのインライン表示などを想定。v1 のコア設計(特に4章のブロック記法・8章のステイル検知情報の持ち方)が、拡張機能から見て解析しやすい形になっているかを意識して詰める。
+- **`kiritan init`**: 新規プロジェクトで `.kiritan.base.mjs` / `README.base.md` の雛形を生成し、`.kiritan.local.*` を `.gitignore` に追記する。10章でいずれのCLI構成の一部として記載しているが、v1では未実装。
+- **コマンド共通の `--locale` フラグ**: `build`/`translate` 等の実行対象を `locales.list` 全体ではなく1ロケールに絞る。v1では未実装。
+- **`plugins.stores`/`plugins.renderers` の配線**: 宣言されている `TranslationStore`/`Renderer` インターフェース(11章)を実際にプラガブルにする。v1では `sidecar`/`inline`/`catalog` とMarkdownレンダラーがパイプラインに直接ハードコードされている。
+- **`text`/`mdx` レンダラーとfront matter保護**: v1で実装されているレンダラーは `markdown` のみで、`.txt`/`.mdx` 対応や `translateFrontmatter`(6章)はまだ設計段階。

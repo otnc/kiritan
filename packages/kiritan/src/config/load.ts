@@ -73,6 +73,11 @@ function resolveNaming(naming: NamingConfig | undefined): NamingConfig {
 
 /** Fills in the documented defaults (docs/DESIGN.md 3.2/8/9章) for whatever a layer left unset. */
 export function applyDefaults(config: KiritanUserConfig): KiritanConfig {
+  if (!config.locales || !config.sources) {
+    throw new Error(
+      'kiritan: no config found (or it\'s missing "locales"/"sources") — create a .kiritan.mjs (or .kiritan.base.mjs) exporting defineConfig({ locales, sources, ... }). See docs/DESIGN.md 3章.'
+    );
+  }
   return {
     ...config,
     naming: resolveNaming(config.naming),

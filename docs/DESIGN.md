@@ -73,8 +73,9 @@ packages/kiritan/src/
 packages/runtime/src/
   index.ts         # createT
   interpolate.ts    # Shared %{name} implementation (kiritan core also depends on this)
-  i18next-compat.ts  # Loading of i18next resources (locales/{locale}/{namespace}.json)
 ```
+
+(i18next-compatible resource loading — `centralized` in 9.4章 — lives in `kiritan` core's `i18n/load.ts`, not in `@kiritan/runtime`, since it's a build-time concern rather than something the runtime itself needs.)
 
 - Rather than re-exporting `kiritan/runtime` from `kiritan`, `@kiritan/runtime` is its own independent package (`kiritan` may depend on `@kiritan/runtime`, but never the reverse). This lets a project that only wants the runtime avoid pulling in `kiritan` core (remark and other build-time dependencies) at all.
 - Everything except the CLI (`src/cli.ts`) keeps full CJS/ESM dual-format support. The remark/unified/micromark ecosystem only ships ESM-only packages (going back to a CJS release would mean "using an older version," which is avoided), so `tsdown.config.ts`'s `deps.alwaysBundle` bundles them directly into `dist/index.{cjs,mjs}`, eliminating any scenario where a CJS consumer would need to `require` an ESM-only package. `citty`, which is CLI-only, stays an external dependency and isn't bundled.
@@ -303,11 +304,14 @@ interface Renderer {
 }
 ```
 
-- `markdown`: AST parsing via remark + `remark-directive`. Code blocks, inline code, link URLs, and front matter (excluded by default; individual keys can be opted in via `translateFrontmatter`) are protected, and `:::kiritan{...}` directives are also split apart here.
-- `text`: split per blank-line-delimited paragraph. Since `.txt` has no Markdown syntax, `:::kiritan{...}` can't be used, so `inline`/`catalog` strategies aren't supported (only `sidecar` is).
-- `mdx`: a Markdown extension. JSX parts are never translated. `:::kiritan{...}` can be used the same way as in markdown.
-- Custom renderers can be added via `plugins.renderers`.
-- A renderer declares which `strategy` values it supports (e.g. `text` only declares `['sidecar']`). When config is loaded, the combination of `SourceConfig.strategy` and the actual file type (renderer) is validated, and an unsupported combination (e.g. `inline` on a `.txt` file) is rejected with a clear error before build.
+- `markdown`: AST parsing via remark + `remark-directive`. Code blocks, inline code, and link URLs are protected, and `:::kiritan{...}` directives are also split apart here. This is the only renderer v1 actually implements — every source is processed as Markdown regardless of its extension.
+- `text`, `mdx`, front-matter protection (`translateFrontmatter`), `plugins.renderers` for custom renderers, and the strategy/renderer compatibility validation described below are all still design-stage, not implemented in v1 (tracked in chapter 13).
+
+The design intent for once these are implemented:
+
+- `text`: split per blank-line-delimited paragraph. Since `.txt` has no Markdown syntax, `:::kiritan{...}` can't be used, so `inline`/`catalog` strategies wouldn't be supported (only `sidecar` would be).
+- `mdx`: a Markdown extension. JSX parts would never be translated. `:::kiritan{...}` could be used the same way as in markdown.
+- A renderer would declare which `strategy` values it supports (e.g. `text` only declaring `['sidecar']`). When config is loaded, the combination of `SourceConfig.strategy` and the actual file type (renderer) would be validated, and an unsupported combination (e.g. `inline` on a `.txt` file) rejected with a clear error before build.
 
 ### 6.1 Automatic insertion of language-switcher links (`switcher`)
 
@@ -598,13 +602,14 @@ Adds an item to `kiritan check` (chapter 8) that detects **cross-locale key mism
 The CLI's skeleton uses [citty](https://github.com/unjs/citty) (subcommand definitions, help output, and typed args aren't hand-rolled).
 
 ```
-kiritan init                                     # Appends to .kiritan.base.mjs / README.base.md / .gitignore (.kiritan.local.*)
-kiritan build [--mode] [--config] [--locale]     # Runs the full pipeline (every strategy)
-kiritan extract                                  # catalog-strategy sources only. Creates/updates catalogs
-kiritan translate [--locale]                     # Fills missing/stale via translate.middlewares (every strategy)
-kiritan typegen                                  # Generates a .d.ts from the runtime.sources aggregation (9.6章)
-kiritan check                                    # For CI. Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
+kiritan build [--mode] [--config]     # Runs the full pipeline (every strategy)
+kiritan extract [--mode] [--config]   # catalog-strategy sources only. Creates/updates catalogs
+kiritan translate [--mode] [--config] # Fills missing/stale via translate.middlewares (every strategy)
+kiritan typegen [--mode] [--config]   # Generates a .d.ts from the runtime.sources aggregation (9.6章)
+kiritan check [--mode] [--config]     # For CI. Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
 ```
+
+`kiritan init` (scaffolding `.kiritan.base.mjs` / `README.base.md` / a `.gitignore` entry for `.kiritan.local.*`) and a per-command `--locale` flag (restricting a run to one locale) are both still design-stage, not implemented in v1 (tracked in chapter 13).
 
 ```ts
 export { defineConfig, build } from 'kiritan';
@@ -620,15 +625,15 @@ export type { CreateTOptions } from '@kiritan/runtime';
 
 ## 11. Extension points
 
-| Kind | Interface | Built-in implementations |
-| --- | --- | --- |
-| Translation storage strategy | `TranslationStore` | `sidecar` / `inline` / `catalog` |
-| Runtime resource placement strategy | `ResourceSourceConfig.strategy` (9.1章) | `colocated` / `split` / `centralized` / `embedded` |
-| Translate middleware | `TranslateMiddleware` / `BatchTranslateMiddleware` | None built in (users implement freely; examples are provided in `docs/`) |
-| File renderer | `Renderer` | `markdown` / `mdx` / `text` |
-| Language-switcher rendering | `SwitcherConfig.render` (6.1章) | Built-in label/separator-based rendering |
+| Kind | Status in v1 |
+| --- | --- |
+| Translation storage strategy | `sidecar` / `inline` / `catalog` are built in, but hardcoded directly into the pipeline rather than dispatched through the declared `TranslationStore` interface. `plugins.stores` isn't wired yet — setting it currently has no effect. |
+| Runtime resource placement strategy | `colocated` / `split` / `centralized` / `embedded` (9.1章) are genuinely dispatched via `ResourceSourceConfig.strategy`. A custom string strategy is accepted by the type but not handled by anything yet. |
+| Translate middleware | Genuinely extensible today: no built-in providers, wired entirely through the `translate.middlewares` array (users implement freely; examples are provided in `docs/`). |
+| File renderer | Only `markdown` is implemented; every source is processed as Markdown regardless of extension. `.txt`/`.mdx`, the declared `Renderer` interface, and `plugins.renderers` aren't wired yet — setting `plugins.renderers` currently has no effect. |
+| Language-switcher rendering | Genuinely extensible today via `SwitcherConfig.render` (6.1章). |
 
-Translation storage strategies and renderers can be swapped or added to via registering them under `plugins.{stores,renderers}`; translate middlewares, by simply listing them in the `translate.middlewares` array.
+`TranslationStore`, `Renderer`, and `plugins.{stores,renderers}` are declared today as the shape a future pluggable version will use, but nothing in v1 reads or calls them yet (tracked in chapter 13).
 
 ## 12. Open questions (to be settled as implementation proceeds)
 
@@ -638,3 +643,7 @@ None at this time. Anything that comes up during implementation will be appended
 
 - **Official translate-middleware packages**: adding reference implementations like Google Translate / DeepL as separate packages (`@kiritan/google-translate`, `@kiritan/deepl`) under `packages/*`. Not added in v1 — only implementation examples are provided in the docs.
 - **VS Code extension**: a `@kiritan/vscode` addition to `packages/*` is envisioned. Expected to cover syntax highlighting/folding for `:::kiritan` blocks, highlighting and undefined-variable detection for `%{name}`, jumping between `:::kiritan{#<id>}` and its catalog file, and inline display of `missing`/`stale` segments. When settling v1's core design (especially the block notation in chapter 4 and how stale-detection information is held in chapter 8), keep in mind whether it stays easy for an extension to parse.
+- **`kiritan init`**: scaffolds `.kiritan.base.mjs` / `README.base.md` / a `.gitignore` entry for `.kiritan.local.*` in a fresh project. Documented in chapter 10 as part of the eventual CLI shape, but not implemented in v1.
+- **A per-command `--locale` flag**: restricts `build`/`translate`/etc. to a single locale instead of every locale in `locales.list`. Not implemented in v1.
+- **Wiring `plugins.stores`/`plugins.renderers`**: making the declared `TranslationStore`/`Renderer` interfaces (chapter 11) actually pluggable, instead of `sidecar`/`inline`/`catalog` and the Markdown renderer being hardcoded into the pipeline as they are in v1.
+- **`text`/`mdx` renderers and front-matter protection**: v1 only implements the `markdown` renderer; `.txt`/`.mdx` support and `translateFrontmatter` (chapter 6) are design-stage only.
