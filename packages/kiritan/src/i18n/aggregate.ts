@@ -17,6 +17,8 @@ export interface AggregatedResource {
   resource: ResourceModule;
   /** Files this resource was assembled from, relative to `cwd`. */
   files: string[];
+  /** The source config that produced this resource (the first one, for a `split`/`centralized` group spanning multiple files). */
+  source: ResourceSourceConfig;
 }
 
 function mergeFlatIntoModule(
@@ -43,7 +45,7 @@ export async function aggregateResources(
 ): Promise<AggregatedResource[]> {
   const perLocaleGroups = new Map<
     string,
-    { resource: ResourceModule; files: string[] }
+    { resource: ResourceModule; files: string[]; source: ResourceSourceConfig }
   >();
   const wholeResources: AggregatedResource[] = [];
 
@@ -58,6 +60,7 @@ export async function aggregateResources(
           key: path,
           resource: await loadColocatedResource(absolutePath),
           files: [path],
+          source,
         });
       } catch {
         // Skip files that fail to load (e.g. syntax errors) rather than failing the whole check.
@@ -71,6 +74,7 @@ export async function aggregateResources(
           key: path,
           resource: await loadEmbeddedResource(absolutePath, source.exportName),
           files: [path],
+          source,
         });
       } catch {
         // Skip files that fail to load (e.g. syntax errors) rather than failing the whole check.
@@ -91,6 +95,7 @@ export async function aggregateResources(
         const group = perLocaleGroups.get(split.groupKey) ?? {
           resource: {},
           files: [],
+          source,
         };
         mergeFlatIntoModule(group.resource, flat, split.locale);
         group.files.push(path);
@@ -103,10 +108,11 @@ export async function aggregateResources(
 
   const groupedResources: AggregatedResource[] = Array.from(
     perLocaleGroups.entries()
-  ).map(([key, { resource, files }]) => ({
+  ).map(([key, { resource, files, source }]) => ({
     key,
     resource,
     files: files.sort(),
+    source,
   }));
 
   return [...wholeResources, ...groupedResources];

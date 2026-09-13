@@ -20,3 +20,7 @@ export type {
   ExtractOptions,
   ExtractResult,
 } from "./pipeline/extract.js";
+export { typegen } from "./pipeline/typegen.js";
+export type { TypegenOptions, TypegenResult } from "./pipeline/typegen.js";
+export { aggregateResources } from "./i18n/aggregate.js";
+export type { AggregatedResource } from "./i18n/aggregate.js";

@@ -88,6 +88,11 @@ export interface ResourceSourceConfig {
 export interface RuntimeConfig {
   sources?: ResourceSourceConfig[];
   fallbackLocale?: string;
+  /**
+   * Basename `kiritan typegen` writes its output under (docs/DESIGN.md 9.6章). Default: "kiritan.runtime".
+   * Two files are written: "<typegenOutput>.mjs" (the merged runtime data) and "<typegenOutput>.d.ts" (its type declaration).
+   */
+  typegenOutput?: string;
 }
 
 export type CheckFailOn = "missing" | "stale" | "machine" | "i18n-key-mismatch";
