@@ -14,7 +14,7 @@
 
 > [!Warning]
 >
-> kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。詳細な設計は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) にまとまっています。
+> Kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。詳細な設計は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) にまとまっています。
 
 ## インストール
 

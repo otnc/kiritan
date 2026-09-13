@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for submitting a bug report. It helps make kiritan better.
+        Thank you for submitting a bug report. It helps make Kiritan better.
 
         Please try to include as much information as possible.
   - type: dropdown
@@ -14,7 +14,8 @@ body:
       options:
         - kiritan
         - "@kiritan/runtime"
-        - Not sure / both
+        - kiritan-vscode
+        - Not sure / multiple
     validations:
       required: true
   - type: input

@@ -1,10 +1,10 @@
-# kiritan Design Document
+# Kiritan Design Document
 
 [English](DESIGN.md) | **日本語**
 
 ## 1. 概要
 
-kiritan は、通常の「キー→文字列」i18n ライブラリの範囲に加えて、Markdown / MDX / プレーンテキストのようなドキュメントファイルそのものを対象にした国際化ユーティリティである。
+Kiritan は、通常の「キー→文字列」i18n ライブラリの範囲に加えて、Markdown / MDX / プレーンテキストのようなドキュメントファイルそのものを対象にした国際化ユーティリティである。
 
 `README.base.md` のような「ベースファイル」を1つ用意しておき、ビルド操作によって `README.md`(デフォルトロケール)や `README.ja.md`(他ロケール)のような各言語版ファイルを生成する。
 
@@ -72,7 +72,7 @@ packages/kiritan/src/
 ```
 packages/runtime/src/
   index.ts         # createT
-  interpolate.ts    # %{name} の共通実装(kiritan 本体もこれに依存する)
+  interpolate.ts    # %{name} の共通実装(Kiritan 本体もこれに依存する)
 ```
 
 (i18next互換のリソース読み込み — 9.4章の `centralized` — は `@kiritan/runtime` ではなく `kiritan` 本体の `i18n/load.ts` にある。ランタイム自身が必要とするものではなく、ビルド時の関心事のため。)
@@ -95,7 +95,7 @@ packages/runtime/src/
 
 ### 3.1 探索とカスケード
 
-ファイル名は `.kiritan.(base|<mode>|local).(c|m)(js|ts)`(例: `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`)を認識する。`.ts`/`.cts`/`.mts` は [jiti](https://github.com/unjs/jiti) のような軽量ローダーで直接読み込む(Node の型ストリッピングはフラグなしで使えるバージョンが限られるため、利用者の Node バージョンを問わず動くことを優先し、kiritan 側の依存として引き受ける)。マージ順(下ほど優先度が高く、深いマージ):
+ファイル名は `.kiritan.(base|<mode>|local).(c|m)(js|ts)`(例: `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`)を認識する。`.ts`/`.cts`/`.mts` は [jiti](https://github.com/unjs/jiti) のような軽量ローダーで直接読み込む(Node の型ストリッピングはフラグなしで使えるバージョンが限られるため、利用者の Node バージョンを問わず動くことを優先し、Kiritan 側の依存として引き受ける)。マージ順(下ほど優先度が高く、深いマージ):
 
 1. `.kiritan.base.(c|m)(js|ts)`(無ければ `.kiritan.(c|m)(js|ts)` を基本レイヤーとして扱う)
 2. `.kiritan.<mode>.(c|m)(js|ts)` — `mode` は `--mode` フラグ、なければ `KIRITAN_MODE` 環境変数。指定が無ければこのレイヤーはスキップ。
@@ -248,7 +248,7 @@ Distributed under the WTFPL License. <!-- A shared section just needs to sit out
 
 directive の外側は「共通コンテンツ」として全ロケール出力にそのままコピーされる。ドキュメントの一部だけ翻訳し、残りは共有する運用に対応する。
 
-**ネスト(ブロック内でさらに `:::` を使いたい場合):** remark-directive 標準の挙動どおり、外側のコロンを増やせばよい(`::::kiritan{locale=en}` の中で `:::note` を使う、など)。kiritan 側で特別な処理は不要。
+**ネスト(ブロック内でさらに `:::` を使いたい場合):** remark-directive 標準の挙動どおり、外側のコロンを増やせばよい(`::::kiritan{locale=en}` の中で `:::note` を使う、など)。Kiritan 側で特別な処理は不要。
 
 `locale=xx` に `locales.list` に無い値を指定した場合は typo とみなし、build 時にエラーにする(サイレントに無視しない)。
 
@@ -322,14 +322,14 @@ interface Renderer {
 
 ::kiritan{switcher}
 
-kiritan の説明...
+Kiritan の説明...
 ```
 
 明示的なマーカーが無い場合、`switcher.enabled`(既定 `true`)なら `switcher.position`(既定 `'after-heading'`: 最初の見出しの直後、無ければ先頭)に自動挿入する。**マーカーが存在する場合は `enabled`/`position` の値に関わらず必ずそこが使われる**(明示指定が既定動作より優先)。
 
 **生成される内容**: `locales.list` の各ロケールについて、そのロケール向け出力ファイルパス(3.3章の命名解決を再利用、`naming.outputs` のソース単位上書きも考慮)へのリンクを、現在ビルド中のロケールの出力ファイルからの相対パスで**自動計算**し、区切り文字(既定 `" | "`)で連結する。href を手動指定する手段は無い(手動でリンクを書きたい場合は、この機能を使わず自分で書けばよい)。現在のロケール自身はリンクにせず太字表示にする(`currentLocaleLink: true` でリンク化も可能)。
 
-**言語名の表示ラベル**: kiritan は言語名一覧を自前で持たない(手作りのリストは抜け漏れが怖いため)。既定のラベルは標準の [`Intl.DisplayNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DisplayNames)(ECMA-402、Node.js に標準搭載、CLDR のデータに基づく)を使い、各ロケールの自称(autonym: そのロケール自身の言語でその言語を呼ぶ名前。例: `ja` なら "日本語"、`en` なら "English")を自動的に表示する。追加の依存もメンテすべき一覧も不要になる。
+**言語名の表示ラベル**: Kiritan は言語名一覧を自前で持たない(手作りのリストは抜け漏れが怖いため)。既定のラベルは標準の [`Intl.DisplayNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DisplayNames)(ECMA-402、Node.js に標準搭載、CLDR のデータに基づく)を使い、各ロケールの自称(autonym: そのロケール自身の言語でその言語を呼ぶ名前。例: `ja` なら "日本語"、`en` なら "English")を自動的に表示する。追加の依存もメンテすべき一覧も不要になる。
 
 ```ts
 // 既定のラベル解決(labels で明示指定が無いロケールに対して行う)
@@ -429,7 +429,7 @@ translate: {
 - 呼び出し方(段落ごとに1回 or まとめてバッチ)はコアが決め打ちにせず、**ミドルウェア作成者が自由に実装できる**ようにする。そのため2つの形を許容する:
   - 単発形: `(ctx: TranslateContext, next) => Promise<string | null>` — 1件ずつ呼ばれる、最も単純な形。
   - バッチ形: `(ctxs: TranslateContext[]) => Promise<(string | null)[]>` — 1回の呼び出しで複数件まとめて処理したい場合用。コアはミドルウェアの形(関数のシグネチャ/フラグ)を見て、単発なら1件ずつ、バッチなら missing 分をまとめて渡す。
-  - kiritan 自体は `google`/`deepl` 等の具体的な公式ミドルウェアを内蔵しない(依存を増やさない)。ドキュメント(`docs/`)にリファレンス実装例を載せる。
+  - Kiritan 自体は `google`/`deepl` 等の具体的な公式ミドルウェアを内蔵しない(依存を増やさない)。ドキュメント(`docs/`)にリファレンス実装例を載せる。
 - 自動翻訳で埋まった箇所は必ず `machine: true` としてマーキングし(`catalog` はフィールド、`sidecar`/`inline` はコメントマーカー)、`kiritan check` でレビュー待ちとして検出できるようにする。
 - ソース単位(`sources[i].translate`)でチェーン自体を丸ごと上書きできる。
 
@@ -467,7 +467,7 @@ middlewares: [
 
 ## 9. ランタイム i18n(`@kiritan/runtime`)
 
-i18next の定番である「`locales/{lang}.json` に全キーを集約する」形式は、ファイルが肥大化する・使われなくなったキーに気づけない・PRの差分が読みにくい・キーごとの全言語比較がしづらい、といった不満が根強い。kiritan はこれを唯一の前提にせず、ドキュメント側の `TranslationStore`(4章)と同じ考え方で**リソースの置き場所を戦略として選べる**ようにする。
+i18next の定番である「`locales/{lang}.json` に全キーを集約する」形式は、ファイルが肥大化する・使われなくなったキーに気づけない・PRの差分が読みにくい・キーごとの全言語比較がしづらい、といった不満が根強い。Kiritan はこれを唯一の前提にせず、ドキュメント側の `TranslationStore`(4章)と同じ考え方で**リソースの置き場所を戦略として選べる**ようにする。
 
 ### 9.1 リソース配置戦略(`ResourceSourceConfig`)
 
@@ -575,7 +575,7 @@ export function Button() {
 }
 ```
 
-- アプリ内で直接 `createT(i18n)` するだけなら kiritan 側の関与は不要(9.2 と同じくただの TS オブジェクト)。
+- アプリ内で直接 `createT(i18n)` するだけなら Kiritan 側の関与は不要(9.2 と同じくただの TS オブジェクト)。
 - `runtime.sources` に `strategy: 'embedded'` を登録すると、`kiritan typegen`/`kiritan check` がビルド時にそのファイルを読み込み(設定ファイルの `.ts` 読み込みと同じ jiti ベースの動的 import)、`exportName`(既定 `"i18n"`)で指定した named export だけを取り出して集約・チェック対象にする。
 - コンポーネントのロジックと翻訳が同じファイルに同居するため、ファイル数は増えないが、ファイルが大きくなりやすい・`embedded` を大量に集めると import コストが上がる、という trade-off がある。
 

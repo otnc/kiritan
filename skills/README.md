@@ -1,6 +1,6 @@
-# kiritan Agent Skill
+# Kiritan Agent Skill
 
-Instructions for AI coding agents — not an npm package, not something kiritan itself loads. `skills/kiritan/SKILL.md` teaches an agent how to work correctly inside a project that already uses kiritan: editing `*.base.md` sources instead of generated output, the `:::kiritan{...}` directive syntax, which CLI command to reach for, and common mistakes to avoid.
+Instructions for AI coding agents — not an npm package, not something Kiritan itself loads. `skills/kiritan/SKILL.md` teaches an agent how to work correctly inside a project that already uses Kiritan: editing `*.base.md` sources instead of generated output, the `:::kiritan{...}` directive syntax, which CLI command to reach for, and common mistakes to avoid.
 
 It's plain Markdown with YAML frontmatter (a `name` and `description`) and no agent-specific instructions in the body, so it isn't tied to any one product — any agent that can be pointed at extra context or instructions can use it.
 
@@ -18,7 +18,7 @@ A few ecosystems have their own convention for this kind of file, so a specific 
 
   Claude Code loads a skill's `SKILL.md` automatically based on its `description` frontmatter — no further configuration needed.
 
-- **`AGENTS.md`-based agents** (an increasingly common open convention several tools read automatically): append `skills/kiritan/SKILL.md`'s body to your project's `AGENTS.md`, or add a line pointing at it (e.g. `See skills/kiritan/SKILL.md for kiritan usage.`).
+- **`AGENTS.md`-based agents** (an increasingly common open convention several tools read automatically): append `skills/kiritan/SKILL.md`'s body to your project's `AGENTS.md`, or add a line pointing at it (e.g. `See skills/kiritan/SKILL.md for Kiritan usage.`).
 
 - **Anything with a project-level rules/instructions file** (Cursor, Windsurf, and similar each have their own — check that tool's docs for the exact filename/location): copy or reference `skills/kiritan/SKILL.md`'s content the same way you would any other project rule.
 

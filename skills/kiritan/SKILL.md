@@ -1,6 +1,6 @@
 ---
 name: kiritan
-description: Helps write and maintain kiritan-based i18n — editing base/*.base.md files with :::kiritan{...} directives, choosing the sidecar/inline/catalog document strategy or the colocated/split/centralized/embedded runtime strategy, running kiritan build/check/translate/extract/typegen, and avoiding common mistakes such as hand-editing generated output. Use when a repo has a .kiritan.* config file, a base/ directory of *.base.md sources, or generated docs carrying a `<!-- kiritan:untranslated -->` / `<!-- kiritan:hash ... -->` marker — or when asked to localize a README/doc, add or fix a translation, or resolve a `kiritan check` failure.
+description: Helps write and maintain Kiritan-based i18n — editing base/*.base.md files with :::kiritan{...} directives, choosing the sidecar/inline/catalog document strategy or the colocated/split/centralized/embedded runtime strategy, running kiritan build/check/translate/extract/typegen, and avoiding common mistakes such as hand-editing generated output. Use when a repo has a .kiritan.* config file, a base/ directory of *.base.md sources, or generated docs carrying a `<!-- kiritan:untranslated -->` / `<!-- kiritan:hash ... -->` marker — or when asked to localize a README/doc, add or fix a translation, or resolve a `kiritan check` failure.
 metadata:
   trigger: kiritan i18n documentation and runtime resource work
   language: en, ja
@@ -8,9 +8,9 @@ metadata:
 
 # kiritan
 
-kiritan is an i18n tool that, beyond the usual key→string runtime i18n, also builds localized documents (README, docs, etc.) from a single base file. This is the operating manual for working inside a project that already uses it — not for writing kiritan's own source. It's plain Markdown with no Claude-specific instructions in the body, so any coding agent that can be given extra context works equally well; see [../README.md](../README.md) for how to load it into whichever agent you're using.
+Kiritan is an i18n tool that, beyond the usual key→string runtime i18n, also builds localized documents (README, docs, etc.) from a single base file. This is the operating manual for working inside a project that already uses it — not for writing Kiritan's own source. It's plain Markdown with no Claude-specific instructions in the body, so any coding agent that can be given extra context works equally well; see [../README.md](../README.md) for how to load it into whichever agent you're using.
 
-## Recognizing a kiritan project
+## Recognizing a Kiritan project
 
 Look for any of:
 - A `.kiritan.mjs`/`.kiritan.base.mjs` (or `.cjs`/`.ts`/etc.) config file, usually at the repo root, exporting `defineConfig({...})`.
@@ -48,7 +48,7 @@ English content.
 
 - Content **outside** any `:::kiritan{...}` block is shared verbatim across every locale's output (badges, license notices, etc.).
 - `locale=xx` must exactly match a value in the resolved config's `locales.list` — an unrecognized code is a **build-time error**, not a silent skip.
-- `::kiritan{switcher}` (a leaf directive, no closing `:::`) marks where the language-switcher line is inserted. It's usually unnecessary to add by hand — kiritan auto-inserts it after the first heading unless a marker already exists or `switcher.position`/`switcher.enabled` says otherwise.
+- `::kiritan{switcher}` (a leaf directive, no closing `:::`) marks where the language-switcher line is inserted. It's usually unnecessary to add by hand — Kiritan auto-inserts it after the first heading unless a marker already exists or `switcher.position`/`switcher.enabled` says otherwise.
 - Nesting another directive inside a block just needs more colons on the outer fence (`::::kiritan{locale=en}` wrapping a `:::note`) — no special handling needed.
 
 ## Directive syntax (`catalog` strategy)
@@ -70,7 +70,7 @@ A whole separate file per locale (`README.ja.md` next to `README.base.md`), tran
 
 ## Variable interpolation
 
-Use `%{name}`, not `{{name}}` — kiritan follows the Ruby/Rails-style convention to avoid colliding with Handlebars/Mustache/i18next. Escape a literal with `\%{name}`. Values come only from the config's `interpolation.variables`, never from translation content.
+Use `%{name}`, not `{{name}}` — Kiritan follows the Ruby/Rails-style convention to avoid colliding with Handlebars/Mustache/i18next. Escape a literal with `\%{name}`. Values come only from the config's `interpolation.variables`, never from translation content.
 
 ## CLI commands, and when to reach for each
 
@@ -119,5 +119,5 @@ export default defineConfig({
 
 ## Where to look for more
 
-- The target project's own `docs/DESIGN.md`, if it has one — the authoritative spec for its config shape and behavior (kiritan's own repository ships one).
+- The target project's own `docs/DESIGN.md`, if it has one — the authoritative spec for its config shape and behavior (Kiritan's own repository ships one).
 - `kiritan <command> --help` for exact flags.

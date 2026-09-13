@@ -18,12 +18,12 @@
 :::kiritan{locale=en}
 > [!Warning]
 >   
-> kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. The full design is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md).
+> Kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. The full design is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md).
 :::
 :::kiritan{locale=ja}
 > [!Warning]
 >   
-> kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。詳細な設計は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) にまとまっています。
+> Kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。詳細な設計は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) にまとまっています。
 :::
 
 :::kiritan{locale=en}

@@ -1,10 +1,10 @@
-# kiritan Design Document
+# Kiritan Design Document
 
 **English** | [日本語](DESIGN.ja.md)
 
 ## 1. Overview
 
-kiritan is an internationalization utility that, in addition to the usual "key → string" i18n library scope, also targets document files themselves — Markdown, MDX, and plain text.
+Kiritan is an internationalization utility that, in addition to the usual "key → string" i18n library scope, also targets document files themselves — Markdown, MDX, and plain text.
 
 You prepare a single "base file" such as `README.base.md`, and a build operation generates each language's file from it: `README.md` (default locale) and `README.ja.md` (other locales), for example.
 
@@ -72,7 +72,7 @@ packages/kiritan/src/
 ```
 packages/runtime/src/
   index.ts         # createT
-  interpolate.ts    # Shared %{name} implementation (kiritan core also depends on this)
+  interpolate.ts    # Shared %{name} implementation (Kiritan core also depends on this)
 ```
 
 (i18next-compatible resource loading — `centralized` in chapter 9.4 — lives in `kiritan` core's `i18n/load.ts`, not in `@kiritan/runtime`, since it's a build-time concern rather than something the runtime itself needs.)
@@ -95,7 +95,7 @@ packages/runtime/src/
 
 ### 3.1 Discovery and cascading
 
-Filenames matching `.kiritan.(base|<mode>|local).(c|m)(js|ts)` are recognized (e.g. `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`). `.ts`/`.cts`/`.mts` are loaded directly with a lightweight loader like [jiti](https://github.com/unjs/jiti) (since Node's native type stripping is only flag-free on a limited set of versions, kiritan takes this on as its own dependency to prioritize working regardless of the user's Node version). Merge order (lower entries take priority, deep-merged):
+Filenames matching `.kiritan.(base|<mode>|local).(c|m)(js|ts)` are recognized (e.g. `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`). `.ts`/`.cts`/`.mts` are loaded directly with a lightweight loader like [jiti](https://github.com/unjs/jiti) (since Node's native type stripping is only flag-free on a limited set of versions, Kiritan takes this on as its own dependency to prioritize working regardless of the user's Node version). Merge order (lower entries take priority, deep-merged):
 
 1. `.kiritan.base.(c|m)(js|ts)` (if absent, `.kiritan.(c|m)(js|ts)` is treated as the base layer)
 2. `.kiritan.<mode>.(c|m)(js|ts)` — `mode` comes from the `--mode` flag, or the `KIRITAN_MODE` environment variable otherwise. This layer is skipped if neither is set.
@@ -248,7 +248,7 @@ Distributed under the WTFPL License. <!-- A shared section just needs to sit out
 
 Anything outside a directive is copied as-is into every locale's output as "shared content." This supports translating only part of a document while sharing the rest.
 
-**Nesting (using `:::` again inside a block):** just add more colons on the outer fence, per remark-directive's standard behavior (e.g. using `:::note` inside `::::kiritan{locale=en}`). No special handling is needed on kiritan's side.
+**Nesting (using `:::` again inside a block):** just add more colons on the outer fence, per remark-directive's standard behavior (e.g. using `:::note` inside `::::kiritan{locale=en}`). No special handling is needed on Kiritan's side.
 
 Specifying a `locale=xx` value not present in `locales.list` is treated as a typo and errors at build time (it is never silently ignored).
 
@@ -322,14 +322,14 @@ Builds a language-switcher link automatically at build time, of the kind commonl
 
 ::kiritan{switcher}
 
-kiritan の説明...
+Kiritan の説明...
 ```
 
 If no explicit marker exists, it's auto-inserted at `switcher.position` (default `'after-heading'`: right after the first heading, or at the top if there's none) when `switcher.enabled` (default `true`). **If a marker exists, it's always used regardless of the `enabled`/`position` values** (an explicit placement wins over the default behavior).
 
 **Generated content**: for each locale in `locales.list`, a link to that locale's output file path (reusing the naming resolution from chapter 3.3, also honoring a per-source `naming.outputs` override) is **automatically computed** as a path relative to the output file currently being built, then joined with a separator (default `" | "`). There's no way to specify an `href` manually (if you want to write a link by hand, just write it yourself instead of using this feature). The current locale itself isn't linked — it's shown in bold (it can also be turned into a link via `currentLocaleLink: true`).
 
-**Displayed language labels**: kiritan doesn't maintain its own list of language names (a hand-maintained list risks gaps). The default label uses the standard [`Intl.DisplayNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DisplayNames) (ECMA-402, built into Node.js, based on CLDR data) to automatically display each locale's autonym — the name a locale uses for itself in its own language (e.g. "日本語" for `ja`, "English" for `en`). This needs no extra dependency and no list to maintain.
+**Displayed language labels**: Kiritan doesn't maintain its own list of language names (a hand-maintained list risks gaps). The default label uses the standard [`Intl.DisplayNames`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DisplayNames) (ECMA-402, built into Node.js, based on CLDR data) to automatically display each locale's autonym — the name a locale uses for itself in its own language (e.g. "日本語" for `ja`, "English" for `en`). This needs no extra dependency and no list to maintain.
 
 ```ts
 // Default label resolution (used for any locale with no explicit override in labels)
@@ -429,7 +429,7 @@ translate: {
 - The calling convention (once per paragraph, or all at once as a batch) isn't decided by the core — **middleware authors are free to implement it either way**. Two forms are allowed for this reason:
   - Single form: `(ctx: TranslateContext, next) => Promise<string | null>` — the simplest form, called once per item.
   - Batch form: `(ctxs: TranslateContext[]) => Promise<(string | null)[]>` — for when multiple items should be processed together in one call. The core looks at a middleware's shape (its function signature/flag) and passes items one at a time for a single-form middleware, or all missing items together for a batch-form one.
-  - kiritan itself doesn't bundle concrete official middlewares like `google`/`deepl` (to avoid adding dependencies). Reference implementation examples are provided in the docs (`docs/`).
+  - Kiritan itself doesn't bundle concrete official middlewares like `google`/`deepl` (to avoid adding dependencies). Reference implementation examples are provided in the docs (`docs/`).
 - Anywhere auto-translation fills a gap, it's always marked `machine: true` (a field for `catalog`, a comment marker for `sidecar`/`inline`), so `kiritan check` can detect it as awaiting review.
 - The whole chain can be wholesale-overridden per source (`sources[i].translate`).
 
@@ -467,7 +467,7 @@ Groups run in array order, and only the items a group didn't resolve are passed 
 
 ## 9. Runtime i18n (`@kiritan/runtime`)
 
-The classic i18next approach of "aggregate every key into `locales/{lang}.json`" has persistent complaints: the file bloats, unused keys go unnoticed, PR diffs become hard to read, and comparing all languages for a given key is awkward. kiritan doesn't take this as its only assumption — following the same thinking as the document-side `TranslationStore` (chapter 4), it lets the **resource's location be chosen as a strategy**.
+The classic i18next approach of "aggregate every key into `locales/{lang}.json`" has persistent complaints: the file bloats, unused keys go unnoticed, PR diffs become hard to read, and comparing all languages for a given key is awkward. Kiritan doesn't take this as its only assumption — following the same thinking as the document-side `TranslationStore` (chapter 4), it lets the **resource's location be chosen as a strategy**.
 
 ### 9.1 Resource placement strategies (`ResourceSourceConfig`)
 
@@ -575,7 +575,7 @@ export function Button() {
 }
 ```
 
-- If you're just calling `createT(i18n)` directly within the app, no involvement from kiritan is needed (same as 9.2, it's just a plain TS object).
+- If you're just calling `createT(i18n)` directly within the app, no involvement from Kiritan is needed (same as 9.2, it's just a plain TS object).
 - Registering `strategy: 'embedded'` in `runtime.sources` makes `kiritan typegen`/`kiritan check` read that file at build time (the same jiti-based dynamic import as reading a config file's `.ts`), pull out just the named export specified by `exportName` (default `"i18n"`), and include it for aggregation/checking.
 - Since the component's logic and its translations live in the same file, the file count doesn't grow, but there's a trade-off: files tend to get larger, and importing a large number of `embedded` files raises import cost.
 
