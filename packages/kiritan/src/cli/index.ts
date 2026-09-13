@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import { resolveConfig } from "../config/index.js";
 import { build } from "../pipeline/build.js";
 import { check } from "../pipeline/check.js";
+import { extract } from "../pipeline/extract.js";
 import { translate } from "../pipeline/translate.js";
 
 const configArgs = {
@@ -80,6 +81,27 @@ const translateCommand = defineCommand({
   },
 });
 
+const extractCommand = defineCommand({
+  meta: {
+    name: "extract",
+    description: "Scaffold catalog files with any new ids from the base file",
+  },
+  args: configArgs,
+  async run({ args }) {
+    const config = await resolveConfig({
+      mode: args.mode,
+      overlays: args.config ? [args.config] : undefined,
+    });
+    const result = await extract(config);
+    for (const change of result.changes) {
+      console.log(`[${change.locale}] ${change.source}: ${change.detail}`);
+    }
+    if (result.changes.length === 0) {
+      console.log("kiritan extract: nothing to do");
+    }
+  },
+});
+
 export const main = defineCommand({
   meta: {
     name: "kiritan",
@@ -90,5 +112,6 @@ export const main = defineCommand({
     build: buildCommand,
     check: checkCommand,
     translate: translateCommand,
+    extract: extractCommand,
   },
 });
