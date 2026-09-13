@@ -1233,7 +1233,9 @@ None at this time. Anything that comes up during implementation will be appended
 
 :::kiritan{locale=en}
 - **Official translate-middleware packages**: adding reference implementations like Google Translate / DeepL as separate packages (`@kiritan/google-translate`, `@kiritan/deepl`) under `packages/*`. Not added in v1 — only implementation examples are provided in the docs.
+- **AI Agent Skill**: [`skills/kiritan`](../skills/kiritan) — done. A single self-contained `SKILL.md` (no npm package, no build step) teaching a coding agent the directive syntax, which CLI command to reach for, and common mistakes to avoid. See [skills/README.md](../skills/README.md) for installation.
 - **VS Code extension**: a `@kiritan/vscode` addition to `packages/*` is envisioned. Expected to cover syntax highlighting/folding for `:::kiritan` blocks, highlighting and undefined-variable detection for `%{name}`, jumping between `:::kiritan{#<id>}` and its catalog file, and inline display of `missing`/`stale` segments. When settling v1's core design (especially the block notation in chapter 4 and how stale-detection information is held in chapter 8), keep in mind whether it stays easy for an extension to parse.
+- **Vim/Neovim plugin**: a `kiritan.vim` (or Lua-based Neovim) plugin covering the same ground as the VS Code extension — at minimum syntax highlighting for `:::kiritan{...}` blocks, ideally the same catalog-file jump and stale/missing indicators. Likely built on a shared tree-sitter grammar or LSP so both editors' extensions can reuse the same parsing logic rather than duplicating it.
 - **`kiritan init`**: scaffolds `.kiritan.base.mjs` / `README.base.md` / a `.gitignore` entry for `.kiritan.local.*` in a fresh project. Documented in chapter 10 as part of the eventual CLI shape, but not implemented in v1.
 - **A per-command `--locale` flag**: restricts `build`/`translate`/etc. to a single locale instead of every locale in `locales.list`. Not implemented in v1.
 - **Wiring `plugins.stores`/`plugins.renderers`**: making the declared `TranslationStore`/`Renderer` interfaces (chapter 11) actually pluggable, instead of `sidecar`/`inline`/`catalog` and the Markdown renderer being hardcoded into the pipeline as they are in v1.
@@ -1241,7 +1243,9 @@ None at this time. Anything that comes up during implementation will be appended
 :::
 :::kiritan{locale=ja}
 - **翻訳ミドルウェアの公式パッケージ化**: Google 翻訳 / DeepL などの参考実装を `@kiritan/google-translate` `@kiritan/deepl` のような別パッケージとして `packages/*` に追加する。v1 では追加せず、ドキュメントに実装例を載せるだけに留める。
+- **AI Agent Skill**: [`skills/kiritan`](../skills/kiritan) —対応済み。npmパッケージでもビルドも不要な、単一の自己完結した `SKILL.md` として、ディレクティブ記法・どのCLIコマンドを使うべきか・よくある間違いをコーディングエージェントに教える。導入方法は [skills/README.md](../skills/README.md) を参照。
 - **VS Code 拡張機能**: `@kiritan/vscode` として `packages/*` に追加する構想。`:::kiritan` ブロックのシンタックスハイライト・折りたたみ、`%{name}` 変数のハイライトや未定義検出、`:::kiritan{#<id>}` と catalog ファイル間のジャンプ、`missing`/`stale` セグメントのインライン表示などを想定。v1 のコア設計(特に4章のブロック記法・8章のステイル検知情報の持ち方)が、拡張機能から見て解析しやすい形になっているかを意識して詰める。
+- **Vim/Neovim プラグイン**: VS Code拡張機能と同じ範囲をカバーする `kiritan.vim`(またはLuaベースのNeovim用)プラグイン。最低限 `:::kiritan{...}` ブロックのシンタックスハイライト、できれば同じcatalogファイルジャンプやstale/missingの表示も。両エディタの拡張機能が同じ解析ロジックを重複実装せずに済むよう、共有のtree-sitter文法やLSPの上に構築する形を想定。
 - **`kiritan init`**: 新規プロジェクトで `.kiritan.base.mjs` / `README.base.md` の雛形を生成し、`.kiritan.local.*` を `.gitignore` に追記する。10章でいずれのCLI構成の一部として記載しているが、v1では未実装。
 - **コマンド共通の `--locale` フラグ**: `build`/`translate` 等の実行対象を `locales.list` 全体ではなく1ロケールに絞る。v1では未実装。
 - **`plugins.stores`/`plugins.renderers` の配線**: 宣言されている `TranslationStore`/`Renderer` インターフェース(11章)を実際にプラガブルにする。v1では `sidecar`/`inline`/`catalog` とMarkdownレンダラーがパイプラインに直接ハードコードされている。
