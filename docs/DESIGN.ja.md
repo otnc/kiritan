@@ -640,7 +640,9 @@ export type { CreateTOptions } from '@kiritan/runtime';
 ## 13. ロードマップ / 将来検討
 
 - **翻訳ミドルウェアの公式パッケージ化**: Google 翻訳 / DeepL などの参考実装を `@kiritan/google-translate` `@kiritan/deepl` のような別パッケージとして `packages/*` に追加する。v1 では追加せず、ドキュメントに実装例を載せるだけに留める。
+- **AI Agent Skill**: [`skills/kiritan`](../skills/kiritan) —対応済み。npmパッケージでもビルドも不要な、単一の自己完結した `SKILL.md` として、ディレクティブ記法・どのCLIコマンドを使うべきか・よくある間違いをコーディングエージェントに教える。導入方法は [skills/README.md](../skills/README.md) を参照。
 - **VS Code 拡張機能**: `@kiritan/vscode` として `packages/*` に追加する構想。`:::kiritan` ブロックのシンタックスハイライト・折りたたみ、`%{name}` 変数のハイライトや未定義検出、`:::kiritan{#<id>}` と catalog ファイル間のジャンプ、`missing`/`stale` セグメントのインライン表示などを想定。v1 のコア設計(特に4章のブロック記法・8章のステイル検知情報の持ち方)が、拡張機能から見て解析しやすい形になっているかを意識して詰める。
+- **Vim/Neovim プラグイン**: VS Code拡張機能と同じ範囲をカバーする `kiritan.vim`(またはLuaベースのNeovim用)プラグイン。最低限 `:::kiritan{...}` ブロックのシンタックスハイライト、できれば同じcatalogファイルジャンプやstale/missingの表示も。両エディタの拡張機能が同じ解析ロジックを重複実装せずに済むよう、共有のtree-sitter文法やLSPの上に構築する形を想定。
 - **`kiritan init`**: 新規プロジェクトで `.kiritan.base.mjs` / `README.base.md` の雛形を生成し、`.kiritan.local.*` を `.gitignore` に追記する。10章でいずれのCLI構成の一部として記載しているが、v1では未実装。
 - **コマンド共通の `--locale` フラグ**: `build`/`translate` 等の実行対象を `locales.list` 全体ではなく1ロケールに絞る。v1では未実装。
 - **`plugins.stores`/`plugins.renderers` の配線**: 宣言されている `TranslationStore`/`Renderer` インターフェース(11章)を実際にプラガブルにする。v1では `sidecar`/`inline`/`catalog` とMarkdownレンダラーがパイプラインに直接ハードコードされている。
