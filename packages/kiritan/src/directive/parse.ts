@@ -16,18 +16,8 @@ export function parseMarkdown(source: string): Root {
   return parser.parse(source) as Root;
 }
 
-// mdast-util-to-markdown unconditionally escapes a "[" at the start of a
-// line (it could otherwise start a link reference definition), which also
-// mangles alert/callout syntax (`> [!NOTE]`, `> [!TIP]`, etc.) into
-// `> \[!NOTE]` — and, if the type name itself contains a character that's
-// separately escape-worthy (an underscore, say), that gets backslash-escaped
-// too. Renders fine as prose, but every alert-detecting renderer (GitHub,
-// GitLab, and others each define their own, overlapping but not identical,
-// set of types) looks for the literal, unescaped marker. Match the general
-// `[!<anything but "]">]` shape right after a blockquote marker rather than
-// a fixed keyword list, so this keeps working as those sets grow and for any
-// custom/project-specific type — that position isn't otherwise meaningful
-// Markdown, so stripping every backslash out of it is always safe.
+// mdast-util-to-markdown always escapes a "[" at the start of a line (it could otherwise start a link reference definition), which breaks alert/callout markers like `> [!NOTE]` — GitHub, GitLab, and custom types alike.
+// That position is never meaningful Markdown otherwise, so restoring any `[!...]` marker found there (and any escaping inside it) is always safe.
 const ESCAPED_ALERT_MARKER = /^(>\s*)(\\\[![^\]\n]*\\?\])/gm;
 
 /** Serializes an mdast tree (produced by `parseMarkdown`/`renderForLocale`) back to Markdown. */

@@ -143,7 +143,8 @@ function switcherMarkerNode(): RootContent {
 }
 
 /**
- * If `tree` has no explicit `::kiritan{switcher}` marker and `switcher.enabled` is true, inserts one at `switcher.position` (docs/DESIGN.md 6.1章). A tree that already has a marker is returned unchanged regardless of `enabled`.
+ * If `tree` has no explicit `::kiritan{switcher}` marker and `switcher.enabled` is true, inserts one at `switcher.position`.
+ * A tree that already has a marker is returned unchanged, regardless of `enabled`.
  */
 export function ensureSwitcherMarker(
   tree: Root,

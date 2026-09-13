@@ -1,5 +1,5 @@
 /**
- * Type contracts from docs/DESIGN.md. Only `config/*` is implemented so far (see packages/kiritan/README.md); the other modules referenced here (stores, renderers, translate middlewares, runtime resource sources) are future work and only exist here as the interfaces they'll implement.
+ * Type contracts from docs/DESIGN.md. Translate middlewares and the runtime resource strategies aren't implemented yet (see packages/kiritan/README.md) and only exist here as the interfaces they'll implement.
  */
 
 export interface LocalesConfig {
