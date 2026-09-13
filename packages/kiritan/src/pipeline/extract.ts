@@ -1,9 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { KiritanConfig } from "../config/types.js";
-import { parseMarkdown } from "../directive/parse.js";
-import { collectCatalogIds } from "../directive/render.js";
+import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
+import { collectCatalogSegments } from "../directive/render.js";
 import { discoverSourceFiles } from "../discover/sources.js";
+import { hashText } from "../hash/index.js";
 import {
   catalogPathFor,
   readCatalogFile,
@@ -44,7 +45,8 @@ export async function extract(
     if (file.source.strategy !== "catalog") continue;
 
     const sourceText = await readFile(join(cwd, file.path), "utf8");
-    const ids = collectCatalogIds(parseMarkdown(sourceText));
+    const segments = collectCatalogSegments(parseMarkdown(sourceText));
+    const ids = new Set(segments.keys());
 
     for (const locale of config.locales.list) {
       if (locale === config.locales.default) continue;
@@ -58,7 +60,10 @@ export async function extract(
 
       for (const id of ids) {
         if (id in existing) continue;
-        existing[id] = { text: "" };
+        const hash = hashText(
+          stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] })
+        );
+        existing[id] = { text: "", hash };
         changed = true;
         changes.push({ source: file.path, locale, detail: `added id "${id}"` });
       }

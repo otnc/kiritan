@@ -3,7 +3,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { KiritanConfig, TranslateMiddleware } from "../config/types.js";
+import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
+import { collectCatalogSegments } from "../directive/render.js";
+import { extractHashComment, hashText } from "../hash/index.js";
 import { translate } from "./translate.js";
+
+/** Matches how `translateCatalog` hashes a segment, so tests can assert against a real stored hash without guessing the exact stringified form. */
+function catalogSegmentHash(baseMarkdown: string, id: string): string {
+  const segments = collectCatalogSegments(parseMarkdown(baseMarkdown));
+  return hashText(
+    stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] })
+  );
+}
 
 let cwd: string;
 
@@ -41,7 +52,9 @@ describe("translate (sidecar strategy)", () => {
     expect(result.translated).toEqual([
       { source: "README.base.md", locale: "ja", detail: "wrote README.ja.md" },
     ]);
-    expect(await readFile(join(cwd, "README.ja.md"), "utf8")).toBe("HELLO");
+    const written = await readFile(join(cwd, "README.ja.md"), "utf8");
+    expect(written).toContain("HELLO");
+    expect(extractHashComment(written)).toBe(hashText("hello"));
   });
 
   it("does nothing when no middlewares are configured", async () => {
@@ -68,6 +81,48 @@ describe("translate (sidecar strategy)", () => {
     const result = await translate(config, { cwd });
     expect(result.translated).toEqual([]);
     expect(await readFile(join(cwd, "README.ja.md"), "utf8")).toBe("existing");
+  });
+
+  it("leaves a hand-translated file with no hash comment untouched", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    await writeFile(join(cwd, "README.ja.md"), "手動翻訳", "utf8");
+    const config = baseConfig({
+      sources: [
+        {
+          glob: "README.base.md",
+          strategy: "sidecar",
+          translate: { middlewares: [uppercase] },
+        },
+      ],
+    });
+    const result = await translate(config, { cwd });
+    expect(result.translated).toEqual([]);
+    expect(await readFile(join(cwd, "README.ja.md"), "utf8")).toBe("手動翻訳");
+  });
+
+  it("re-translates a sidecar file once its hash comment no longer matches the source", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello again", "utf8");
+    await writeFile(
+      join(cwd, "README.ja.md"),
+      `古い翻訳\n\n<!-- kiritan:hash ${hashText("hello")} -->\n`,
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [
+        {
+          glob: "README.base.md",
+          strategy: "sidecar",
+          translate: { middlewares: [uppercase] },
+        },
+      ],
+    });
+    const result = await translate(config, { cwd });
+    expect(result.translated).toEqual([
+      { source: "README.base.md", locale: "ja", detail: "wrote README.ja.md" },
+    ]);
+    const written = await readFile(join(cwd, "README.ja.md"), "utf8");
+    expect(written).toContain("HELLO AGAIN");
+    expect(extractHashComment(written)).toBe(hashText("hello again"));
   });
 });
 
@@ -124,6 +179,39 @@ describe("translate (catalog strategy)", () => {
       await readFile(join(cwd, "README.ja.catalog.json"), "utf8")
     );
     expect(catalog.intro.text).toBe("既存の訳文");
+  });
+
+  it("re-translates a catalog entry once its stored hash no longer matches the source", async () => {
+    const baseMarkdown = [":::kiritan{#intro}", "hello again", ":::"].join(
+      "\n"
+    );
+    await writeFile(join(cwd, "README.base.md"), baseMarkdown, "utf8");
+    await writeFile(
+      join(cwd, "README.ja.catalog.json"),
+      JSON.stringify({
+        intro: { text: "古い訳文", hash: "0000000000000000" },
+      }),
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [
+        {
+          glob: "README.base.md",
+          strategy: "catalog",
+          translate: { middlewares: [uppercase] },
+        },
+      ],
+    });
+    const result = await translate(config, { cwd });
+    expect(result.translated).toEqual([
+      { source: "README.base.md", locale: "ja", detail: 'catalog id "intro"' },
+    ]);
+    const catalog = JSON.parse(
+      await readFile(join(cwd, "README.ja.catalog.json"), "utf8")
+    );
+    expect(catalog.intro.text).toContain("HELLO AGAIN");
+    expect(catalog.intro.machine).toBe(true);
+    expect(catalog.intro.hash).toBe(catalogSegmentHash(baseMarkdown, "intro"));
   });
 });
 

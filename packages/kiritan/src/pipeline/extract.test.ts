@@ -40,7 +40,8 @@ describe("extract", () => {
     const catalog = JSON.parse(
       await readFile(join(cwd, "README.ja.catalog.json"), "utf8")
     );
-    expect(catalog).toEqual({ intro: { text: "" } });
+    expect(catalog.intro.text).toBe("");
+    expect(catalog.intro.hash).toMatch(/^[0-9a-f]{16}$/);
   });
 
   it("never touches an existing entry, translated or not", async () => {
