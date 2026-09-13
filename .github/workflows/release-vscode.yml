@@ -18,6 +18,9 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # `secrets` is not allowed in `if` conditionals; expose it via `env` instead.
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,10 +62,8 @@ jobs:
 
       # Only runs if a Marketplace publisher token has been configured as a repository secret. Without it, the workflow still tags the release and attaches the .vsix as a downloadable asset — just not published to the Marketplace automatically.
       - name: Publish to the VS Code Marketplace
-        if: ${{ secrets.VSCE_PAT != '' }}
+        if: ${{ env.VSCE_PAT != '' }}
         working-directory: packages/vscode
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx vsce publish --no-dependencies --packagePath *.vsix
 
       - name: Commit, tag and push
