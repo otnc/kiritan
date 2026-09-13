@@ -1,5 +1,7 @@
 # Contributing
 
+**English** | [日本語](CONTRIBUTING.ja.md)
+
 Thanks for your interest in improving kiritan!
 This guide gets you set up and explains how the project is put together.
 If anything here is unclear, opening an issue to ask is welcome.

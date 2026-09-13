@@ -23,7 +23,7 @@
 
 > [!Warning]
 >
-> kiritan はまだ開発初期段階です(pre-1.0)。`kiritan build` は `sidecar` / `inline` / `catalog` 戦略に対応していますが、`extract` / `translate` / `check` / `typegen` はまだ未実装です。実際に使える機能は各パッケージの README を参照してください。
+> kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。`build` / `check` / `translate` / `extract` / `typegen` はすべて実装済みです。使い方は各パッケージの README を、今後の展望は [docs/DESIGN.md](./docs/DESIGN.md) 13章を参照してください。
 
 ## 動作環境
 

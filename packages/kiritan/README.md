@@ -12,7 +12,7 @@
 
 > [!Warning]
 >   
-> kiritan is early and under active development (pre-1.0). The full design — including translate middlewares and the runtime resource strategies — is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md). `kiritan build` currently supports the `sidecar`, `inline`, and `catalog` strategies; `extract`, `translate`, `check`, and `typegen` aren't implemented yet.
+> kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. The full design is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md).
 
 ## Install
 
@@ -66,6 +66,18 @@ await build(config);
 ```
 
 `resolveConfig` discovers and merges the `.kiritan.(base|<mode>|local).(c|m)(js|ts)` cascade for the current directory and fills in the documented defaults. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 3章 for the full config shape and cascade rules.
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `kiritan build` | Builds localized documents from every configured source |
+| `kiritan check` | Reports missing/stale/machine-translated content; exits non-zero in CI when `check.failOn` matches |
+| `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` (`sidecar`/`catalog`; `inline` isn't supported yet) |
+| `kiritan extract` | Scaffolds new `catalog`-strategy ids and reports orphaned ones |
+| `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9.6章) |
+
+All of them accept `--mode <mode>` and `--config <path>` to adjust which config layers are applied.
 
 ## Requirements
 
