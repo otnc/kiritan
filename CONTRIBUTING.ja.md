@@ -25,6 +25,7 @@ npm install
 | --- | --- | --- |
 | `kiritan` | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | `@kiritan/runtime` | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
+| `kiritan-vscode` | `packages/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト) |
 
 上記すべての設計と理由は [docs/DESIGN.md](./docs/DESIGN.md) にまとまっています。構造を変更する前に読んでください。
 
