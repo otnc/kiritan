@@ -159,3 +159,20 @@ export function collectLocaleBlocks(tree: Root): Set<string> {
 export function collectCatalogIds(tree: Root): Set<string> {
   return collectContainerAttribute(tree, "id");
 }
+
+/** Each `:::kiritan{#<id>}` block's own content (its default-locale original text), keyed by id. */
+export function collectCatalogSegments(tree: Root): Map<string, RootContent[]> {
+  const segments = new Map<string, RootContent[]>();
+  function walk(nodes: RootContent[]) {
+    for (const node of nodes) {
+      if (isKiritanContainerDirective(node)) {
+        const id = asDirective(node).attributes?.id;
+        if (id) segments.set(id, childrenOf(node));
+      }
+      const children = asDirective(node).children;
+      if (children) walk(children);
+    }
+  }
+  walk(tree.children);
+  return segments;
+}

@@ -2,6 +2,7 @@ import { defineCommand } from "citty";
 import { resolveConfig } from "../config/index.js";
 import { build } from "../pipeline/build.js";
 import { check } from "../pipeline/check.js";
+import { translate } from "../pipeline/translate.js";
 
 const configArgs = {
   mode: {
@@ -58,6 +59,27 @@ const checkCommand = defineCommand({
   },
 });
 
+const translateCommand = defineCommand({
+  meta: {
+    name: "translate",
+    description: "Fill in missing translations via translate.middlewares",
+  },
+  args: configArgs,
+  async run({ args }) {
+    const config = await resolveConfig({
+      mode: args.mode,
+      overlays: args.config ? [args.config] : undefined,
+    });
+    const result = await translate(config);
+    for (const entry of result.translated) {
+      console.log(`[${entry.locale}] ${entry.source}: ${entry.detail}`);
+    }
+    if (result.translated.length === 0) {
+      console.log("kiritan translate: nothing to do");
+    }
+  },
+});
+
 export const main = defineCommand({
   meta: {
     name: "kiritan",
@@ -67,5 +89,6 @@ export const main = defineCommand({
   subCommands: {
     build: buildCommand,
     check: checkCommand,
+    translate: translateCommand,
   },
 });
