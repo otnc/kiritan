@@ -26,8 +26,7 @@ on:
         type: string
         default: ''
 
-# Trusted publishing: npm authenticates this workflow via OIDC, so no NPM_TOKEN
-# secret is needed. Configure the link on npmjs.com first, for this package:
+# Trusted publishing: npm authenticates this workflow via OIDC, so no NPM_TOKEN secret is needed. Configure the link on npmjs.com first, for this package:
 #   package Settings -> Publishing access -> Trusted publishers -> GitHub.
 permissions:
   contents: write # push the version commit/tag and create the GitHub Release
@@ -85,8 +84,7 @@ jobs:
       - name: Regenerate generated docs
         run: node packages/kiritan/dist/cli.mjs build
 
-      # Trusted publishing: no NODE_AUTH_TOKEN — npm exchanges the OIDC token
-      # issued by GitHub for a short-lived publish credential.
+      # Trusted publishing: no NODE_AUTH_TOKEN — npm exchanges the OIDC token issued by GitHub for a short-lived publish credential.
       - run: npm install -g npm@11
       - name: Publish
         working-directory: ${{ inputs.package_dir }}
