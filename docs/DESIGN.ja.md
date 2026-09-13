@@ -80,18 +80,16 @@ packages/runtime/src/
 - `kiritan` から `kiritan/runtime` を re-export する形は取らず、`@kiritan/runtime` を独立パッケージにする(`kiritan` は `@kiritan/runtime` に依存しても、逆はない)。ランタイムだけを使いたいプロジェクトが `kiritan` 本体(remark 等のビルド時依存)を一切引き込まずに済む。
 - CLI(`src/cli.ts`)以外はすべて CJS/ESM 両対応を維持する。remark/unified/micromark 系の依存は ESM 専用パッケージしか無い(CJS版へ戻すことは「古いバージョンを使う」ことになるため避ける)ため、`tsdown.config.ts` の `deps.alwaysBundle` でこれらを `dist/index.{cjs,mjs}` に直接バンドルし、CJS 利用者が ESM 専用パッケージを `require` する場面自体を無くす。CLI 専用の `citty` はバンドルせず外部依存のままでよい。
 - 将来追加する翻訳ミドルウェアの参考実装(`@kiritan/google-translate` など、13章)も同じワークスペースの `packages/*` に追加していく想定。
-- 既存の `tsdown` / `vitest` / `eslint` / CI(`ci.yml` / `release.yml`)はワークスペース対応に更新が必要(各パッケージごとのビルド・テスト・公開)。これは設計確定後の実装タスクとして扱う。
-- バージョニングは **パッケージごとに独立**させる(lockstep にしない)。変更のあったパッケージだけをリリースできるよう [Changesets](https://github.com/changesets/changesets) を導入するが、標準の「Bot が Version Packages PR を自動作成し、それをマージすると publish される」という2段階PRフローは採用しない。**changeset ファイルの作成(各PRの一部)と、実際のリリース実行(手動 workflow\_dispatch)を分離する**:
+- 既存の `tsdown` / `vitest` / `eslint` / CI(`ci.yml` およびリリース用ワークフロー)はワークスペース対応に更新が必要(各パッケージごとのビルド・テスト・公開)。これは設計確定後の実装タスクとして扱う。
+- バージョニングは **パッケージごとに独立**させる(lockstep にしない。共有のchangelog生成ツールも使わない)。パッケージごとに専用の `workflow_dispatch` ワークフロー(`release.yml` / `release-runtime.yml`)を持ち、どちらも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`)への薄いラッパーにすることで、片方のリリースがもう片方に誤って影響することを防ぐ:
 
-  1. 通常のPR: パッケージに影響する変更をしたら `npx changeset` を実行し、対象パッケージ・bump種別(patch/minor/major)・変更概要を1行で書いた changeset ファイル(`.changeset/*.md`)をPRに含めてコミットする(CONTRIBUTING.md に手順を追記)。
-  2. `release.yml`(`workflow_dispatch`、引数は無し or `dist_tag` のみ): 手動実行すると、そこまでに溜まっている `.changeset/*.md` を集計して
-     - `changeset version` でパッケージごとにバージョンを確定し、`package.json` と `CHANGELOG.md` を更新(消費した changeset ファイルは削除される)
-     - 変更をコミット
-     - `changeset publish` で、バージョンが上がったパッケージだけを `npm publish`(OIDC trusted publishing はパッケージごとに npmjs.com 側で設定)
-     - パッケージごとに `<name>@<version>` の git tag を打ち、変更のあった各パッケージ分の内容を1つの GitHub Release にまとめる(リリースノートは `changeset` が生成した CHANGELOG の当該エントリを流用し、`--generate-notes` は使わない)
-     - 溜まっている changeset が無ければ「リリース対象なし」として何もせず正常終了する
+  1. Actions タブから `release-<package>` を、`version`(semverのbump種別 `patch`/`minor`/`major`/`prerelease`、または明示的なバージョン。そのまま `npm version` に渡す)と `dist_tag`(npm dist-tag。空なら自動判定)の2つの入力で実行する。
+  2. ワークフローは対象パッケージの `package.json` を更新し(changesetファイルもパッケージごとのCHANGELOG.mdも無く、代わりにマージ済みPRから生成されるGitHubの自動リリースノートを使用)、`base/*.base.md` から生成される全ドキュメントを再生成し、**trusted publishing**(OIDC。`NPM_TOKEN` 不要。パッケージごとに npmjs.com 側でそのパッケージ自身のワークフローファイルを指定して設定)で `npm publish` する。
+  3. バージョンアップ+再生成ドキュメントをコミットし、`<name>@<version>` タグを打ってpushし、GitHub Release を作成する。
 
-  これにより、日々の操作感(ボタンを押せばその場でリリースされる)は今のままに、パッケージごとの独立バージョニングと CHANGELOG 自動生成を両立させる。
+  `kiritan` は `@kiritan/runtime` に依存しているため、runtimeのminor/majorバージョンを上げても kiritan 側の依存範囲は自動更新されない — これは意図的な仕様で、runtime単体のリリースが kiritan の `package.json` に触れることが無いようにするための、意図的な手動フォローアップである。
+
+  (この設計の以前のバージョンでは [Changesets](https://github.com/changesets/changesets) を使用しており、PRごとにコミットするchangesetファイルがリリース時のバージョンアップとCHANGELOG生成の両方を駆動していた。[oto-lab/npm-biome-ts](https://github.com/oto-lab/npm-biome-ts) の単一パッケージ向けリリースワークフローを参考に、PRごとのchangeset作成という手順自体を無くすため、上記のよりシンプルな `npm version` ベースの方式に置き換えた。)
 
 ## 3. 設定ファイル
 

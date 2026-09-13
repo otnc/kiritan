@@ -25,12 +25,9 @@
     "check": "prettier --write . && eslint --fix .",
     "ci": "prettier --check . && eslint .",
     "docs:build": "npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs build",
-    "docs:check": "npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs check",
-    "changeset": "changeset",
-    "version-packages": "changeset version"
+    "docs:check": "npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs check"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.7",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.20.2",
     "@vitest/coverage-v8": "^4.1.11",

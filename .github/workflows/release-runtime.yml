@@ -1,10 +1,10 @@
-name: release
+name: release-runtime
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version bump for kiritan: patch/minor/major/prerelease, or an explicit version (e.g. 0.2.0)'
+        description: 'Version bump for @kiritan/runtime: patch/minor/major/prerelease, or an explicit version (e.g. 0.2.0)'
         required: true
         default: patch
       dist_tag:
@@ -16,8 +16,8 @@ jobs:
   release:
     uses: ./.github/workflows/_release-package.yml
     with:
-      package_dir: packages/kiritan
-      npm_package_name: kiritan
+      package_dir: packages/runtime
+      npm_package_name: '@kiritan/runtime'
       version: ${{ inputs.version }}
       dist_tag: ${{ inputs.dist_tag }}
     permissions:
