@@ -33,7 +33,7 @@ setLocale("ja");
 t("submit"); // "送信"
 ```
 
-`t()`'s key argument is typed from whatever object you pass to `createT` — a typo is a compile error, no code generation needed. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9章 for the full picture, including the `colocated` / `split` / `centralized` / `embedded` resource placement strategies and `%{name}` interpolation.
+`t()`'s key argument is typed from whatever object you pass to `createT` — a typo is a compile error, no code generation needed. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9 for the full picture, including the `colocated` / `split` / `centralized` / `embedded` resource placement strategies and `%{name}` interpolation.
 
 ## Requirements
 

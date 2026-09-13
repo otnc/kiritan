@@ -23,7 +23,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 
 > [!Warning]
 >
-> kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. `build`, `check`, `translate`, `extract`, and `typegen` are all implemented — see each package's README for usage, and [docs/DESIGN.md](./docs/DESIGN.md) 13章 for what's still on the roadmap.
+> kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. `build`, `check`, `translate`, `extract`, and `typegen` are all implemented — see each package's README for usage, and [docs/DESIGN.md](./docs/DESIGN.md) chapter 13 for what's still on the roadmap.
 
 ## Requirements
 

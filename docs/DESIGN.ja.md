@@ -603,7 +603,7 @@ CLI の骨組みは [citty](https://github.com/unjs/citty) を使う(サブコ�
 kiritan build [--mode] [--config]     # Runs the full pipeline (every strategy)
 kiritan extract [--mode] [--config]   # catalog-strategy sources only. Creates/updates catalogs
 kiritan translate [--mode] [--config] # Fills missing/stale via translate.middlewares (every strategy)
-kiritan typegen [--mode] [--config]   # Generates a .d.ts from the runtime.sources aggregation (9.6章)
+kiritan typegen [--mode] [--config]   # Generates a .d.ts from the runtime.sources aggregation (chapter 9.6)
 kiritan check [--mode] [--config]     # For CI. Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
 ```
 
