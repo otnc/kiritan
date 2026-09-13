@@ -4,6 +4,7 @@ import { build } from "../pipeline/build.js";
 import { check } from "../pipeline/check.js";
 import { extract } from "../pipeline/extract.js";
 import { translate } from "../pipeline/translate.js";
+import { typegen } from "../pipeline/typegen.js";
 
 const configArgs = {
   mode: {
@@ -102,6 +103,24 @@ const extractCommand = defineCommand({
   },
 });
 
+const typegenCommand = defineCommand({
+  meta: {
+    name: "typegen",
+    description: "Generate types for an aggregated runtime.sources t() call",
+  },
+  args: configArgs,
+  async run({ args }) {
+    const config = await resolveConfig({
+      mode: args.mode,
+      overlays: args.config ? [args.config] : undefined,
+    });
+    const result = await typegen(config);
+    console.log(
+      `wrote ${result.dataPath} and ${result.typesPath} (${result.keyCount} keys)`
+    );
+  },
+});
+
 export const main = defineCommand({
   meta: {
     name: "kiritan",
@@ -113,5 +132,6 @@ export const main = defineCommand({
     check: checkCommand,
     translate: translateCommand,
     extract: extractCommand,
+    typegen: typegenCommand,
   },
 });
