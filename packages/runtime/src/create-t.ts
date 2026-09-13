@@ -28,7 +28,8 @@ function firstLocale(resources: ResourceModule): string | undefined {
 }
 
 /**
- * Creates a minimal `t(key, params)` runtime out of a `ResourceModule`. Key completion/typo-checking comes for free from TypeScript inferring `R` from a plain resource object/module (docs/DESIGN.md 9.2章) — no codegen step is needed for direct usage.
+ * Creates a minimal `t(key, params)` runtime out of a `ResourceModule`.
+ * Key completion/typo-checking comes for free from TypeScript inferring `R` from a plain resource object — no codegen needed for direct usage.
  */
 export function createT<R extends ResourceModule>(
   resources: R,

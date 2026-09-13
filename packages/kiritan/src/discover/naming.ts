@@ -55,7 +55,8 @@ function applyTemplate(
   );
 }
 
-// A filename-joining separator (".", "-", "_") right before `{locale}` is clearly "owned" by the locale token (e.g. "base.{locale}", "base-{locale}") and safe to remove together with it. A "/" right before it is a structural path separator (e.g. "{dir}/{locale}.base") and must be left alone, so we fall back to stripping the token's trailing separator instead (which also covers the "folder" preset's "{locale}/").
+// A filename-joining separator (".", "-", "_") right before `{locale}` is "owned" by it (e.g. "base.{locale}") and safe to remove together with it.
+// A "/" right before it is a structural path separator (e.g. "{dir}/{locale}.base") that must stay, so we fall back to stripping the token's trailing separator instead — which also covers the "folder" preset's "{locale}/".
 const FILENAME_SEPARATOR = "[.\\-_]";
 const BEFORE_LOCALE = new RegExp(`${FILENAME_SEPARATOR}\\{locale\\}`);
 const AFTER_LOCALE = new RegExp(`\\{locale\\}(?:${FILENAME_SEPARATOR}|/)`);

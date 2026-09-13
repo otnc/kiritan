@@ -27,7 +27,7 @@ function firstExisting(paths: string[]): string | undefined {
 }
 
 /**
- * Resolves the ordered list of `.kiritan.*` files that apply for `cwd`/`mode`, lowest priority first: base (or plain `.kiritan.*` as its fallback), then `.kiritan.<mode>.*` (if `mode` is given and the file exists), then `.kiritan.local.*`. Docs: docs/DESIGN.md 3.1章.
+ * Resolves the `.kiritan.*` cascade for `cwd`/`mode`, lowest priority first: base (or plain `.kiritan.*`), then `.kiritan.<mode>.*` if present, then `.kiritan.local.*`.
  */
 export function resolveCascadePaths(cwd: string, mode?: string): string[] {
   const paths: string[] = [];

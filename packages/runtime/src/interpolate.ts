@@ -16,7 +16,9 @@ function escapeRegExp(value: string): string {
 }
 
 /**
- * Expands `%{name}`-style placeholders in `template` using `params`. `\%{literal}` escapes a placeholder (the backslash is stripped, the placeholder is left untouched). Shared by @kiritan/runtime's `t()` and kiritan's document-side variable interpolation.
+ * Expands `%{name}`-style placeholders in `template` using `params`.
+ * `\%{literal}` escapes a placeholder — the backslash is stripped, the placeholder is left untouched.
+ * Shared by both `t()` here and kiritan's document-side interpolation.
  */
 export function interpolate(
   template: string,
