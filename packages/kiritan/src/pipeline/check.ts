@@ -8,6 +8,9 @@ import {
   discoverSourceFiles,
   type DiscoveredFile,
 } from "../discover/sources.js";
+import { discoverResourceFiles } from "../i18n/discover.js";
+import { loadColocatedResource } from "../i18n/load.js";
+import { findKeyMismatches } from "../i18n/mismatch.js";
 import { catalogPathFor, readCatalogFile } from "../stores/catalog.js";
 
 export type CheckIssueKind =
@@ -126,9 +129,38 @@ async function checkCatalog(
   }
 }
 
+async function checkRuntimeResources(
+  config: KiritanConfig,
+  cwd: string,
+  issues: CheckIssue[]
+): Promise<void> {
+  const sources = (config.runtime?.sources ?? []).filter(
+    (source) => source.strategy === "colocated"
+  );
+  if (sources.length === 0) return;
+
+  const files = await discoverResourceFiles(sources, { cwd });
+  for (const file of files) {
+    let resource;
+    try {
+      resource = await loadColocatedResource(join(cwd, file.path));
+    } catch {
+      continue;
+    }
+    for (const mismatch of findKeyMismatches(resource, config.locales.list)) {
+      issues.push({
+        kind: "i18n-key-mismatch",
+        source: file.path,
+        locale: mismatch.missingLocales.join(", "),
+        detail: `key "${mismatch.key}" is missing locale(s): ${mismatch.missingLocales.join(", ")}`,
+      });
+    }
+  }
+}
+
 /**
- * `kiritan check` (docs/DESIGN.md 8章): finds missing/machine-translated content across every source.
- * Stale detection (hash-based) and `i18n-key-mismatch` (runtime resources) aren't implemented yet — neither strategy exists yet to produce them, so they simply never appear in `issues`.
+ * `kiritan check` (docs/DESIGN.md 8章): finds missing/machine-translated content across every source, plus `i18n-key-mismatch` for `runtime.sources` using the `colocated` strategy.
+ * Stale detection (hash-based) isn't implemented yet, and `split`/`centralized`/`embedded` runtime resource strategies aren't discovered here yet either — neither exists yet to produce those, so they simply never appear in `issues`.
  */
 export async function check(
   config: KiritanConfig,
@@ -159,6 +191,8 @@ export async function check(
       continue;
     }
   }
+
+  await checkRuntimeResources(config, cwd, issues);
 
   const failOn = new Set(config.check?.failOn ?? DEFAULT_FAIL_ON);
   const failed = issues.some((issue) => failOn.has(issue.kind));

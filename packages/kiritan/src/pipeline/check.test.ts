@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -166,5 +166,47 @@ describe("check (catalog strategy)", () => {
       },
     ]);
     expect(result.failed).toBe(false);
+  });
+});
+
+describe("check (runtime.sources, colocated strategy)", () => {
+  it("reports a key missing a locale", async () => {
+    await mkdir(join(cwd, "src"), { recursive: true });
+    await writeFile(
+      join(cwd, "src", "Button.i18n.mjs"),
+      "export default { submit: { en: 'Submit' }, cancel: { en: 'Cancel', ja: 'キャンセル' } };\n",
+      "utf8"
+    );
+    const config = baseConfig({
+      runtime: {
+        sources: [{ glob: "src/**/*.i18n.mjs", strategy: "colocated" }],
+      },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "i18n-key-mismatch",
+        source: "src/Button.i18n.mjs",
+        locale: "ja",
+        detail: 'key "submit" is missing locale(s): ja',
+      },
+    ]);
+    expect(result.failed).toBe(true);
+  });
+
+  it("reports no issues when every key has every locale", async () => {
+    await mkdir(join(cwd, "src"), { recursive: true });
+    await writeFile(
+      join(cwd, "src", "Button.i18n.mjs"),
+      "export default { submit: { en: 'Submit', ja: '送信' } };\n",
+      "utf8"
+    );
+    const config = baseConfig({
+      runtime: {
+        sources: [{ glob: "src/**/*.i18n.mjs", strategy: "colocated" }],
+      },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([]);
   });
 });
