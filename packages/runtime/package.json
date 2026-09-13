@@ -35,7 +35,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.ja.md"
   ],
   "engines": {
     "node": ">=22"

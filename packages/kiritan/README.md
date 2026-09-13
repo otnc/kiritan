@@ -4,14 +4,16 @@
 
 # kiritan
 
+**English** | [日本語](README.ja.md)
+
 </div>
 
-> In addition to standard scopes, an internationalization (i18n) utility for Markdown and other plain text documents / 通常の範囲に加え、マークダウンやその他平文ドキュメントのための国際化(i18n)ユーティリティ
+> In addition to standard scopes, an internationalization (i18n) utility for Markdown and other plain text documents
 
 [![npm](https://img.shields.io/npm/v/kiritan)](https://www.npmjs.com/package/kiritan) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/kiritan)](https://www.npmjs.com/package/kiritan)
 
 > [!Warning]
->   
+>
 > kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. The full design is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md).
 
 ## Install
@@ -96,5 +98,5 @@ Contributions are welcome! See [CONTRIBUTING.md](https://github.com/otnc/kiritan
 Distributed under the [WTFPL License](https://github.com/otnc/kiritan/blob/main/LICENSE).
 
 > [!Note]
->   
-> The image files (`.png` / `.gal`) under `assets/` are **not** covered by WTFPL. They may be used for purposes such as introducing this library (e.g. blog posts), but may not be used as an application logo/icon or embedded into any product. See [ASSETS_LICENSE.md](https://github.com/otnc/kiritan/blob/main/ASSETS_LICENSE.md) for details.
+>
+> The image files (`.png` / `.gal`) under `assets/` are **not** covered by WTFPL. They may be used for purposes such as introducing this library (e.g. blog posts), but may not be used as an application logo/icon or embedded into any product. See [ASSETS\_LICENSE.md](https://github.com/otnc/kiritan/blob/main/ASSETS_LICENSE.md) for details.

@@ -56,6 +56,10 @@ jobs:
             npx changeset version --snapshot "${{ inputs.version }}"
           fi
 
+      - name: Regenerate generated docs
+        if: steps.changesets.outputs.pending == 'true'
+        run: node packages/kiritan/dist/cli.mjs build
+
       - name: Determine dist-tag
         if: steps.changesets.outputs.pending == 'true'
         id: tag

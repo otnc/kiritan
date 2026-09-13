@@ -10,5 +10,15 @@ export default {
       strategy: "inline",
       naming: { template: "docs/{base}.{locale}.{ext}" },
     },
+    {
+      glob: "packages/kiritan/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "packages/kiritan/{base}.{locale}.{ext}" },
+    },
+    {
+      glob: "packages/runtime/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "packages/runtime/{base}.{locale}.{ext}" },
+    },
   ],
 };
