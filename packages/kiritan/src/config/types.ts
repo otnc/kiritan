@@ -1,5 +1,5 @@
 /**
- * Type contracts from docs/DESIGN.md. Translate middlewares and the runtime resource strategies aren't implemented yet (see packages/kiritan/README.md) and only exist here as the interfaces they'll implement.
+ * Type contracts from docs/DESIGN.md.
  */
 
 export interface LocalesConfig {
@@ -75,12 +75,13 @@ export interface TranslateConfig {
 export type ResourceStrategy =
   "colocated" | "split" | "centralized" | "embedded" | string;
 
-/** docs/DESIGN.md 9.1章. Not implemented yet — declared for config type-checking. */
+/** docs/DESIGN.md 9.1章. */
 export interface ResourceSourceConfig {
   glob: string;
   strategy: ResourceStrategy;
   /** Named export to read for the 'embedded' strategy. Default: "i18n". */
   exportName?: string;
+  /** Custom namespace override. Not wired into aggregation yet — reserved for `kiritan typegen`. */
   namespace?: (filePath: string) => string;
 }
 

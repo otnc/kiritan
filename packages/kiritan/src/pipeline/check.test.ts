@@ -210,3 +210,92 @@ describe("check (runtime.sources, colocated strategy)", () => {
     expect(result.issues).toEqual([]);
   });
 });
+
+describe("check (runtime.sources, split strategy)", () => {
+  it("merges sibling per-locale files and reports a missing key", async () => {
+    await mkdir(join(cwd, "src"), { recursive: true });
+    await writeFile(
+      join(cwd, "src", "Button.en.i18n.mjs"),
+      "export default { submit: 'Submit', cancel: 'Cancel' };\n",
+      "utf8"
+    );
+    await writeFile(
+      join(cwd, "src", "Button.ja.i18n.mjs"),
+      "export default { submit: '送信' };\n",
+      "utf8"
+    );
+    const config = baseConfig({
+      runtime: {
+        sources: [{ glob: "src/**/*.i18n.mjs", strategy: "split" }],
+      },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "i18n-key-mismatch",
+        source: "src/Button.en.i18n.mjs, src/Button.ja.i18n.mjs",
+        locale: "ja",
+        detail: 'key "cancel" is missing locale(s): ja',
+      },
+    ]);
+    expect(result.failed).toBe(true);
+  });
+});
+
+describe("check (runtime.sources, centralized strategy)", () => {
+  it("merges per-locale JSON files and reports a missing key", async () => {
+    await mkdir(join(cwd, "locales", "en"), { recursive: true });
+    await mkdir(join(cwd, "locales", "ja"), { recursive: true });
+    await writeFile(
+      join(cwd, "locales", "en", "common.json"),
+      JSON.stringify({ submit: "Submit", cancel: "Cancel" }),
+      "utf8"
+    );
+    await writeFile(
+      join(cwd, "locales", "ja", "common.json"),
+      JSON.stringify({ submit: "送信" }),
+      "utf8"
+    );
+    const config = baseConfig({
+      runtime: {
+        sources: [{ glob: "locales/*/*.json", strategy: "centralized" }],
+      },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "i18n-key-mismatch",
+        source: "locales/en/common.json, locales/ja/common.json",
+        locale: "ja",
+        detail: 'key "cancel" is missing locale(s): ja',
+      },
+    ]);
+    expect(result.failed).toBe(true);
+  });
+});
+
+describe("check (runtime.sources, embedded strategy)", () => {
+  it("reports a key missing a locale in the named export", async () => {
+    await mkdir(join(cwd, "src"), { recursive: true });
+    await writeFile(
+      join(cwd, "src", "Button.mjs"),
+      "export const i18n = { submit: { en: 'Submit' }, cancel: { en: 'Cancel', ja: 'キャンセル' } };\n",
+      "utf8"
+    );
+    const config = baseConfig({
+      runtime: {
+        sources: [{ glob: "src/**/*.mjs", strategy: "embedded" }],
+      },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "i18n-key-mismatch",
+        source: "src/Button.mjs",
+        locale: "ja",
+        detail: 'key "submit" is missing locale(s): ja',
+      },
+    ]);
+    expect(result.failed).toBe(true);
+  });
+});
