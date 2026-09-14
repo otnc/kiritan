@@ -24,6 +24,24 @@ This is a purely declarative TextMate grammar injection — no compiled extensio
 
 Folding, jumping between a `:::kiritan{#<id>}` block and its catalog file, and inline `missing`/`stale` indicators are all planned but not implemented (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13) — those need real extension code (a folding range provider, a definition provider), not just a grammar.
 
+## Getting a Kiritan file icon in vscode-icons
+
+VS Code only has one active file icon theme at a time, and that theme's own extension rules always win over anything an extension can contribute passively — so this extension can't make `.kiritan.mjs` files show a Kiritan icon while [vscode-icons](https://marketplace.visualstudio.com/items?itemName=vscode-icons-team.vscode-icons) is active; vscode-icons already has a specific rule for `*.mjs`, and specific rules always beat a language-contributed fallback icon. The fix has to be a custom association on the vscode-icons side:
+
+1. Create a folder named exactly `vsicons-custom-icons` somewhere, and copy this extension's icon into it as `file_type_kiritan.png` (the icon lives at [`images/icon.png`](./images/icon.png) in this extension's installed folder, or at [`assets/kiritan.png`](https://github.com/otnc/kiritan/blob/main/assets/kiritan.png) in the repo).
+2. In your settings (user or workspace):
+
+```jsonc
+"vsicons.customIconFolderPath": "/path/to/the/folder/containing/vsicons-custom-icons",
+"vsicons.associations.files": [
+  { "icon": "kiritan", "extensions": ["kiritan.mjs", "kiritan.base.mjs", "kiritan.local.mjs"], "format": "png" }
+]
+```
+
+3. Run `Apply Icons Customization` from the command palette (`F1`).
+
+This covers the base/local config files; a `.kiritan.<mode>.mjs` mode file needs its own entry in the `extensions` array (e.g. `"kiritan.dev.mjs"`) since the mode name isn't fixed.
+
 ## Building locally
 
 ```sh
