@@ -26,6 +26,7 @@ npm install
 | `kiritan` | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | `@kiritan/runtime` | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト)。npm workspaceのメンバーではない — 詳細は後述の「リリース」を参照。 |
+| — | `extensions/vim` | Vim/Neovimプラグイン(同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定)。どこにも公開せず、プラグインマネージャーの`rtp`オプションでこのリポジトリから直接インストールする。 |
 
 上記すべての設計と理由は [docs/DESIGN.md](./docs/DESIGN.md) にまとまっています。構造を変更する前に読んでください。
 

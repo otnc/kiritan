@@ -24,8 +24,8 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 ## Related tooling
 
 - [`otoneko1102.kiritan`](./extensions/vscode) — a VS Code extension: syntax highlighting for `:::kiritan{...}` directive blocks. Lives under `extensions/`, not `packages/`, since it isn't an npm package.
+- [`extensions/vim`](./extensions/vim) — a Vim/Neovim plugin covering the same directive highlighting, plus `*.kiritanconfig` filetype detection.
 - [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) that teaches an AI coding agent how to work inside a Kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — see [skills/README.md](./skills/README.md) for how to install it.
-- A Vim/Neovim plugin covering the same ground as the VS Code extension is planned; see [docs/DESIGN.md](./docs/DESIGN.md) chapter 13.
 
 > [!Warning]
 >

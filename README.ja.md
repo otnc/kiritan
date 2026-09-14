@@ -24,8 +24,8 @@
 ## 関連ツール
 
 - [`otoneko1102.kiritan`](./extensions/vscode) — VS Code拡張機能: `:::kiritan{...}` ディレクティブブロックのシンタックスハイライト。npmパッケージではないため `packages/` ではなく `extensions/` 配下にあります。
+- [`extensions/vim`](./extensions/vim) — 同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定をカバーするVim/Neovimプラグイン。
 - [`skills/kiritan`](./skills/kiritan) — Kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
-- VS Code拡張機能と同じ範囲をカバーするVim/Neovimプラグインを計画中です。[docs/DESIGN.md](./docs/DESIGN.md) 13章を参照。
 
 > [!Warning]
 >

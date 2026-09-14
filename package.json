@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit -p extensions/vscode/tsconfig.json",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit -p extensions/vscode/tsconfig.json && tsc --noEmit -p extensions/vim/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
