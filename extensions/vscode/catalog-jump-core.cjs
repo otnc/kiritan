@@ -1,6 +1,4 @@
-// Pure logic for catalog-jump.cjs, kept dependency-free (no
-// `require("vscode")`) so it can be unit-tested with plain vitest — the real
-// `vscode` module only exists inside a running extension host.
+// Pure logic for catalog-jump.cjs, kept dependency-free (no `require("vscode")`) so it can be unit-tested with plain vitest — the real `vscode` module only exists inside a running extension host.
 const ID_LINE_RE = /^:{3,}kiritan\{[^}]*#([A-Za-z0-9_-]+)[^}]*\}\s*$/;
 
 function escapeRegExp(text) {
@@ -8,8 +6,7 @@ function escapeRegExp(text) {
 }
 
 /**
- * Returns the catalog id under `character` on `line`, or undefined if the
- * line isn't a `:::kiritan{#<id>}` block or the position isn't over the id.
+ * Returns the catalog id under `character` on `line`, or undefined if the line isn't a `:::kiritan{#<id>}` block or the position isn't over the id.
  * @param {string} line
  * @param {number} character
  */

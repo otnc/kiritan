@@ -1,6 +1,4 @@
-// Jump from a :::kiritan{#<id>} block to its catalog entry (docs/DESIGN.md
-// chapter 4.3): translations for the "catalog" document strategy live in a
-// sibling <base>.<locale>.catalog.json, keyed by id.
+// Jump from a :::kiritan{#<id>} block to its catalog entry (docs/DESIGN.md chapter 4.3): translations for the "catalog" document strategy live in a sibling <base>.<locale>.catalog.json, keyed by id.
 const vscode = require("vscode");
 const path = require("node:path");
 const { idAt, baseNameFor, findKeyOffset } = require("./catalog-jump-core.cjs");

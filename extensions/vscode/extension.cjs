@@ -1,21 +1,4 @@
-// Entry point wiring together this extension's real (non-declarative)
-// features: see markdown-folding.cjs (:::kiritan{...} folding) and
-// catalog-jump.cjs (jump to a catalog entry) for the Markdown-side features.
-//
-// The completion bridge below is the trickiest one: *.kiritanconfig is
-// registered as its own VS Code language (see package.json) so that no icon
-// theme mistakes it for a generic JavaScript file — but that means the
-// built-in TypeScript/JavaScript language service, which powers real
-// completion, never looks at it (it only activates for the "javascript"
-// language id). This bridges the gap: for every *.kiritanconfig document we
-// keep an in-memory, read-only "javascript" mirror behind a custom URI scheme
-// and forward completion requests to VS Code's own built-in provider for it.
-//
-// The mirror is a TextDocumentContentProvider document, not an untitled one —
-// an untitled document is a real editable buffer that VS Code counts as
-// "unsaved" (cluttering the UI and save-all/exit prompts) even though nothing
-// ever edits it directly; a content-provider document is virtual/read-only
-// and never shows up that way.
+// Entry point wiring together this extension's real (non-declarative) features: see markdown-folding.cjs (:::kiritan{...} folding) and catalog-jump.cjs (jump to a catalog entry) for the Markdown-side features. The completion bridge below is the trickiest one: *.kiritanconfig is registered as its own VS Code language (see package.json) so that no icon theme mistakes it for a generic JavaScript file — but that means the built-in TypeScript/JavaScript language service, which powers real completion, never looks at it (it only activates for the "javascript" language id). This bridges the gap: for every *.kiritanconfig document we keep an in-memory, read-only "javascript" mirror behind a custom URI scheme and forward completion requests to VS Code's own built-in provider for it. The mirror is a TextDocumentContentProvider document, not an untitled one — an untitled document is a real editable buffer that VS Code counts as "unsaved" (cluttering the UI and save-all/exit prompts) even though nothing ever edits it directly; a content-provider document is virtual/read-only and never shows up that way.
 const vscode = require("vscode");
 const { provideFoldingRanges } = require("./markdown-folding.cjs");
 const { createDefinitionProvider } = require("./catalog-jump.cjs");
@@ -35,9 +18,7 @@ const mirrorContentProvider = {
 
 /** @param {vscode.TextDocument} document */
 function mirrorUriFor(document) {
-  // The .js suffix is what makes VS Code assign the "javascript" language to
-  // this virtual document — language detection works the same way regardless
-  // of URI scheme.
+  // The .js suffix is what makes VS Code assign the "javascript" language to this virtual document — language detection works the same way regardless of URI scheme.
   return vscode.Uri.parse(`${MIRROR_SCHEME}:${document.uri.path}.js`);
 }
 

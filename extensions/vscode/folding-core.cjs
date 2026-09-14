@@ -1,6 +1,4 @@
-// Pure line-based computation for markdown-folding.cjs, kept dependency-free
-// (no `require("vscode")`) so it can be unit-tested with plain vitest — the
-// real `vscode` module only exists inside a running extension host.
+// Pure line-based computation for markdown-folding.cjs, kept dependency-free (no `require("vscode")`) so it can be unit-tested with plain vitest — the real `vscode` module only exists inside a running extension host.
 const KIRITAN_OPEN_RE = /^(:{3,})kiritan\{[^}]*\}\s*$/;
 const GENERIC_OPEN_RE = /^(:{3,})\S+.*$/;
 const CLOSE_RE = /^(:{2,})\s*$/;
