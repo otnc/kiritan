@@ -62,7 +62,7 @@ export async function loadConfigFile(path: string): Promise<KiritanUserConfig> {
 }
 
 function resolveNaming(naming: NamingConfig | undefined): NamingConfig {
-  // `template` wins if set explicitly; otherwise a `preset` picks one of the 3.3章 shorthands; only then do we fall back to the plain default.
+  // `template` wins if set explicitly; otherwise a `preset` picks one of the chapter 3.3 shorthands; only then do we fall back to the plain default.
   const template =
     naming?.template ??
     (naming?.preset ? NAMING_PRESETS[naming.preset] : DEFAULT_NAMING.template);
@@ -75,11 +75,11 @@ function resolveNaming(naming: NamingConfig | undefined): NamingConfig {
   };
 }
 
-/** Fills in the documented defaults (docs/DESIGN.md 3.2/8/9章) for whatever a layer left unset. */
+/** Fills in the documented defaults (docs/DESIGN.md chapters 3.2/8/9) for whatever a layer left unset. */
 export function applyDefaults(config: KiritanUserConfig): KiritanConfig {
   if (!config.locales || !config.sources) {
     throw new Error(
-      'kiritan: no config found (or it\'s missing "locales"/"sources") — create a .kiritanconfig exporting defineConfig({ locales, sources, ... }). See docs/DESIGN.md 3章.'
+      'kiritan: no config found (or it\'s missing "locales"/"sources") — create a .kiritanconfig exporting defineConfig({ locales, sources, ... }). See docs/DESIGN.md chapter 3.'
     );
   }
   return {

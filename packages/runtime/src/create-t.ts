@@ -4,7 +4,7 @@ import { interpolate, type InterpolationParams } from "./interpolate.js";
 export type LocaleMap = Record<string, string>;
 
 /**
- * The shape every resource format (colocated/split/centralized/embedded, see docs/DESIGN.md 9章) is normalized to before reaching `createT`.
+ * The shape every resource format (colocated/split/centralized/embedded, see docs/DESIGN.md chapter 9) is normalized to before reaching `createT`.
  */
 export type ResourceModule = Record<string, LocaleMap>;
 

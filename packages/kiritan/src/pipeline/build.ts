@@ -84,7 +84,7 @@ function finalizeTree(
   return stringifyMarkdown(interpolated);
 }
 
-/** `kiritan build` (docs/DESIGN.md 2章): discover -> parse -> resolve -> interpolate -> reassemble -> write. */
+/** `kiritan build` (docs/DESIGN.md chapter 2): discover -> parse -> resolve -> interpolate -> reassemble -> write. */
 export async function build(
   config: KiritanConfig,
   options: BuildOptions = {}

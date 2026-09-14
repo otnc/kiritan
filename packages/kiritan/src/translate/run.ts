@@ -17,7 +17,7 @@ interface MiddlewareGroup {
   middlewares: MiddlewareEntry[];
 }
 
-/** Consecutive single-form middlewares become one group; each batch-form middleware is its own group (docs/DESIGN.md 7.1章). */
+/** Consecutive single-form middlewares become one group; each batch-form middleware is its own group (docs/DESIGN.md chapter 7.1). */
 function groupMiddlewares(middlewares: MiddlewareEntry[]): MiddlewareGroup[] {
   const groups: MiddlewareGroup[] = [];
   for (const middleware of middlewares) {

@@ -1,7 +1,7 @@
 import type { AggregatedResource } from "./aggregate.js";
 
 /**
- * Derives a namespace from a resource's identifying path, e.g. `src/components/Button/Button.i18n.ts` → `components/Button` (docs/DESIGN.md 9.6章).
+ * Derives a namespace from a resource's identifying path, e.g. `src/components/Button/Button.i18n.ts` → `components/Button` (docs/DESIGN.md chapter 9.6).
  * The leading `src/` segment is dropped since it rarely carries meaning as a namespace; a file with no other directory (e.g. `common.i18n.ts` at the root) falls back to its own basename with the `.i18n`/locale-file suffix stripped.
  */
 export function deriveNamespace(path: string): string {

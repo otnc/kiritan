@@ -8,7 +8,7 @@ export interface CatalogEntry {
 
 export type CatalogData = Record<string, CatalogEntry>;
 
-/** Reads one locale's catalog file (docs/DESIGN.md 4.3章). Returns `undefined` if it doesn't exist. */
+/** Reads one locale's catalog file (docs/DESIGN.md chapter 4.3). Returns `undefined` if it doesn't exist. */
 export async function readCatalogFile(
   path: string
 ): Promise<CatalogData | undefined> {

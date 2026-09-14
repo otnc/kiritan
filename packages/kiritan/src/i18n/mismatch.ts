@@ -5,7 +5,7 @@ export interface KeyMismatch {
   missingLocales: string[];
 }
 
-/** Which keys in `resource` are missing one or more of `locales` (docs/DESIGN.md 9.7章). */
+/** Which keys in `resource` are missing one or more of `locales` (docs/DESIGN.md chapter 9.7). */
 export function findKeyMismatches(
   resource: ResourceModule,
   locales: string[]

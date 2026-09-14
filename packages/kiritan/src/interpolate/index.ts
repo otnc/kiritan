@@ -62,7 +62,7 @@ function walk(
   });
 }
 
-/** Expands `%{name}` placeholders in every text node of `tree` (docs/DESIGN.md 5章). */
+/** Expands `%{name}` placeholders in every text node of `tree` (docs/DESIGN.md chapter 5). */
 export function interpolateTree(
   tree: Root,
   params: InterpolationParams,

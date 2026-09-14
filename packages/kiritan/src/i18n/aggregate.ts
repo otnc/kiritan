@@ -33,7 +33,7 @@ function mergeFlatIntoModule(
 }
 
 /**
- * Loads and groups every `runtime.sources` file into per-resource `ResourceModule`s (docs/DESIGN.md 9.1-9.5章).
+ * Loads and groups every `runtime.sources` file into per-resource `ResourceModule`s (docs/DESIGN.md chapters 9.1-9.5).
  * `colocated`/`embedded` files already contain every locale, so each file becomes its own resource.
  * `split`/`centralized` files hold one locale each, so sibling files (matched via `splitLocaleFromPath`) are merged into one resource.
  * Files that fail to load, or whose path has no recognizable locale segment (for `split`/`centralized`), are silently skipped.
