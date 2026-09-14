@@ -6,7 +6,7 @@ import type { KiritanConfig } from "../config/types.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { collectCatalogSegments } from "../directive/render.js";
 import { hashText, withHashComment } from "../hash/index.js";
-import { check } from "./check.js";
+import { check, resolveInterpolationVariableNames } from "./check.js";
 
 /** Matches how `checkCatalog` hashes a segment, so tests can assert against a real hash without guessing the exact stringified form. */
 function catalogSegmentHash(baseMarkdown: string, id: string): string {
@@ -177,12 +177,14 @@ describe("check (catalog strategy)", () => {
         source: "README.base.md",
         locale: "ja",
         detail: 'catalog id "intro" is machine-translated and needs review',
+        id: "intro",
       },
       {
         kind: "missing",
         source: "README.base.md",
         locale: "ja",
         detail: 'catalog id "usage" has no translation',
+        id: "usage",
       },
     ]);
     // "machine" isn't in the default failOn list.
@@ -211,6 +213,7 @@ describe("check (catalog strategy)", () => {
         source: "README.base.md",
         locale: "ja",
         detail: 'catalog id "intro" is machine-translated and needs review',
+        id: "intro",
       },
     ]);
     expect(result.failed).toBe(false);
@@ -255,6 +258,7 @@ describe("check (catalog strategy)", () => {
         locale: "ja",
         detail:
           'catalog id "intro" is stale (source changed since it was last translated)',
+        id: "intro",
       },
     ]);
     expect(result.failed).toBe(true);
@@ -409,5 +413,33 @@ describe("check (runtime.sources, embedded strategy)", () => {
       },
     ]);
     expect(result.failed).toBe(true);
+  });
+});
+
+describe("resolveInterpolationVariableNames", () => {
+  it("returns an empty array when no variables are configured", () => {
+    const config = baseConfig();
+    expect(resolveInterpolationVariableNames(config)).toEqual([]);
+  });
+
+  it("returns the keys of a plain variables object", () => {
+    const config = baseConfig({
+      interpolation: {
+        variables: { repo: "kiritan", owner: { en: "otnc", ja: "おつねこ" } },
+      },
+    });
+    expect(resolveInterpolationVariableNames(config)).toEqual([
+      "repo",
+      "owner",
+    ]);
+  });
+
+  it("calls the function form with the default locale as context", () => {
+    const config = baseConfig({
+      interpolation: {
+        variables: (ctx) => ({ [`for-${ctx.locale}`]: "value" }),
+      },
+    });
+    expect(resolveInterpolationVariableNames(config)).toEqual(["for-en"]);
   });
 });

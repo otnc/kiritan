@@ -2,6 +2,7 @@
 const vscode = require("vscode");
 const { provideFoldingRanges } = require("./markdown-folding.cjs");
 const { createDefinitionProvider } = require("./catalog-jump.cjs");
+const { registerDiagnostics } = require("./diagnostics.cjs");
 
 const MIRROR_SCHEME = "kiritanconfig-mirror";
 
@@ -76,6 +77,8 @@ function activate(context) {
       createDefinitionProvider()
     )
   );
+
+  registerDiagnostics(context);
 }
 
 function deactivate() {

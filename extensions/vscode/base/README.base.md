@@ -39,6 +39,7 @@ Beyond highlighting, it also provides, via real (if small) extension code:
 
 - **Folding** for `:::kiritan{...}` blocks, correctly matched by colon count even when other directives are nested inside or around them.
 - **Jump to definition** from a `:::kiritan{#<id>}` block to its entry in the sibling `<base>.<locale>.catalog.json` file(s), for the `catalog` document strategy.
+- **Undefined-`%{name}` warnings** and **inline `missing`/`stale`/`machine` indicators** — by running the workspace's own locally-installed `kiritan check --json` (via `npx --no-install`, so a project that doesn't depend on `kiritan` is silently skipped rather than triggering a surprise install) and mapping its results back onto the open document. `%{name}` uses inside a fenced code block or an inline code span are never flagged, matching `interpolation.skipCodeBlocks`'s own default. Only the default `%{`/`}` delimiters are supported for this particular check; a project with custom `interpolation.delimiters` won't see undefined-variable warnings (but still gets everything else).
 
 It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting, bracket matching, and comment toggling despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen). Real code completion for these files works by mirroring the file's content into an in-memory `javascript` document and forwarding completion requests to VS Code's own built-in JavaScript/TypeScript language service — this is what makes the icon and full IntelliSense compatible, since giving the file the real `javascript` language id directly would let vscode-icons' own language-based rule override the custom icon.
 :::
@@ -54,22 +55,9 @@ It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`,
 
 - **折りたたみ**: `:::kiritan{...}` ブロックを、他のディレクティブが内側・外側にネストしていても、コロンの個数で正しく対応させて折りたたみます。
 - **定義へのジャンプ**: `catalog` ドキュメント戦略において、`:::kiritan{#<id>}` ブロックから、隣接する `<base>.<locale>.catalog.json` ファイル内の該当エントリへジャンプします。
+- **未定義の`%{name}`警告**と**`missing`/`stale`/`machine`のインライン表示**: ワークスペース自身にローカルインストールされた`kiritan check --json`を(`npx --no-install`経由で)実行し、その結果を開いているドキュメントに対応付けます。`kiritan`に依存しないプロジェクトでは意図せぬインストールが走らないよう、単に何もしません。コードフェンス内やインラインコードスパン内の`%{name}`は`interpolation.skipCodeBlocks`の既定動作に合わせて検出対象外です。この機能は既定の`%{`/`}`区切り文字にのみ対応しており、`interpolation.delimiters`をカスタマイズしているプロジェクトでは未定義変数の警告は出ません(他の機能はそのまま使えます)。
 
 あわせて `*.kiritanconfig`(例: `.kiritanconfig`、`dev.kiritanconfig`、`local.kiritanconfig`)を独自言語として登録しており、実在する拡張子を持たないにもかかわらずJavaScript相当のシンタックスハイライト・括弧の対応・コメントのトグルが効きます。副次効果として、どのアイコンテーマでもKiritan固有のファイルアイコンが表示されます — 見たことの無いファイル名に対する具体的なルールを持つテーマは存在しないためです(この命名を選んだ理由は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。これらのファイルの本物のコード補完は、ファイルの内容をメモリ上の `javascript` ドキュメントに複製し、補完リクエストをVS Code組み込みのJavaScript/TypeScript言語サービスへ転送することで実現しています — ファイルに実際に `javascript` 言語IDを与えてしまうと、vscode-icons自身の言語ベースのルールがカスタムアイコンを上書きしてしまうため、アイコンとフルIntelliSenseを両立させるにはこの方式が必要でした。
-:::
-
-:::kiritan{locale=en}
-## What it doesn't do yet
-:::
-:::kiritan{locale=ja}
-## まだできないこと
-:::
-
-:::kiritan{locale=en}
-Undefined-`%{name}`-variable detection and inline `missing`/`stale` indicators are both still planned but not implemented (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13) — both need to know the project's resolved config (`interpolation.variables`, and the same hash-comparison `kiritan check` uses), not just the open document's own text.
-:::
-:::kiritan{locale=ja}
-未定義の`%{name}`変数の検出と、`missing`/`stale`のインライン表示は、いずれも計画中ですがまだ実装されていません([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。どちらもプロジェクトの解決済み設定(`interpolation.variables`、および`kiritan check`と同じハッシュ比較)を把握する必要があり、開いているドキュメント自身のテキストだけでは完結しません。
 :::
 
 :::kiritan{locale=en}
