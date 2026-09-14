@@ -170,7 +170,7 @@ async function translateCatalog(
 }
 
 /**
- * `kiritan translate` (docs/DESIGN.md 7章): fills in missing translations, and re-translates stale ones, via `translate.middlewares`.
+ * `kiritan translate` (docs/DESIGN.md chapter 7): fills in missing translations, and re-translates stale ones, via `translate.middlewares`.
  * A translation only counts as stale once it carries a hash (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) that no longer matches the current source — one written by hand, with no hash yet, is left untouched.
  * Only runs for sources that actually configure middlewares — the default `middlewares: []` means nothing happens.
  * `inline` isn't supported yet (inserting a new locale block into the shared base file needs placement logic this doesn't have).

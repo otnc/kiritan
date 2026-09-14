@@ -26,7 +26,7 @@ export interface ExtractResult {
 }
 
 /**
- * `kiritan extract` (docs/DESIGN.md 4.3章): scaffolds each catalog-strategy source's catalog files.
+ * `kiritan extract` (docs/DESIGN.md chapter 4.3): scaffolds each catalog-strategy source's catalog files.
  * Adds an empty `{ text: "" }` placeholder for every `:::kiritan{#<id>}` not yet in the catalog, ready for a translator to fill in — existing entries (translated or not) are never touched.
  * Also reports ids present in a catalog file but no longer in the base file, as orphans (left in place; `kiritan check` is what warns about them going forward).
  */

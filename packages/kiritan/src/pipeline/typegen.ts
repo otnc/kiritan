@@ -45,8 +45,8 @@ function renderTypesModule(merged: ResourceModule): string {
 }
 
 /**
- * `kiritan typegen` (docs/DESIGN.md 9.6章): merges every `runtime.sources` entry into one `ResourceModule` keyed by `"<namespace>.<key>"` (the namespace is derived from each file's path, or `ResourceSourceConfig.namespace` when set), then writes it out as a runtime data file plus a `.d.ts` declaring its exact shape.
- * This is only needed when aggregating multiple files into a single `createT()` call — a directly imported single file already gets full type inference for free (docs/DESIGN.md 9.2/9.5章).
+ * `kiritan typegen` (docs/DESIGN.md chapter 9.6): merges every `runtime.sources` entry into one `ResourceModule` keyed by `"<namespace>.<key>"` (the namespace is derived from each file's path, or `ResourceSourceConfig.namespace` when set), then writes it out as a runtime data file plus a `.d.ts` declaring its exact shape.
+ * This is only needed when aggregating multiple files into a single `createT()` call — a directly imported single file already gets full type inference for free (docs/DESIGN.md chapters 9.2/9.5).
  * If two resources resolve to the same `"<namespace>.<key>"`, the later one (in `runtime.sources` discovery order) silently wins.
  */
 export async function typegen(

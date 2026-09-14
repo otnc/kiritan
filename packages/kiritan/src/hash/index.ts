@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 /**
- * A short, non-cryptographic-strength hex digest used only to detect whether a source segment has drifted since a translation was last verified against it (docs/DESIGN.md 8章).
+ * A short, non-cryptographic-strength hex digest used only to detect whether a source segment has drifted since a translation was last verified against it (docs/DESIGN.md chapter 8).
  */
 export function hashText(text: string): string {
   return createHash("sha1").update(text).digest("hex").slice(0, 16);

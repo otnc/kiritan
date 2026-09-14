@@ -216,7 +216,7 @@ export function resolveInterpolationVariableNames(
 }
 
 /**
- * `kiritan check` (docs/DESIGN.md 8章): finds missing/stale/machine-translated content across every source, plus `i18n-key-mismatch` for every `runtime.sources` strategy (`colocated`/`split`/`centralized`/`embedded`).
+ * `kiritan check` (docs/DESIGN.md chapter 8): finds missing/stale/machine-translated content across every source, plus `i18n-key-mismatch` for every `runtime.sources` strategy (`colocated`/`split`/`centralized`/`embedded`).
  * Stale detection compares a hash embedded at translation time (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) against the source's current hash; a file/entry with no hash yet (predating this feature, or hand-authored) is never flagged.
  * `inline` has no stale detection yet, since there's no per-block place to embed a hash without kiritan owning the base file's translated content.
  */

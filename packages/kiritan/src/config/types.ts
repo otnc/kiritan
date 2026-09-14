@@ -10,7 +10,7 @@ export interface LocalesConfig {
 export type NamingPreset = "dot" | "dash" | "prefix" | "folder";
 
 export interface NamingConfig {
-  /** Shorthand for a common `template` (docs/DESIGN.md 3.3章). */
+  /** Shorthand for a common `template` (docs/DESIGN.md chapter 3.3). */
   preset?: NamingPreset;
   /** Default: "{dir}/{base}.{locale}.{ext}" (overrides `preset` when set). */
   template?: string;
@@ -43,7 +43,7 @@ export interface BuildContext {
   defaultLocale: string;
 }
 
-/** docs/DESIGN.md 7章. */
+/** docs/DESIGN.md chapter 7. */
 export interface TranslateContext {
   text: string;
   from: string;
@@ -75,7 +75,7 @@ export interface TranslateConfig {
 export type ResourceStrategy =
   "colocated" | "split" | "centralized" | "embedded" | string;
 
-/** docs/DESIGN.md 9.1章. */
+/** docs/DESIGN.md chapter 9.1. */
 export interface ResourceSourceConfig {
   glob: string;
   strategy: ResourceStrategy;
@@ -89,7 +89,7 @@ export interface RuntimeConfig {
   sources?: ResourceSourceConfig[];
   fallbackLocale?: string;
   /**
-   * Basename `kiritan typegen` writes its output under (docs/DESIGN.md 9.6章). Default: "kiritan.runtime".
+   * Basename `kiritan typegen` writes its output under (docs/DESIGN.md chapter 9.6). Default: "kiritan.runtime".
    * Two files are written: "<typegenOutput>.mjs" (the merged runtime data) and "<typegenOutput>.d.ts" (its type declaration).
    */
   typegenOutput?: string;
@@ -104,7 +104,7 @@ export interface CheckConfig {
 
 export type StoreStrategy = "sidecar" | "inline" | "catalog" | string;
 
-/** docs/DESIGN.md 4章. Not implemented yet — declared for config type-checking. */
+/** docs/DESIGN.md chapter 4. Not implemented yet — declared for config type-checking. */
 export interface TranslatedContentFullText {
   kind: "full-text";
   text: string;
@@ -137,7 +137,7 @@ export interface TranslationStore {
   status(ctx: StoreContext, locale: string): Promise<StoreStatus>;
 }
 
-/** docs/DESIGN.md 6章. Not implemented yet — declared for config type-checking. */
+/** docs/DESIGN.md chapter 6. Not implemented yet — declared for config type-checking. */
 export interface ParsedDocument {
   raw: string;
 }
@@ -168,7 +168,7 @@ export interface PluginsConfig {
   renderers?: Record<string, Renderer>;
 }
 
-/** docs/DESIGN.md 6.1章. */
+/** docs/DESIGN.md chapter 6.1. */
 export interface SwitcherLink {
   locale: string;
   label: string;

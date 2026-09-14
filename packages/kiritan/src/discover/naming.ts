@@ -29,7 +29,7 @@ export interface NamingResolution {
   outputs?: Record<string, string>;
 }
 
-/** Resolves `preset`/`template` (docs/DESIGN.md 3.3章) into the final options used by `resolveOutputPath`. */
+/** Resolves `preset`/`template` (docs/DESIGN.md chapter 3.3) into the final options used by `resolveOutputPath`. */
 export function resolveNamingOptions(
   naming: NamingConfig | undefined
 ): NamingResolution {

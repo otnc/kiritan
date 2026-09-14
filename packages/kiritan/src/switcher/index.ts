@@ -3,7 +3,7 @@ import type { Root, RootContent } from "mdast";
 import type { SwitcherConfig, SwitcherLink } from "../config/types.js";
 import { parseMarkdown } from "../directive/parse.js";
 
-/** The default label: each locale's own autonym, via the standard `Intl.DisplayNames` (docs/DESIGN.md 6.1章). */
+/** The default label: each locale's own autonym, via the standard `Intl.DisplayNames` (docs/DESIGN.md chapter 6.1). */
 export function resolveLabel(
   locale: string,
   labels: Record<string, string | false> | undefined

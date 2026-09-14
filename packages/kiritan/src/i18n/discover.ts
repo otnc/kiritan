@@ -7,7 +7,7 @@ export interface DiscoveredResourceFile {
   path: string;
 }
 
-/** Expands every `ResourceSourceConfig.glob` (docs/DESIGN.md 9.1章). */
+/** Expands every `ResourceSourceConfig.glob` (docs/DESIGN.md chapter 9.1). */
 export async function discoverResourceFiles(
   sources: ResourceSourceConfig[],
   options: { cwd: string }
