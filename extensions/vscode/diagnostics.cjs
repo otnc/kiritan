@@ -15,18 +15,22 @@ const checkResultByWorkspace = new Map();
 
 /** @param {vscode.WorkspaceFolder} folder */
 async function runCheck(folder) {
+  // `kiritan check` exits 1 whenever any issue matches `check.failOn` — exactly the case where there's something worth showing, not a reason to discard stdout. Node's exec rejects on any non-zero exit regardless, but the rejection error still carries `.stdout`, so a real "issues found" run must be read from the caught error, not just the try block's happy path.
+  let stdout;
   try {
-    const { stdout } = await execAsync(
-      "npx --no-install kiritan check --json",
-      {
-        cwd: folder.uri.fsPath,
-        timeout: 15000,
-      }
-    );
-    const parsed = JSON.parse(stdout);
-    checkResultByWorkspace.set(folder.uri.fsPath, parsed);
+    ({ stdout } = await execAsync("npx --no-install kiritan check --json", {
+      cwd: folder.uri.fsPath,
+      timeout: 15000,
+    }));
+  } catch (error) {
+    stdout = /** @type {{ stdout?: string }} */ (error)?.stdout;
+  }
+  if (!stdout) return; // No local kiritan install, no *.kiritanconfig, or a real crash.
+
+  try {
+    checkResultByWorkspace.set(folder.uri.fsPath, JSON.parse(stdout));
   } catch {
-    // No local kiritan install, no *.kiritanconfig, a real check failure, or invalid JSON — any of these just means "nothing to report" here rather than a hard error; `kiritan check` itself (CLI/CI) is the source of truth for real failures.
+    // Invalid JSON — nothing to report.
   }
 }
 

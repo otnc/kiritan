@@ -8,7 +8,7 @@
 
 </div>
 
-[Kiritan](https://www.npmjs.com/package/kiritan) の `:::kiritan{...}` / `::kiritan{...}` ディレクティブブロックと `%{name}` 補間のMarkdown内シンタックスハイライト、および `*.kiritanconfig` ファイルのfiletype判定(docs/DESIGN.md 3.1/4.2/4.3/5章)。
+[Kiritan](https://www.npmjs.com/package/kiritan) の `:::kiritan{...}` / `::kiritan{...}` ディレクティブブロックのシンタックスハイライト・折りたたみ・catalogジャンプはVimとNeovimどちらでも、`*.kiritanconfig` ファイルのfiletype判定もどちらでも使えます。さらにNeovim限定で、VS Code拡張機能と同じ未定義`%{name}`検出・`missing`/`stale`/`machine`診断も使えます(docs/DESIGN.md 3.1/4.2/4.3/5/13章)。
 
 ## インストール
 
@@ -38,14 +38,11 @@ Plug 'otnc/kiritan', { 'rtp': 'extensions/vim' }
   ```vim
   autocmd FileType markdown nmap <buffer> gd <Plug>(kiritan-jump-to-catalog)
   ```
-
-## まだできないこと
-
-未定義の`%{name}`検出と、`missing`/`stale`/`machine`のインライン表示 — [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照 — は、まだ実装されていません。どちらも開いているドキュメント自身のテキストだけでなくプロジェクトの*解決済み*設定が必要で、VS Code拡張機能の`diagnostics.cjs`と同様です。最も自然な移植方法は、ワークスペース自身の`kiritan check --json`を同じように呼び出し、Neovim自身の診断/virtual text APIに配線する小さなLuaプラグインでしょう。
+- **未定義の`%{name}`警告と`missing`/`stale`/`machine`のインライン表示 — Neovim限定**(`nvim-0.10+`、`lua/kiritan/diagnostics.lua`。`plugin/kiritan.lua`が自動読み込み)。VS Code拡張機能と同じ方式 — ワークスペース自身にローカルインストールされた`kiritan check --json`を`npx --no-install`経由で実行し、その結果を実際の`vim.diagnostic`として開いているバッファに反映します。保存時に再取得し、編集時は(チェックを再実行せず、メモリ上のバッファテキストから)再反映します。素のVimには`vim.diagnostic`/`vim.system`に相当するものが無いためこの機能自体を移植できません — というより、Vim自身のランタイムローダーは`plugin/*.vim`しか見ず`.lua`は一切見ないため、Vim向けに明示的に無効化する必要すらありません。
 
 ## ローカルでのテスト
 
-`extensions/vim/src/syntax.test.ts` と `autoload.test.ts` は、`.vim` ソースへの単純な文字列アサーションではなく、実際にヘッドレスの `vim -u NONE` プロセスを起動して(`synID()`/`synIDattr()` で問い合わせる、あるいは `autoload/kiritan.vim` の関数を直接呼び出す)検証します — VS Code拡張機能のグラマーテストが実際のoniguruma/vscode-textmateエンジンを使っているのと同じ厳密さです。ルートの `npm test` から自動的に拾われ、`vim` が `PATH` に無い場合は失敗ではなくスキップされます。
+`extensions/vim/src/syntax.test.ts` と `autoload.test.ts` は、`.vim` ソースへの単純な文字列アサーションではなく、実際にヘッドレスの `vim -u NONE` プロセスを起動して(`synID()`/`synIDattr()` で問い合わせる、あるいは `autoload/kiritan.vim` の関数を直接呼び出す)検証します — VS Code拡張機能のグラマーテストが実際のoniguruma/vscode-textmateエンジンを使っているのと同じ厳密さです。`diagnostics.test.ts` は同様に、実際のヘッドレス `nvim --clean` に対して `lua/kiritan/diagnostics.lua` を検証します。ルートの `npm test` から自動的に拾われ、それぞれ `vim`/`nvim` が `PATH` に無い場合は失敗ではなくスキップされます。
 
 ## ライセンス
 

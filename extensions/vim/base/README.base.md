@@ -7,10 +7,10 @@
 </div>
 
 :::kiritan{locale=en}
-Syntax highlighting for [Kiritan](https://www.npmjs.com/package/kiritan)'s `:::kiritan{...}` / `::kiritan{...}` directive blocks and `%{name}` interpolation inside Markdown, plus filetype detection for `*.kiritanconfig` files (docs/DESIGN.md chapters 3.1/4.2/4.3/5).
+Syntax highlighting, folding, and catalog jump for [Kiritan](https://www.npmjs.com/package/kiritan)'s `:::kiritan{...}` / `::kiritan{...}` directive blocks in Vim and Neovim alike, plus filetype detection for `*.kiritanconfig` files — and, on Neovim specifically, the same undefined-`%{name}`/`missing`/`stale`/`machine` diagnostics as the VS Code extension (docs/DESIGN.md chapters 3.1/4.2/4.3/5/13).
 :::
 :::kiritan{locale=ja}
-[Kiritan](https://www.npmjs.com/package/kiritan) の `:::kiritan{...}` / `::kiritan{...}` ディレクティブブロックと `%{name}` 補間のMarkdown内シンタックスハイライト、および `*.kiritanconfig` ファイルのfiletype判定(docs/DESIGN.md 3.1/4.2/4.3/5章)。
+[Kiritan](https://www.npmjs.com/package/kiritan) の `:::kiritan{...}` / `::kiritan{...}` ディレクティブブロックのシンタックスハイライト・折りたたみ・catalogジャンプはVimとNeovimどちらでも、`*.kiritanconfig` ファイルのfiletype判定もどちらでも使えます。さらにNeovim限定で、VS Code拡張機能と同じ未定義`%{name}`検出・`missing`/`stale`/`machine`診断も使えます(docs/DESIGN.md 3.1/4.2/4.3/5/13章)。
 :::
 
 :::kiritan{locale=en}
@@ -62,6 +62,7 @@ To pin to a specific release instead of tracking `main`, use the `kiritan-vim@<v
   ```vim
   autocmd FileType markdown nmap <buffer> gd <Plug>(kiritan-jump-to-catalog)
   ```
+- **Undefined-`%{name}` warnings and inline `missing`/`stale`/`machine` indicators — Neovim only** (`nvim-0.10+`, `lua/kiritan/diagnostics.lua`, auto-loaded by `plugin/kiritan.lua`). Same approach as the VS Code extension: shells out to the workspace's own locally-installed `kiritan check --json` via `npx --no-install` and maps the results onto the open buffer as real `vim.diagnostic` entries, refreshed on save and (from the in-memory buffer text, without re-running the check) on edit. Plain Vim has no `vim.diagnostic`/`vim.system` equivalent to port this to, so it simply isn't loaded there at all — Vim's own runtime loader only globs `plugin/*.vim`, never `.lua`, so there's nothing to explicitly disable for Vim users.
 :::
 :::kiritan{locale=ja}
 - `:::kiritan{locale=en}` / `:::kiritan{locale=ja}` コンテナディレクティブ(と閉じの `:::`)、`:::kiritan{#usage-intro}` のようなcatalog戦略のセグメントid、`::kiritan{switcher}` leafディレクティブ、`%{name}` 補間(とそのエスケープ形式 `\%{name}`)をMarkdown内でハイライトします — `after/syntax/markdown.vim` を通じて組み込みの `markdown` 文法に重ねる形で、VS Code拡張機能のTextMate文法注入に相当する仕組みです。
@@ -74,20 +75,7 @@ To pin to a specific release instead of tracking `main`, use the `kiritan-vim@<v
   ```vim
   autocmd FileType markdown nmap <buffer> gd <Plug>(kiritan-jump-to-catalog)
   ```
-:::
-
-:::kiritan{locale=en}
-## What it doesn't do yet
-:::
-:::kiritan{locale=ja}
-## まだできないこと
-:::
-
-:::kiritan{locale=en}
-Undefined-`%{name}` detection and inline `missing`/`stale`/`machine` indicators — see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 — aren't implemented here yet. Both need the project's *resolved* config, not just the open document's own text, the same as the VS Code extension's `diagnostics.cjs`; the most natural port would be a small Lua plugin wired through Neovim's own diagnostic/virtual-text APIs, shelling out to the workspace's own `kiritan check --json` the same way.
-:::
-:::kiritan{locale=ja}
-未定義の`%{name}`検出と、`missing`/`stale`/`machine`のインライン表示 — [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照 — は、まだ実装されていません。どちらも開いているドキュメント自身のテキストだけでなくプロジェクトの*解決済み*設定が必要で、VS Code拡張機能の`diagnostics.cjs`と同様です。最も自然な移植方法は、ワークスペース自身の`kiritan check --json`を同じように呼び出し、Neovim自身の診断/virtual text APIに配線する小さなLuaプラグインでしょう。
+- **未定義の`%{name}`警告と`missing`/`stale`/`machine`のインライン表示 — Neovim限定**(`nvim-0.10+`、`lua/kiritan/diagnostics.lua`。`plugin/kiritan.lua`が自動読み込み)。VS Code拡張機能と同じ方式 — ワークスペース自身にローカルインストールされた`kiritan check --json`を`npx --no-install`経由で実行し、その結果を実際の`vim.diagnostic`として開いているバッファに反映します。保存時に再取得し、編集時は(チェックを再実行せず、メモリ上のバッファテキストから)再反映します。素のVimには`vim.diagnostic`/`vim.system`に相当するものが無いためこの機能自体を移植できません — というより、Vim自身のランタイムローダーは`plugin/*.vim`しか見ず`.lua`は一切見ないため、Vim向けに明示的に無効化する必要すらありません。
 :::
 
 :::kiritan{locale=en}
@@ -98,10 +86,10 @@ Undefined-`%{name}` detection and inline `missing`/`stale`/`machine` indicators 
 :::
 
 :::kiritan{locale=en}
-`extensions/vim/src/syntax.test.ts` and `autoload.test.ts` drive a real headless `vim -u NONE` process (queried via `synID()`/`synIDattr()`, and by calling the `autoload/kiritan.vim` functions directly) rather than just asserting against the `.vim` source — the same rigor the VS Code extension's grammar tests use with the real oniguruma/vscode-textmate engine. They're picked up automatically by the root `npm test`, and skip themselves (not a failure) if `vim` isn't on `PATH`.
+`extensions/vim/src/syntax.test.ts` and `autoload.test.ts` drive a real headless `vim -u NONE` process (queried via `synID()`/`synIDattr()`, and by calling the `autoload/kiritan.vim` functions directly) rather than just asserting against the `.vim` source — the same rigor the VS Code extension's grammar tests use with the real oniguruma/vscode-textmate engine. `diagnostics.test.ts` does the same for `lua/kiritan/diagnostics.lua` against a real headless `nvim --clean`. They're picked up automatically by the root `npm test`, and each skips itself (not a failure) if `vim`/`nvim` respectively isn't on `PATH`.
 :::
 :::kiritan{locale=ja}
-`extensions/vim/src/syntax.test.ts` と `autoload.test.ts` は、`.vim` ソースへの単純な文字列アサーションではなく、実際にヘッドレスの `vim -u NONE` プロセスを起動して(`synID()`/`synIDattr()` で問い合わせる、あるいは `autoload/kiritan.vim` の関数を直接呼び出す)検証します — VS Code拡張機能のグラマーテストが実際のoniguruma/vscode-textmateエンジンを使っているのと同じ厳密さです。ルートの `npm test` から自動的に拾われ、`vim` が `PATH` に無い場合は失敗ではなくスキップされます。
+`extensions/vim/src/syntax.test.ts` と `autoload.test.ts` は、`.vim` ソースへの単純な文字列アサーションではなく、実際にヘッドレスの `vim -u NONE` プロセスを起動して(`synID()`/`synIDattr()` で問い合わせる、あるいは `autoload/kiritan.vim` の関数を直接呼び出す)検証します — VS Code拡張機能のグラマーテストが実際のoniguruma/vscode-textmateエンジンを使っているのと同じ厳密さです。`diagnostics.test.ts` は同様に、実際のヘッドレス `nvim --clean` に対して `lua/kiritan/diagnostics.lua` を検証します。ルートの `npm test` から自動的に拾われ、それぞれ `vim`/`nvim` が `PATH` に無い場合は失敗ではなくスキップされます。
 :::
 
 :::kiritan{locale=en}
