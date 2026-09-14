@@ -1,7 +1,11 @@
 {
   "scopeName": "markdown.kiritan.injection",
   "injectionSelector": "L:text.html.markdown",
-  "patterns": [{ "include": "#kiritan-directive" }],
+  "patterns": [
+    { "include": "#kiritan-directive" },
+    { "include": "#kiritan-interpolation-escaped" },
+    { "include": "#kiritan-interpolation" }
+  ],
   "repository": {
     "kiritan-directive": {
       "patterns": [
@@ -41,6 +45,17 @@
     "kiritan-directive-close": {
       "match": "^(:{2,})\\s*$",
       "name": "punctuation.definition.directive.end.kiritan"
+    },
+    "kiritan-interpolation-escaped": {
+      "match": "\\\\%\\{[A-Za-z_][A-Za-z0-9_]*\\}",
+      "name": "constant.character.escape.kiritan"
+    },
+    "kiritan-interpolation": {
+      "match": "%\\{([A-Za-z_][A-Za-z0-9_]*)\\}",
+      "captures": {
+        "0": { "name": "variable.other.interpolation.kiritan" },
+        "1": { "name": "variable.parameter.kiritan" }
+      }
     },
     "kiritan-attributes": {
       "patterns": [

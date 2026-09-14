@@ -1,4 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src"]
+  "compilerOptions": {
+    // The extension's runtime code (extension.cjs and friends) is plain
+    // CommonJS JS, not TS, so tests importing it need TS to read it directly
+    // instead of demanding a .d.ts.
+    "allowJs": true
+  },
+  "include": ["src", "*.cjs"]
 }

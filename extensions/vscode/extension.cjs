@@ -1,7 +1,12 @@
-// *.kiritanconfig is registered as its own VS Code language (see package.json)
-// so that no icon theme mistakes it for a generic JavaScript file — but that
-// means the built-in TypeScript/JavaScript language service, which powers
-// real completion, never looks at it (it only activates for the "javascript"
+// Entry point wiring together this extension's real (non-declarative)
+// features: see markdown-folding.cjs (:::kiritan{...} folding) and
+// catalog-jump.cjs (jump to a catalog entry) for the Markdown-side features.
+//
+// The completion bridge below is the trickiest one: *.kiritanconfig is
+// registered as its own VS Code language (see package.json) so that no icon
+// theme mistakes it for a generic JavaScript file — but that means the
+// built-in TypeScript/JavaScript language service, which powers real
+// completion, never looks at it (it only activates for the "javascript"
 // language id). This bridges the gap: for every *.kiritanconfig document we
 // keep an in-memory, read-only "javascript" mirror behind a custom URI scheme
 // and forward completion requests to VS Code's own built-in provider for it.
@@ -12,6 +17,8 @@
 // ever edits it directly; a content-provider document is virtual/read-only
 // and never shows up that way.
 const vscode = require("vscode");
+const { provideFoldingRanges } = require("./markdown-folding.cjs");
+const { createDefinitionProvider } = require("./catalog-jump.cjs");
 
 const MIRROR_SCHEME = "kiritanconfig-mirror";
 
@@ -79,7 +86,14 @@ function activate(context) {
     ),
     vscode.workspace.onDidCloseTextDocument((doc) => {
       mirrorContent.delete(mirrorUriFor(doc).toString());
-    })
+    }),
+    vscode.languages.registerFoldingRangeProvider("markdown", {
+      provideFoldingRanges,
+    }),
+    vscode.languages.registerDefinitionProvider(
+      "markdown",
+      createDefinitionProvider()
+    )
   );
 }
 

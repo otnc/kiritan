@@ -9,10 +9,10 @@ export default tseslint.config(
   tseslint.configs.recommended,
   { languageOptions: { globals: globals.node } },
   {
-    // The VS Code extension host loads this as plain CommonJS (a real .cjs
-    // extension, so it works regardless of the package's "type": "module"),
-    // to sidestep any version uncertainty around ESM extension entry points.
-    files: ["extensions/vscode/extension.cjs"],
+    // The VS Code extension host loads these as plain CommonJS (real .cjs
+    // files, so they work regardless of the package's "type": "module"), to
+    // sidestep any version uncertainty around ESM extension entry points.
+    files: ["extensions/vscode/*.cjs"],
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
   eslintConfigPrettier
