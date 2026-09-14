@@ -1,6 +1,6 @@
 <div align=center>
 
-![kiritan-logo](../../assets/kiritan-logo.png)
+![kiritan-logo](https://raw.githubusercontent.com/otnc/kiritan/main/assets/kiritan-logo.png)
 
 # Kiritan (VS Code extension)
 
@@ -18,9 +18,9 @@ Colors the directive fences and their attributes distinctly from surrounding Mar
 - `:::kiritan{#usage-intro}` catalog-strategy segment ids.
 - `::kiritan{switcher}` leaf directive.
 
-This is a purely declarative TextMate grammar injection — no compiled extension code, no activation cost beyond what Markdown already has.
+This directive highlighting is a purely declarative TextMate grammar injection — no compiled extension code, no activation cost beyond what Markdown already has.
 
-It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen).
+It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting, bracket matching, and comment toggling despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen). Real code completion for these files (`extension.cjs`, this extension's only compiled code) works by mirroring the file's content into an in-memory `javascript` document and forwarding completion requests to VS Code's own built-in JavaScript/TypeScript language service — this is what makes the icon and full IntelliSense compatible, since giving the file the real `javascript` language id directly would let vscode-icons' own language-based rule override the custom icon.
 
 ## What it doesn't do yet
 

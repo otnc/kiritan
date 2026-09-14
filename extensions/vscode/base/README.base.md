@@ -1,6 +1,6 @@
 <div align=center>
 
-![kiritan-logo](../../assets/kiritan-logo.png)
+![kiritan-logo](https://raw.githubusercontent.com/otnc/kiritan/main/assets/kiritan-logo.png)
 
 # Kiritan (VS Code extension)
 
@@ -32,18 +32,18 @@ Colors the directive fences and their attributes distinctly from surrounding Mar
 - `:::kiritan{#usage-intro}` catalog-strategy segment ids.
 - `::kiritan{switcher}` leaf directive.
 
-This is a purely declarative TextMate grammar injection — no compiled extension code, no activation cost beyond what Markdown already has.
+This directive highlighting is a purely declarative TextMate grammar injection — no compiled extension code, no activation cost beyond what Markdown already has.
 
-It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen).
+It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting, bracket matching, and comment toggling despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen). Real code completion for these files (`extension.cjs`, this extension's only compiled code) works by mirroring the file's content into an in-memory `javascript` document and forwarding completion requests to VS Code's own built-in JavaScript/TypeScript language service — this is what makes the icon and full IntelliSense compatible, since giving the file the real `javascript` language id directly would let vscode-icons' own language-based rule override the custom icon.
 :::
 :::kiritan{locale=ja}
 - `:::kiritan{locale=en}` / `:::kiritan{locale=ja}` コンテナディレクティブと、閉じの `:::`。
 - `:::kiritan{#usage-intro}` のようなcatalog戦略のセグメントid。
 - `::kiritan{switcher}` leafディレクティブ。
 
-コンパイル済みの拡張機能コードは無い、宣言的なTextMate文法の注入のみです。Markdownが元々持っている以上のアクティベーションコストはありません。
+このディレクティブハイライトはコンパイル済みの拡張機能コード無しの、宣言的なTextMate文法の注入のみです。Markdownが元々持っている以上のアクティベーションコストはありません。
 
-あわせて `*.kiritanconfig`(例: `.kiritanconfig`、`dev.kiritanconfig`、`local.kiritanconfig`)を独自言語として登録しており、実在する拡張子を持たないにもかかわらずJavaScript相当のシンタックスハイライトが効きます。副次効果として、どのアイコンテーマでもKiritan固有のファイルアイコンが表示されます — 見たことの無いファイル名に対する具体的なルールを持つテーマは存在しないためです(この命名を選んだ理由は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。
+あわせて `*.kiritanconfig`(例: `.kiritanconfig`、`dev.kiritanconfig`、`local.kiritanconfig`)を独自言語として登録しており、実在する拡張子を持たないにもかかわらずJavaScript相当のシンタックスハイライト・括弧の対応・コメントのトグルが効きます。副次効果として、どのアイコンテーマでもKiritan固有のファイルアイコンが表示されます — 見たことの無いファイル名に対する具体的なルールを持つテーマは存在しないためです(この命名を選んだ理由は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。これらのファイルの本物のコード補完(この拡張機能で唯一のコンパイル済みコードである `extension.cjs`)は、ファイルの内容をメモリ上の `javascript` ドキュメントに複製し、補完リクエストをVS Code組み込みのJavaScript/TypeScript言語サービスへ転送することで実現しています — ファイルに実際に `javascript` 言語IDを与えてしまうと、vscode-icons自身の言語ベースのルールがカスタムアイコンを上書きしてしまうため、アイコンとフルIntelliSenseを両立させるにはこの方式が必要でした。
 :::
 
 :::kiritan{locale=en}
