@@ -1,6 +1,6 @@
 {
   "name": "kiritan",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "In addition to standard scopes, an internationalization (i18n) utility for Markdown and other plain text documents / 通常の範囲に加え、マークダウンやその他平文ドキュメントのための国際化(i18n)ユーティリティ",
   "keywords": [
     "markdown",
