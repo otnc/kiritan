@@ -5,6 +5,8 @@ coverage/
 *.tsbuildinfo
 *.log
 *.vsix
+# Copied from assets/kiritan.png by extensions/vscode's own "build:icon" script — vsce needs the icon to be a real file inside the extension's own directory tree, not an external URL or a path outside it, so it can't just reference assets/ directly.
+extensions/vscode/images/
 .DS_Store
 .env
 .env.*
