@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version bump for kiritan-vscode: patch/minor/major/prerelease, or an explicit version (e.g. 0.2.0)'
+        description: 'Version bump for the VS Code extension (extensions/vscode): patch/minor/major/prerelease, or an explicit version (e.g. 0.2.0)'
         required: true
         default: patch
 
@@ -36,12 +36,13 @@ jobs:
 
       - name: Bump version
         id: bump
-        working-directory: packages/vscode
+        working-directory: extensions/vscode
         run: |
           OLD="$(node -p "require('./package.json').version")"
           npm version "${{ inputs.version }}" --no-git-tag-version --allow-same-version >/dev/null
           NEW="$(node -p "require('./package.json').version")"
           echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          # Tagged as "kiritan-vscode" (not the package.json "name", which is just "kiritan") so this never collides with the CLI package's own "kiritan@<version>" release tags from release.yml.
           echo "tag=kiritan-vscode@$NEW" >> "$GITHUB_OUTPUT"
           if [ "$OLD" = "$NEW" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
@@ -56,15 +57,16 @@ jobs:
       - name: Regenerate generated docs
         run: node packages/kiritan/dist/cli.mjs build
 
+      # Runs via the package.json script (not `npx vsce` directly) so `vsce` resolves from the workspace root's node_modules — extensions/vscode lives outside packages/ and is not an npm workspace member, so it has no node_modules of its own for npx to find.
       - name: Package the extension
-        working-directory: packages/vscode
-        run: npx vsce package --no-dependencies
+        working-directory: extensions/vscode
+        run: npm run package
 
       # Only runs if a Marketplace publisher token has been configured as a repository secret. Without it, the workflow still tags the release and attaches the .vsix as a downloadable asset — just not published to the Marketplace automatically.
       - name: Publish to the VS Code Marketplace
         if: ${{ env.VSCE_PAT != '' }}
-        working-directory: packages/vscode
-        run: npx vsce publish --no-dependencies --packagePath *.vsix
+        working-directory: extensions/vscode
+        run: npm run publish -- --packagePath *.vsix
 
       - name: Commit, tag and push
         run: |
@@ -85,4 +87,4 @@ jobs:
             --title "${{ steps.bump.outputs.tag }}" \
             --generate-notes \
             ${{ steps.bump.outputs.prerelease == 'true' && '--prerelease' || '' }} \
-            packages/vscode/*.vsix
+            extensions/vscode/*.vsix

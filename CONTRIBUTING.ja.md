@@ -25,7 +25,7 @@ npm install
 | --- | --- | --- |
 | `kiritan` | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | `@kiritan/runtime` | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
-| `kiritan-vscode` | `packages/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト) |
+| `otoneko1102.kiritan` | `extensions/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト)。npm workspaceのメンバーではない — 詳細は後述の「リリース」を参照。 |
 
 上記すべての設計と理由は [docs/DESIGN.md](./docs/DESIGN.md) にまとまっています。構造を変更する前に読んでください。
 
@@ -91,7 +91,9 @@ trusted publishing は npmjs.com 上でパッケージごとに一度だけ設�
 
 `kiritan` は `@kiritan/runtime` に依存している(現在 `^0.1.0`)ため、runtimeのminor/majorバージョンを上げても Kiritan 側の依存範囲は自動更新されません。これは意図的な仕様で、runtime単体のリリースが Kiritan の `package.json` に触れることが無いようにするためです。該当する場合は別途手動でPRを出してください。
 
-`kiritan-vscode`(VS Code拡張機能)はnpmに公開しないため、代わりに専用の `release-vscode.yml` を持っています。入力は `version` のみで、`vsce` で `.vsix` をパッケージし、タグを打ってGitHub Releaseを作成し(`.vsix` を添付)、`VSCE_PAT` リポジトリシークレットが設定されている場合のみVS Code Marketplaceへの公開も行います(Marketplace公開はまだ未設定のため、現状はダウンロード可能な `.vsix` を生成するだけです)。
+VS Code拡張機能(`extensions/vscode`)はnpmに公開しないため、代わりに専用の `release-vscode.yml` を持っています。入力は `version` のみで、`vsce` で `.vsix` をパッケージし、`kiritan-vscode@<version>` としてタグを打ってGitHub Releaseを作成し(`.vsix` を添付)、`VSCE_PAT` リポジトリシークレットが設定されている場合のみVS Code Marketplaceへの公開も行います(Marketplace公開はまだ未設定のため、現状はダウンロード可能な `.vsix` を生成するだけです)。
+
+`extensions/vscode` は `packages/` の外にあるため、ルートの `"workspaces": ["packages/*"]` には拾われません(`package.json` の `"name"` が `"kiritan"` のため、同名のCLIパッケージと衝突してしまいます — npm workspaceは同名パッケージを2つ持てません)。ビルド・テストに必要なツール(`@vscode/vsce`・`vscode-textmate`・`vscode-oniguruma`)はルートの `package.json` の `devDependencies` に置いており、`tsc`/`vitest`/`vsce` を実行する際にNode.jsの通常の解決方法で見つかります — このパッケージ用に別途 `npm install` を行う必要はありません。
 
 ## ライセンス
 

@@ -59,7 +59,7 @@ Folding, jumping between a `:::kiritan{#<id>}` block and its catalog file, and i
 
 ```sh
 npm install
-npm run package   # packages/vscode/*.vsix
+npm run package   # extensions/vscode/*.vsix
 ```
 
 :::kiritan{locale=en}

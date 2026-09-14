@@ -1,9 +1,9 @@
 {
-  "name": "kiritan-vscode",
+  "name": "kiritan",
   "displayName": "Kiritan",
   "description": "Syntax highlighting for Kiritan's :::kiritan{...} directive blocks in Markdown",
   "version": "0.1.0",
-  "publisher": "otoneko",
+  "publisher": "otoneko1102",
   "type": "module",
   "license": "WTFPL",
   "author": "otoneko.",
@@ -14,7 +14,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/otnc/kiritan.git",
-    "directory": "packages/vscode"
+    "directory": "extensions/vscode"
   },
   "engines": {
     "vscode": "^1.85.0",
@@ -42,11 +42,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "package": "vsce package --no-dependencies"
-  },
-  "devDependencies": {
-    "@vscode/vsce": "^3.9.2",
-    "vscode-oniguruma": "^2.0.1",
-    "vscode-textmate": "^9.3.2"
+    "package": "vsce package --no-dependencies",
+    "publish": "vsce publish --no-dependencies"
   }
 }

@@ -22,7 +22,7 @@ Folding, jumping between a `:::kiritan{#<id>}` block and its catalog file, and i
 
 ```sh
 npm install
-npm run package   # packages/vscode/*.vsix
+npm run package   # extensions/vscode/*.vsix
 ```
 
 Install the resulting `.vsix` via VS Code's "Install from VSIX..." command, or press F5 in this directory to launch an Extension Development Host for live testing.
