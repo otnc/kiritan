@@ -6,6 +6,7 @@ import type {
   BuildContext,
   KiritanConfig,
   SourceConfig,
+  StoreContext,
   SwitcherConfig,
 } from "../config/types.js";
 import { resolveTargetLocales } from "../config/locale.js";
@@ -182,6 +183,69 @@ export async function build(
           resolveCatalogText: catalogData
             ? (id) => catalogData[id]?.text
             : undefined,
+          renderSwitcher: renderSwitcherFor(locale, outPath),
+        });
+        await writeOutput(cwd, outPath, finalizeTree(rendered, config, locale));
+        written.push(outPath);
+      }
+      continue;
+    }
+
+    const store = config.plugins?.stores?.[file.source.strategy];
+    if (store) {
+      const baseTree = ensureSwitcherMarker(
+        parseMarkdown(sourceText),
+        switcherConfig
+      );
+      const ctx: StoreContext = { source: file.source, filePath: file.path };
+
+      for (const locale of targetLocales) {
+        const outPath = outputPathFor(locale);
+
+        if (locale === config.locales.default) {
+          const rendered = renderForLocale(baseTree, {
+            targetLocale: locale,
+            defaultLocale: config.locales.default,
+            renderSwitcher: renderSwitcherFor(locale, outPath),
+          });
+          await writeOutput(
+            cwd,
+            outPath,
+            finalizeTree(rendered, config, locale)
+          );
+          written.push(outPath);
+          continue;
+        }
+
+        const content = await store.read(ctx, locale);
+
+        // A "full-text" result replaces the whole document, the same way a sidecar file's own content does — it's parsed fresh rather than layered onto the base tree.
+        if (content?.kind === "full-text") {
+          const tree = ensureSwitcherMarker(
+            parseMarkdown(content.text),
+            switcherConfig
+          );
+          const rendered = renderForLocale(tree, {
+            targetLocale: locale,
+            defaultLocale: config.locales.default,
+            renderSwitcher: renderSwitcherFor(locale, outPath),
+          });
+          await writeOutput(
+            cwd,
+            outPath,
+            finalizeTree(rendered, config, locale)
+          );
+          written.push(outPath);
+          continue;
+        }
+
+        // A "segments" result (or nothing stored yet) is treated catalog-style — renderForLocale's own per-id fallback handles a missing id or a null/undefined content.
+        const segments =
+          content?.kind === "segments" ? content.segments : undefined;
+        const rendered = renderForLocale(baseTree, {
+          targetLocale: locale,
+          defaultLocale: config.locales.default,
+          resolveCatalogText: segments ? (id) => segments[id]?.text : undefined,
           renderSwitcher: renderSwitcherFor(locale, outPath),
         });
         await writeOutput(cwd, outPath, finalizeTree(rendered, config, locale));

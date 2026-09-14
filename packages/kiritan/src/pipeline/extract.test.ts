@@ -2,8 +2,37 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { KiritanConfig } from "../config/types.js";
+import type {
+  KiritanConfig,
+  TranslatedContent,
+  TranslationStore,
+} from "../config/types.js";
 import { extract } from "./extract.js";
+
+/** A minimal in-memory `TranslationStore` fake, keyed by locale. `writable: false` omits `write` entirely (a read-only store). */
+function createMemoryStore(
+  options: {
+    initial?: Record<string, TranslatedContent>;
+    writable?: boolean;
+  } = {}
+): { store: TranslationStore; data: Map<string, TranslatedContent> } {
+  const data = new Map(Object.entries(options.initial ?? {}));
+  const store: TranslationStore = {
+    id: "memory",
+    async read(_ctx, locale) {
+      return data.get(locale) ?? null;
+    },
+    async status(_ctx, locale) {
+      return data.has(locale) ? "complete" : "missing";
+    },
+  };
+  if (options.writable !== false) {
+    store.write = async (_ctx, locale, content) => {
+      data.set(locale, content);
+    };
+  }
+  return { store, data };
+}
 
 let cwd: string;
 
@@ -127,6 +156,123 @@ describe("extract (locale option)", () => {
     });
     await expect(extract(config, { cwd, locale: "de" })).rejects.toThrow(
       /locale "de" is not in locales\.list/
+    );
+  });
+});
+
+describe("extract (plugins.stores)", () => {
+  it("scaffolds an empty entry for a new id in a segments store", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "hello", ":::"].join("\n"),
+      "utf8"
+    );
+    const { store, data } = createMemoryStore();
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await extract(config, { cwd });
+    expect(result.changes).toEqual([
+      {
+        source: "README.base.md",
+        locale: "ja",
+        detail: 'added id "intro" via plugin store "memory"',
+      },
+    ]);
+    expect(data.get("ja")).toEqual({
+      kind: "segments",
+      segments: { intro: { text: "" } },
+    });
+  });
+
+  it("never touches an existing entry, translated or not", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "hello", ":::"].join("\n"),
+      "utf8"
+    );
+    const { store, data } = createMemoryStore({
+      initial: {
+        ja: {
+          kind: "segments",
+          segments: { intro: { text: "既存の訳文", machine: true } },
+        },
+      },
+    });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await extract(config, { cwd });
+    expect(result.changes).toEqual([]);
+    expect(data.get("ja")).toEqual({
+      kind: "segments",
+      segments: { intro: { text: "既存の訳文", machine: true } },
+    });
+  });
+
+  it("reports an orphaned id without removing it", async () => {
+    await writeFile(join(cwd, "README.base.md"), "no directives here", "utf8");
+    const { store } = createMemoryStore({
+      initial: {
+        ja: { kind: "segments", segments: { gone: { text: "古い訳文" } } },
+      },
+    });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await extract(config, { cwd });
+    expect(result.changes).toEqual([
+      {
+        source: "README.base.md",
+        locale: "ja",
+        detail:
+          'id "gone" is orphaned (no longer in the base file) in plugin store "memory"',
+      },
+    ]);
+  });
+
+  it("skips a full-text store — there are no catalog ids to scaffold", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "hello", ":::"].join("\n"),
+      "utf8"
+    );
+    const { store } = createMemoryStore({
+      initial: { ja: { kind: "full-text", text: "翻訳済み" } },
+    });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await extract(config, { cwd });
+    expect(result.changes).toEqual([]);
+  });
+
+  it("does nothing for a read-only store (no write)", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "hello", ":::"].join("\n"),
+      "utf8"
+    );
+    const { store } = createMemoryStore({ writable: false });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await extract(config, { cwd });
+    expect(result.changes).toEqual([]);
+  });
+
+  it("throws for a strategy with no matching plugins.stores entry", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "unregistered" }],
+    });
+    await expect(extract(config, { cwd })).rejects.toThrow(
+      /the "unregistered" strategy isn't implemented yet/
     );
   });
 });

@@ -2,11 +2,30 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { KiritanConfig } from "../config/types.js";
+import type {
+  KiritanConfig,
+  StoreStatus,
+  TranslationStore,
+} from "../config/types.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { collectCatalogSegments } from "../directive/render.js";
 import { hashText, withHashComment } from "../hash/index.js";
 import { check, resolveInterpolationVariableNames } from "./check.js";
+
+/** A `TranslationStore` fake reporting a fixed status per locale (`"complete"` if unlisted). */
+function createStatusStore(
+  statuses: Record<string, StoreStatus>
+): TranslationStore {
+  return {
+    id: "memory",
+    async read() {
+      return null;
+    },
+    async status(_ctx, locale) {
+      return statuses[locale] ?? "complete";
+    },
+  };
+}
 
 /** Matches how `checkCatalog` hashes a segment, so tests can assert against a real hash without guessing the exact stringified form. */
 function catalogSegmentHash(baseMarkdown: string, id: string): string {
@@ -459,6 +478,66 @@ describe("check (locale option)", () => {
     const config = baseConfig();
     await expect(check(config, { cwd, locale: "de" })).rejects.toThrow(
       /locale "de" is not in locales\.list/
+    );
+  });
+});
+
+describe("check (plugins.stores)", () => {
+  it("maps missing/partial to a missing issue and stale to a stale issue", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const store = createStatusStore({ ja: "missing" });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "missing",
+        source: "README.base.md",
+        locale: "ja",
+        detail: 'plugin store "memory" reports no translation',
+      },
+    ]);
+    expect(result.failed).toBe(true);
+  });
+
+  it("reports no issue once the store reports complete", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const store = createStatusStore({ ja: "complete" });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([]);
+  });
+
+  it("reports a stale issue when the store reports stale", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const store = createStatusStore({ ja: "stale" });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+    const result = await check(config, { cwd });
+    expect(result.issues).toEqual([
+      {
+        kind: "stale",
+        source: "README.base.md",
+        locale: "ja",
+        detail: 'plugin store "memory" reports a stale translation',
+      },
+    ]);
+  });
+
+  it("throws for a strategy with no matching plugins.stores entry", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "unregistered" }],
+    });
+    await expect(check(config, { cwd })).rejects.toThrow(
+      /the "unregistered" strategy isn't implemented yet/
     );
   });
 });

@@ -4,7 +4,9 @@ import { resolveTargetLocales } from "../config/locale.js";
 import type {
   KiritanConfig,
   SourceConfig,
+  StoreContext,
   TranslateContext,
+  TranslationStore,
 } from "../config/types.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { collectCatalogSegments } from "../directive/render.js";
@@ -177,6 +179,90 @@ async function translateCatalog(
 }
 
 /**
+ * A plugin store is a black box for staleness — rather than recomputing it, this trusts `store.status()` outright (matches `checkPluginStore` in `pipeline/check.ts`) and skips entirely once it reports `"complete"`. A `"full-text"` existing value (or nothing stored yet) is translated as one whole-document middleware call, mirroring `translateSidecar`. A `"segments"` value only has its still-empty ids filled in — per-id staleness isn't detectable through the generic `TranslationStore` contract, so a `"stale"`/`"partial"` status where every id already has text is a documented no-op. Does nothing if the store has no `write` (a read-only store, e.g. one backed by an external TMS kiritan can't push to).
+ */
+async function translatePluginStore(
+  file: DiscoveredFile,
+  config: KiritanConfig,
+  cwd: string,
+  translated: TranslatedEntry[],
+  allowedLocales: string[],
+  store: TranslationStore
+): Promise<void> {
+  const middlewares = middlewaresFor(file.source, config);
+  if (middlewares.length === 0) return;
+  if (!store.write) return;
+
+  const sourceText = await readFile(join(cwd, file.path), "utf8");
+  const ctx: StoreContext = { source: file.source, filePath: file.path };
+
+  for (const locale of allowedLocales) {
+    if (locale === config.locales.default) continue;
+    const status = await store.status(ctx, locale);
+    if (status === "complete") continue;
+
+    const existing = await store.read(ctx, locale);
+
+    if (existing == null || existing.kind === "full-text") {
+      const [result] = await runTranslateMiddlewares(middlewares, [
+        {
+          text: sourceText,
+          from: config.locales.default,
+          to: locale,
+          source: file.source,
+        },
+      ]);
+      if (result == null) continue;
+      await store.write(ctx, locale, {
+        kind: "full-text",
+        text: result,
+        machine: true,
+      });
+      translated.push({
+        source: file.path,
+        locale,
+        detail: `wrote via plugin store "${store.id}"`,
+      });
+      continue;
+    }
+
+    const segments = collectCatalogSegments(parseMarkdown(sourceText));
+    const segmentTextFor = (id: string) =>
+      stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] });
+    const idsNeedingTranslation = [...segments.keys()].filter(
+      (id) => !existing.segments[id]?.text
+    );
+    if (idsNeedingTranslation.length === 0) continue;
+
+    const contexts: TranslateContext[] = idsNeedingTranslation.map((id) => ({
+      text: segmentTextFor(id),
+      from: config.locales.default,
+      to: locale,
+      source: file.source,
+      segmentId: id,
+    }));
+    const results = await runTranslateMiddlewares(middlewares, contexts);
+
+    const merged = { ...existing.segments };
+    let changed = false;
+    for (const [index, id] of idsNeedingTranslation.entries()) {
+      const result = results[index];
+      if (result == null) continue;
+      merged[id] = { text: result, machine: true };
+      changed = true;
+      translated.push({
+        source: file.path,
+        locale,
+        detail: `catalog id "${id}" via plugin store "${store.id}"`,
+      });
+    }
+    if (changed) {
+      await store.write(ctx, locale, { kind: "segments", segments: merged });
+    }
+  }
+}
+
+/**
  * `kiritan translate` (docs/DESIGN.md chapter 7): fills in missing translations, and re-translates stale ones, via `translate.middlewares`.
  * A translation only counts as stale once it carries a hash (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) that no longer matches the current source — one written by hand, with no hash yet, is left untouched.
  * Only runs for sources that actually configure middlewares — the default `middlewares: []` means nothing happens.
@@ -203,14 +289,31 @@ export async function translate(
       await translateCatalog(file, config, cwd, translated, targetLocales);
       continue;
     }
-    if (
-      file.source.strategy === "inline" &&
-      middlewaresFor(file.source, config).length > 0
-    ) {
-      throw new Error(
-        `kiritan: "${file.path}" configures translate middlewares, but the "inline" strategy doesn't support auto-translation yet`
-      );
+    if (file.source.strategy === "inline") {
+      if (middlewaresFor(file.source, config).length > 0) {
+        throw new Error(
+          `kiritan: "${file.path}" configures translate middlewares, but the "inline" strategy doesn't support auto-translation yet`
+        );
+      }
+      continue;
     }
+
+    const store = config.plugins?.stores?.[file.source.strategy];
+    if (store) {
+      await translatePluginStore(
+        file,
+        config,
+        cwd,
+        translated,
+        targetLocales,
+        store
+      );
+      continue;
+    }
+
+    throw new Error(
+      `kiritan: the "${file.source.strategy}" strategy isn't implemented yet`
+    );
   }
 
   return { translated };
