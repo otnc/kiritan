@@ -2,8 +2,31 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { KiritanConfig } from "../config/types.js";
+import type {
+  KiritanConfig,
+  TranslatedContent,
+  TranslationStore,
+} from "../config/types.js";
 import { build } from "./build.js";
+
+/** A minimal in-memory `TranslationStore` fake, keyed by locale. */
+function createMemoryStore(
+  initial: Record<string, TranslatedContent> = {}
+): TranslationStore {
+  const data = new Map(Object.entries(initial));
+  return {
+    id: "memory",
+    async read(_ctx, locale) {
+      return data.get(locale) ?? null;
+    },
+    async write(_ctx, locale, content) {
+      data.set(locale, content);
+    },
+    async status(_ctx, locale) {
+      return data.has(locale) ? "complete" : "missing";
+    },
+  };
+}
 
 let cwd: string;
 
@@ -221,5 +244,74 @@ describe("build (catalog strategy)", () => {
     const ja = await readFile(join(cwd, "README.ja.md"), "utf8");
     expect(ja).toContain("kiritan:untranslated (source: en)");
     expect(ja).toContain("Original text.");
+  });
+});
+
+describe("build (plugins.stores)", () => {
+  it("renders a full-text store's translation as its own document", async () => {
+    await writeFile(join(cwd, "README.base.md"), "Original text.", "utf8");
+    const store = createMemoryStore({
+      ja: { kind: "full-text", text: "翻訳済みテキスト。" },
+    });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+
+    const result = await build(config, { cwd });
+    expect(result.written.sort()).toEqual(["README.ja.md", "README.md"]);
+    const ja = await readFile(join(cwd, "README.ja.md"), "utf8");
+    expect(ja).toContain("翻訳済みテキスト。");
+    expect(ja).not.toContain("Original text.");
+  });
+
+  it("resolves each #id from a segments store, falling back to the source text when missing", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "Original text.", ":::"].join("\n"),
+      "utf8"
+    );
+    const store = createMemoryStore({
+      ja: {
+        kind: "segments",
+        segments: { intro: { text: "翻訳済みテキスト。" } },
+      },
+    });
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: store } },
+    });
+
+    await build(config, { cwd });
+    const ja = await readFile(join(cwd, "README.ja.md"), "utf8");
+    expect(ja).toContain("翻訳済みテキスト。");
+    expect(ja).not.toContain("Original text.");
+  });
+
+  it("falls back to the source text with a marker when nothing is stored yet", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "Original text.", ":::"].join("\n"),
+      "utf8"
+    );
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "memory" }],
+      plugins: { stores: { memory: createMemoryStore() } },
+    });
+
+    await build(config, { cwd });
+    const ja = await readFile(join(cwd, "README.ja.md"), "utf8");
+    expect(ja).toContain("kiritan:untranslated (source: en)");
+    expect(ja).toContain("Original text.");
+  });
+
+  it("throws for a strategy with no matching plugins.stores entry", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "unregistered" }],
+    });
+    await expect(build(config, { cwd })).rejects.toThrow(
+      /the "unregistered" strategy isn't implemented yet/
+    );
   });
 });

@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveTargetLocales } from "../config/locale.js";
-import type { KiritanConfig } from "../config/types.js";
+import type {
+  KiritanConfig,
+  StoreContext,
+  TranslationStore,
+} from "../config/types.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import {
   collectCatalogIds,
@@ -178,6 +182,38 @@ async function checkCatalog(
   }
 }
 
+/**
+ * A plugin store is a black box — rather than trying to recompute staleness itself the way `checkSidecar`/`checkCatalog` do for the built-in formats they own, this trusts `store.status()` outright. `"missing"`/`"partial"` both surface as a `"missing"` issue (there's no dedicated `CheckIssueKind` for "some but not all of it"); `"complete"` reports nothing. Unlike `checkCatalog`, this never reports a `"machine"` issue — reviewing machine-translated content is a `catalog`-specific concept for now, since the generic `TranslationStore` contract has no equivalent of `CatalogEntry.machine` without also calling `read()`.
+ */
+async function checkPluginStore(
+  file: DiscoveredFile,
+  config: KiritanConfig,
+  store: TranslationStore,
+  issues: CheckIssue[],
+  targetLocales: string[]
+): Promise<void> {
+  const ctx: StoreContext = { source: file.source, filePath: file.path };
+  for (const locale of targetLocales) {
+    if (locale === config.locales.default) continue;
+    const status = await store.status(ctx, locale);
+    if (status === "missing" || status === "partial") {
+      issues.push({
+        kind: "missing",
+        source: file.path,
+        locale,
+        detail: `plugin store "${store.id}" reports no translation`,
+      });
+    } else if (status === "stale") {
+      issues.push({
+        kind: "stale",
+        source: file.path,
+        locale,
+        detail: `plugin store "${store.id}" reports a stale translation`,
+      });
+    }
+  }
+}
+
 async function checkRuntimeResources(
   config: KiritanConfig,
   cwd: string,
@@ -222,6 +258,7 @@ export function resolveInterpolationVariableNames(
  * `kiritan check` (docs/DESIGN.md chapter 8): finds missing/stale/machine-translated content across every source, plus `i18n-key-mismatch` for every `runtime.sources` strategy (`colocated`/`split`/`centralized`/`embedded`).
  * Stale detection compares a hash embedded at translation time (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) against the source's current hash; a file/entry with no hash yet (predating this feature, or hand-authored) is never flagged.
  * `inline` has no stale detection yet, since there's no per-block place to embed a hash without kiritan owning the base file's translated content.
+ * A source whose `strategy` matches a `plugins.stores` entry is checked via that store's own `status()` instead (see `checkPluginStore`); one matching neither a built-in strategy nor a registered store throws.
  */
 export async function check(
   config: KiritanConfig,
@@ -252,6 +289,16 @@ export async function check(
       await checkCatalog(file, sourceText, config, cwd, issues, targetLocales);
       continue;
     }
+
+    const store = config.plugins?.stores?.[file.source.strategy];
+    if (store) {
+      await checkPluginStore(file, config, store, issues, targetLocales);
+      continue;
+    }
+
+    throw new Error(
+      `kiritan: the "${file.source.strategy}" strategy isn't implemented yet`
+    );
   }
 
   await checkRuntimeResources(config, cwd, issues, targetLocales);
