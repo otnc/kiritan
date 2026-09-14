@@ -1,0 +1,51 @@
+name: release-vim
+
+# extensions/vim is a plain-Vimscript plugin with nothing to build or publish anywhere — users install it directly from this repo via a plugin manager's `rtp` option (see its README). This workflow only tags a commit and creates a GitHub Release for it, so a user who wants to pin to a specific version can, rather than tracking main.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to tag as kiritan-vim@<version> (e.g. 0.1.0) — no package.json to bump here, so give the exact version"
+        required: true
+
+permissions:
+  contents: write # create the tag and the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # So extensions/vim's tests actually run (not just skip) before tagging.
+      - run: sudo apt-get update && sudo apt-get install -y vim
+      - run: npm ci
+      - run: npm run ci
+      - run: npm run typecheck
+      - run: npm run test
+
+      - name: Tag and push
+        id: tag
+        run: |
+          TAG="kiritan-vim@${{ inputs.version }}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --title "${{ steps.tag.outputs.tag }}" \
+            --generate-notes

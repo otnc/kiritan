@@ -99,6 +99,8 @@ The VS Code extension (`extensions/vscode`) has its own `release-vscode.yml` ins
 
 `extensions/vscode` lives outside `packages/` and so is never picked up by the root `"workspaces": ["packages/*"]` glob — its `package.json` `"name"` is `"kiritan"`, which would otherwise collide with the CLI package of the same name (an npm workspace can't have two packages sharing a name). Its build/test tooling (`@vscode/vsce`, `vscode-textmate`, `vscode-oniguruma`) lives in the root `package.json`'s `devDependencies` instead, resolved the normal Node.js way when `tsc`/`vitest`/`vsce` run against it — no separate `npm install` step is needed for it.
 
+The Vim/Neovim plugin (`extensions/vim`) has nothing to build or publish — users install it directly from this repo via a plugin manager's `rtp` option, so `release-vim.yml` only runs the test suite and then tags the commit as `kiritan-vim@<version>` and creates a GitHub Release (no attached asset), for anyone who wants to pin to a specific version instead of tracking `main`. There's no `package.json` here to bump, so its `version` input has to be the exact version string, not a semver keyword like `release.yml`'s.
+
 ## License
 
 By contributing, you agree that your contributions are licensed under the [WTFPL License](./LICENSE).
