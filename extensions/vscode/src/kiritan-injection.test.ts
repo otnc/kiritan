@@ -10,6 +10,9 @@ const require = createRequire(import.meta.url);
 const grammarPath = fileURLToPath(
   new URL("../syntaxes/kiritan-injection.tmLanguage.json", import.meta.url)
 );
+const kiritanconfigGrammarPath = fileURLToPath(
+  new URL("../syntaxes/kiritanconfig.tmLanguage.json", import.meta.url)
+);
 
 let onigLib: IOnigLib;
 
@@ -77,5 +80,29 @@ describe("kiritan-injection.tmLanguage.json", () => {
   it("does not tag an unrelated directive by another name", () => {
     const scopes = scopesFor(grammar, ":::note").flat();
     expect(scopes).not.toContain("entity.name.tag.directive.kiritan");
+  });
+});
+
+describe("kiritanconfig.tmLanguage.json", () => {
+  beforeAll(async () => {
+    onigLib ??= await createOnigLib();
+  });
+
+  it("registers as a valid grammar that delegates to source.js", async () => {
+    const registry = new Registry({
+      onigLib: Promise.resolve(onigLib),
+      loadGrammar: async (scopeName) => {
+        if (scopeName !== "source.kiritanconfig") return null;
+        return JSON.parse(await readFile(kiritanconfigGrammarPath, "utf8"));
+      },
+    });
+    const grammar = await registry.loadGrammar("source.kiritanconfig");
+    if (!grammar) throw new Error("failed to load the kiritanconfig grammar");
+    // source.js isn't bundled in this test harness, so this just exercises
+    // that the include resolves without throwing — real JS highlighting
+    // comes from VS Code's own bundled grammar at runtime.
+    expect(() =>
+      grammar.tokenizeLine("export default {};", INITIAL)
+    ).not.toThrow();
   });
 });

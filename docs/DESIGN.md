@@ -54,7 +54,7 @@ Breakdown of `packages/kiritan/src/` (one folder per feature area):
 ```
 packages/kiritan/src/
   index.ts        # Public API (defineConfig, build, extract, translate, check)
-  config/          # Discovery, cascading, and merging (.kiritan.*)
+  config/          # Discovery, cascading, and merging (*.kiritanconfig)
   discover/         # Discover base files via glob, resolve naming templates
   directive/         # Extract :::kiritan{...} via remark-directive
   stores/             # sidecar / inline / catalog
@@ -96,18 +96,18 @@ packages/runtime/src/
 
 ### 3.1 Discovery and cascading
 
-Filenames matching `.kiritan.(base|<mode>|local).(c|m)(js|ts)` are recognized (e.g. `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`). `.ts`/`.cts`/`.mts` are loaded directly with a lightweight loader like [jiti](https://github.com/unjs/jiti) (since Node's native type stripping is only flag-free on a limited set of versions, Kiritan takes this on as its own dependency to prioritize working regardless of the user's Node version). Merge order (lower entries take priority, deep-merged):
+Filenames matching `(<mode>|local)?\.?kiritanconfig` are recognized (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) — deliberately a single, non-extension name rather than `.js`/`.mjs`/etc, so file-icon themes (vscode-icons and similar) never mistake it for a generic JavaScript file (chapter 13). Every file is still plain ESM JavaScript under the hood, and is loaded with a lightweight loader, [jiti](https://github.com/unjs/jiti), configured to treat `kiritanconfig` as a recognized extension (Node's own loader refuses to `import()` a file whose extension it doesn't know, and `kiritanconfig` isn't one). Merge order (lower entries take priority, deep-merged):
 
-1. `.kiritan.base.(c|m)(js|ts)` (if absent, `.kiritan.(c|m)(js|ts)` is treated as the base layer)
-2. `.kiritan.<mode>.(c|m)(js|ts)` — `mode` comes from the `--mode` flag, or the `KIRITAN_MODE` environment variable otherwise. This layer is skipped if neither is set.
-3. `.kiritan.local.(c|m)(js|ts)` — always applied last. Intended to be `.gitignore`d (for local overrides such as API keys).
+1. `.kiritanconfig` — the base layer. There's no separate "explicit base" alias; a project with no mode/local overrides just has this one file.
+2. `<mode>.kiritanconfig` — `mode` comes from the `--mode` flag, or the `KIRITAN_MODE` environment variable otherwise. This layer is skipped if neither is set.
+3. `local.kiritanconfig` — always applied last. Intended to be `.gitignore`d (for local overrides such as API keys).
 4. `--config <path>` / `--overlay <path>` (repeatable) — additional config files can be layered on from the CLI.
 
 Objects are deep-merged; arrays (such as `sources`) are replaced by default. Wrap with the `mergeArray(...)` helper to concatenate instead.
 
-### 3.2 Config schema (the scope of `.kiritan.*`)
+### 3.2 Config schema (the scope of `*.kiritanconfig`)
 
-The following is everything configurable via `.kiritan.(base|<mode>|local).(c|m)(js|ts)`. This is the entirety of `KiritanConfig` — there are no configuration items beyond it.
+The following is everything configurable via `*.kiritanconfig`. This is the entirety of `KiritanConfig` — there are no configuration items beyond it.
 
 | Top-level key | What it configures |
 | --- | --- |
@@ -121,7 +121,7 @@ The following is everything configurable via `.kiritan.(base|<mode>|local).(c|m)
 | `switcher` | Automatic insertion of language-switcher links (chapter 6.1) |
 | `plugins` | Registration of custom `TranslationStore` / `Renderer` implementations |
 
-(`ResourceSourceConfig`'s `strategy`, custom middlewares passed to `translate.middlewares`, and custom implementations passed to `plugins` are all `import`ed directly and passed in from within a `.kiritan.*` file — configuration stays pure "wiring," and the actual implementation is written as an ordinary TS/JS module.)
+(`ResourceSourceConfig`'s `strategy`, custom middlewares passed to `translate.middlewares`, and custom implementations passed to `plugins` are all `import`ed directly and passed in from within a `*.kiritanconfig` file — configuration stays pure "wiring," and the actual implementation is written as an ordinary TS/JS module.)
 
 ```ts
 interface KiritanConfig {
@@ -608,7 +608,7 @@ kiritan typegen [--mode] [--config]   # Generates a .d.ts from the runtime.sourc
 kiritan check [--mode] [--config]     # For CI. Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
 ```
 
-`kiritan init` (scaffolding `.kiritan.base.mjs` / `README.base.md` / a `.gitignore` entry for `.kiritan.local.*`) and a per-command `--locale` flag (restricting a run to one locale) are both still design-stage, not implemented in v1 (tracked in chapter 13).
+`kiritan init` (scaffolding `.kiritanconfig` / `README.base.md` / a `.gitignore` entry for `local.kiritanconfig`) and a per-command `--locale` flag (restricting a run to one locale) are both still design-stage, not implemented in v1 (tracked in chapter 13).
 
 ```ts
 export { defineConfig, build } from 'kiritan';
@@ -642,9 +642,9 @@ None at this time. Anything that comes up during implementation will be appended
 
 - **Official translate-middleware packages**: adding reference implementations like Google Translate / DeepL as separate packages (`@kiritan/google-translate`, `@kiritan/deepl`) under `packages/*`. Not added in v1 — only implementation examples are provided in the docs.
 - **AI Agent Skill**: [`skills/kiritan`](../skills/kiritan) — done. A single self-contained `SKILL.md` (no npm package, no build step) teaching a coding agent the directive syntax, which CLI command to reach for, and common mistakes to avoid. See [skills/README.md](../skills/README.md) for installation.
-- **VS Code extension**: [`extensions/vscode`](../extensions/vscode) — in progress. Syntax highlighting for `:::kiritan{...}`/`::kiritan{...}` blocks (a declarative TextMate grammar injected into Markdown, no compiled extension code) is done. Published as `otoneko1102.kiritan` (a VS Code extension identifier can't contain a `/`, ruling out `@kiritan/vscode` as originally envisioned; its `package.json` `"name"` is the plain `"kiritan"`). Since that collides with the CLI package's own npm name, it lives under `extensions/` rather than `packages/` and so is never picked up by the root `"workspaces": ["packages/*"]` glob — its build/test tooling lives in the root `package.json`'s `devDependencies` instead (chapter 2.1). Still planned: folding for `:::kiritan` blocks, highlighting and undefined-variable detection for `%{name}`, jumping between `:::kiritan{#<id>}` and its catalog file, and inline display of `missing`/`stale` segments — these need real extension code (a folding range provider, a definition provider), not just a grammar.
+- **VS Code extension**: [`extensions/vscode`](../extensions/vscode) — in progress. Syntax highlighting for `:::kiritan{...}`/`::kiritan{...}` blocks (a declarative TextMate grammar injected into Markdown, no compiled extension code) is done. Published as `otoneko1102.kiritan` (a VS Code extension identifier can't contain a `/`, ruling out `@kiritan/vscode` as originally envisioned; its `package.json` `"name"` is the plain `"kiritan"`). Since that collides with the CLI package's own npm name, it lives under `extensions/` rather than `packages/` and so is never picked up by the root `"workspaces": ["packages/*"]` glob — its build/test tooling lives in the root `package.json`'s `devDependencies` instead (chapter 2.1). Still planned: folding for `:::kiritan` blocks, highlighting and undefined-variable detection for `%{name}`, jumping between `:::kiritan{#<id>}` and its catalog file, and inline display of `missing`/`stale` segments — these need real extension code (a folding range provider, a definition provider), not just a grammar. It also registers `*.kiritanconfig` as its own language, delegating highlighting to `source.js` via a TextMate `include` — this is why config files are named `*.kiritanconfig` rather than `.kiritan.mjs` (chapter 3.1): a file icon theme's own rules always beat a language's fallback icon, so keeping a real `.mjs` extension would have permanently shown a generic JavaScript icon in themes like vscode-icons. No icon theme has a rule for a filename it's never heard of, so registering the language here is enough to get a Kiritan-branded icon everywhere, with no per-theme configuration needed.
 - **Vim/Neovim plugin**: a `kiritan.vim` (or Lua-based Neovim) plugin covering the same ground as the VS Code extension — at minimum syntax highlighting for `:::kiritan{...}` blocks, ideally the same catalog-file jump and stale/missing indicators. Likely built on a shared tree-sitter grammar or LSP so both editors' extensions can reuse the same parsing logic rather than duplicating it.
-- **`kiritan init`**: scaffolds `.kiritan.base.mjs` / `README.base.md` / a `.gitignore` entry for `.kiritan.local.*` in a fresh project. Documented in chapter 10 as part of the eventual CLI shape, but not implemented in v1.
+- **`kiritan init`**: scaffolds `.kiritanconfig` / `README.base.md` / a `.gitignore` entry for `local.kiritanconfig` in a fresh project. Documented in chapter 10 as part of the eventual CLI shape, but not implemented in v1.
 - **A per-command `--locale` flag**: restricts `build`/`translate`/etc. to a single locale instead of every locale in `locales.list`. Not implemented in v1.
 - **Wiring `plugins.stores`/`plugins.renderers`**: making the declared `TranslationStore`/`Renderer` interfaces (chapter 11) actually pluggable, instead of `sidecar`/`inline`/`catalog` and the Markdown renderer being hardcoded into the pipeline as they are in v1.
 - **`text`/`mdx` renderers and front-matter protection**: v1 only implements the `markdown` renderer; `.txt`/`.mdx` support and `translateFrontmatter` (chapter 6) are design-stage only.

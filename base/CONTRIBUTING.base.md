@@ -19,11 +19,11 @@ Kiritan の改善に興味を持っていただきありがとうございます
 :::
 
 :::kiritan{locale=en}
-You'll need Node.js >= 22.
+You'll need Node.js >= 22.7.
 Then install the dependencies:
 :::
 :::kiritan{locale=ja}
-Node.js >= 22 が必要です。
+Node.js >= 22.7 が必要です。
 その後、依存関係をインストールします。
 :::
 

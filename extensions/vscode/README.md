@@ -20,6 +20,8 @@ Colors the directive fences and their attributes distinctly from surrounding Mar
 
 This is a purely declarative TextMate grammar injection — no compiled extension code, no activation cost beyond what Markdown already has.
 
+It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen).
+
 ## What it doesn't do yet
 
 Folding, jumping between a `:::kiritan{#<id>}` block and its catalog file, and inline `missing`/`stale` indicators are all planned but not implemented (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13) — those need real extension code (a folding range provider, a definition provider), not just a grammar.

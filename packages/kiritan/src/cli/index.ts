@@ -9,7 +9,7 @@ import { typegen } from "../pipeline/typegen.js";
 const configArgs = {
   mode: {
     type: "string",
-    description: "Config mode layer to apply (.kiritan.<mode>.*)",
+    description: "Config mode layer to apply (<mode>.kiritanconfig)",
   },
   config: {
     type: "string",

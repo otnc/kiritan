@@ -13,25 +13,25 @@ describe("resolveCascadePaths", () => {
   it("finds the base and local files when no mode is given", () => {
     const paths = resolveCascadePaths(fixturesDir);
     expect(paths.map((p) => p.replace(/^.*[/\\]/, ""))).toEqual([
-      ".kiritan.base.mjs",
-      ".kiritan.local.mjs",
+      ".kiritanconfig",
+      "local.kiritanconfig",
     ]);
   });
 
   it("includes the mode file when it exists", () => {
     const paths = resolveCascadePaths(fixturesDir, "dev");
     expect(paths.map((p) => p.replace(/^.*[/\\]/, ""))).toEqual([
-      ".kiritan.base.mjs",
-      ".kiritan.dev.mjs",
-      ".kiritan.local.mjs",
+      ".kiritanconfig",
+      "dev.kiritanconfig",
+      "local.kiritanconfig",
     ]);
   });
 
   it("skips a mode file that doesn't exist", () => {
     const paths = resolveCascadePaths(fixturesDir, "staging");
     expect(paths.map((p) => p.replace(/^.*[/\\]/, ""))).toEqual([
-      ".kiritan.base.mjs",
-      ".kiritan.local.mjs",
+      ".kiritanconfig",
+      "local.kiritanconfig",
     ]);
   });
 });
@@ -64,7 +64,7 @@ describe("resolveConfig", () => {
     expect(config.translate?.auto).toBe(false);
   });
 
-  describe("with no .kiritan.* file present", () => {
+  describe("with no *.kiritanconfig file present", () => {
     let emptyDir: string;
 
     beforeEach(async () => {

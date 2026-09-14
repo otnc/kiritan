@@ -16,42 +16,46 @@ import type {
   NamingConfig,
 } from "./types.js";
 
-const CONFIG_EXTENSIONS = ["mjs", "cjs", "js", "mts", "cts", "ts"] as const;
+/** Every `*.kiritanconfig` cascade file loads through this, regardless of what's inside — Node itself refuses to `import()` a file whose trailing extension it doesn't recognize, and `kiritanconfig` isn't one. */
+const jiti = createJiti(import.meta.url, {
+  extensions: [
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".ts",
+    ".mts",
+    ".cts",
+    ".jsx",
+    ".tsx",
+    ".kiritanconfig",
+  ],
+});
 
-function candidateFiles(cwd: string, baseName: string): string[] {
-  return CONFIG_EXTENSIONS.map((ext) => join(cwd, `${baseName}.${ext}`));
-}
-
-function firstExisting(paths: string[]): string | undefined {
-  return paths.find((path) => existsSync(path));
+function exists(path: string): string | undefined {
+  return existsSync(path) ? path : undefined;
 }
 
 /**
- * Resolves the `.kiritan.*` cascade for `cwd`/`mode`, lowest priority first: base (or plain `.kiritan.*`), then `.kiritan.<mode>.*` if present, then `.kiritan.local.*`.
+ * Resolves the `*.kiritanconfig` cascade for `cwd`/`mode`, lowest priority first: `.kiritanconfig` (base), then `<mode>.kiritanconfig` if present, then `local.kiritanconfig`.
  */
 export function resolveCascadePaths(cwd: string, mode?: string): string[] {
   const paths: string[] = [];
 
-  const baseFile = firstExisting([
-    ...candidateFiles(cwd, ".kiritan.base"),
-    ...candidateFiles(cwd, ".kiritan"),
-  ]);
+  const baseFile = exists(join(cwd, ".kiritanconfig"));
   if (baseFile) paths.push(baseFile);
 
   if (mode) {
-    const modeFile = firstExisting(candidateFiles(cwd, `.kiritan.${mode}`));
+    const modeFile = exists(join(cwd, `${mode}.kiritanconfig`));
     if (modeFile) paths.push(modeFile);
   }
 
-  const localFile = firstExisting(candidateFiles(cwd, ".kiritan.local"));
+  const localFile = exists(join(cwd, "local.kiritanconfig"));
   if (localFile) paths.push(localFile);
 
   return paths;
 }
 
-const jiti = createJiti(import.meta.url);
-
-/** Loads one `.kiritan.*` file's default export (what `defineConfig(...)` returns). */
+/** Loads one `*.kiritanconfig` file's default export (what `defineConfig(...)` returns). */
 export async function loadConfigFile(path: string): Promise<KiritanUserConfig> {
   const mod = await jiti.import(path, { default: true });
   return mod as KiritanUserConfig;
@@ -75,7 +79,7 @@ function resolveNaming(naming: NamingConfig | undefined): NamingConfig {
 export function applyDefaults(config: KiritanUserConfig): KiritanConfig {
   if (!config.locales || !config.sources) {
     throw new Error(
-      'kiritan: no config found (or it\'s missing "locales"/"sources") — create a .kiritan.mjs (or .kiritan.base.mjs) exporting defineConfig({ locales, sources, ... }). See docs/DESIGN.md 3章.'
+      'kiritan: no config found (or it\'s missing "locales"/"sources") — create a .kiritanconfig exporting defineConfig({ locales, sources, ... }). See docs/DESIGN.md 3章.'
     );
   }
   return {
@@ -96,7 +100,7 @@ export interface ResolveConfigOptions {
 }
 
 /**
- * Discovers and merges the `.kiritan.*` cascade for `cwd`/`mode`, applies any
+ * Discovers and merges the `*.kiritanconfig` cascade for `cwd`/`mode`, applies any
  * `--config`/`--overlay` files on top, then fills in defaults.
  */
 export async function resolveConfig(

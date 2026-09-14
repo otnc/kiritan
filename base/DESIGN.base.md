@@ -107,7 +107,7 @@ Breakdown of `packages/kiritan/src/` (one folder per feature area):
 ```
 packages/kiritan/src/
   index.ts        # Public API (defineConfig, build, extract, translate, check)
-  config/          # Discovery, cascading, and merging (.kiritan.*)
+  config/          # Discovery, cascading, and merging (*.kiritanconfig)
   discover/         # Discover base files via glob, resolve naming templates
   directive/         # Extract :::kiritan{...} via remark-directive
   stores/             # sidecar / inline / catalog
@@ -159,7 +159,7 @@ packages/
 ```
 packages/kiritan/src/
   index.ts        # 公開 API(defineConfig, build, extract, translate, check)
-  config/          # 探索・カスケード・merge(.kiritan.*)
+  config/          # 探索・カスケード・merge(*.kiritanconfig)
   discover/         # glob で base ファイルを発見、命名テンプレート解決
   directive/         # remark-directive で :::kiritan{...} を抽出
   stores/             # sidecar / inline / catalog
@@ -213,35 +213,35 @@ packages/runtime/src/
 :::
 
 :::kiritan{locale=en}
-Filenames matching `.kiritan.(base|<mode>|local).(c|m)(js|ts)` are recognized (e.g. `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`). `.ts`/`.cts`/`.mts` are loaded directly with a lightweight loader like [jiti](https://github.com/unjs/jiti) (since Node's native type stripping is only flag-free on a limited set of versions, Kiritan takes this on as its own dependency to prioritize working regardless of the user's Node version). Merge order (lower entries take priority, deep-merged):
+Filenames matching `(<mode>|local)?\.?kiritanconfig` are recognized (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) — deliberately a single, non-extension name rather than `.js`/`.mjs`/etc, so file-icon themes (vscode-icons and similar) never mistake it for a generic JavaScript file (chapter 13). Every file is still plain ESM JavaScript under the hood, and is loaded with a lightweight loader, [jiti](https://github.com/unjs/jiti), configured to treat `kiritanconfig` as a recognized extension (Node's own loader refuses to `import()` a file whose extension it doesn't know, and `kiritanconfig` isn't one). Merge order (lower entries take priority, deep-merged):
 
-1. `.kiritan.base.(c|m)(js|ts)` (if absent, `.kiritan.(c|m)(js|ts)` is treated as the base layer)
-2. `.kiritan.<mode>.(c|m)(js|ts)` — `mode` comes from the `--mode` flag, or the `KIRITAN_MODE` environment variable otherwise. This layer is skipped if neither is set.
-3. `.kiritan.local.(c|m)(js|ts)` — always applied last. Intended to be `.gitignore`d (for local overrides such as API keys).
+1. `.kiritanconfig` — the base layer. There's no separate "explicit base" alias; a project with no mode/local overrides just has this one file.
+2. `<mode>.kiritanconfig` — `mode` comes from the `--mode` flag, or the `KIRITAN_MODE` environment variable otherwise. This layer is skipped if neither is set.
+3. `local.kiritanconfig` — always applied last. Intended to be `.gitignore`d (for local overrides such as API keys).
 4. `--config <path>` / `--overlay <path>` (repeatable) — additional config files can be layered on from the CLI.
 
 Objects are deep-merged; arrays (such as `sources`) are replaced by default. Wrap with the `mergeArray(...)` helper to concatenate instead.
 :::
 :::kiritan{locale=ja}
-ファイル名は `.kiritan.(base|<mode>|local).(c|m)(js|ts)`(例: `.kiritan.mjs`, `.kiritan.base.cts`, `.kiritan.dev.mts`)を認識する。`.ts`/`.cts`/`.mts` は [jiti](https://github.com/unjs/jiti) のような軽量ローダーで直接読み込む(Node の型ストリッピングはフラグなしで使えるバージョンが限られるため、利用者の Node バージョンを問わず動くことを優先し、Kiritan 側の依存として引き受ける)。マージ順(下ほど優先度が高く、深いマージ):
+ファイル名は `(<mode>|local)?\.?kiritanconfig`(例: `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`)を認識する。あえて `.js`/`.mjs` 等の実在する拡張子を使わない単一の名前にしている — vscode-iconsのようなファイルアイコンテーマに、単なるJavaScriptファイルと誤認されないようにするため(13章)。中身はどのファイルも普通のESM JavaScriptであり、[jiti](https://github.com/unjs/jiti) のような軽量ローダーで読み込む(`kiritanconfig` を既知の拡張子として扱うよう設定している — Nodeの標準ローダーは、知らない拡張子のファイルを`import()`しようとすると拒否するため)。マージ順(下ほど優先度が高く、深いマージ):
 
-1. `.kiritan.base.(c|m)(js|ts)`(無ければ `.kiritan.(c|m)(js|ts)` を基本レイヤーとして扱う)
-2. `.kiritan.<mode>.(c|m)(js|ts)` — `mode` は `--mode` フラグ、なければ `KIRITAN_MODE` 環境変数。指定が無ければこのレイヤーはスキップ。
-3. `.kiritan.local.(c|m)(js|ts)` — 常に最後に適用。`.gitignore` 対象を想定(APIキー等のローカル上書き用)。
+1. `.kiritanconfig` — 基本レイヤー。「明示的なbase」という別名は無く、mode/localの上書きが無いプロジェクトはこの1ファイルだけで完結する。
+2. `<mode>.kiritanconfig` — `mode` は `--mode` フラグ、なければ `KIRITAN_MODE` 環境変数。指定が無ければこのレイヤーはスキップ。
+3. `local.kiritanconfig` — 常に最後に適用。`.gitignore` 対象を想定(APIキー等のローカル上書き用)。
 4. `--config <path>` / `--overlay <path>`(複数指定可)— CLI から任意の設定ファイルを追加で重ねられる。
 
 オブジェクトは深いマージ、配列(`sources` など)はデフォルトで置換。連結したい場合は `mergeArray(...)` ヘルパーで包む。
 :::
 
 :::kiritan{locale=en}
-### 3.2 Config schema (the scope of `.kiritan.*`)
+### 3.2 Config schema (the scope of `*.kiritanconfig`)
 :::
 :::kiritan{locale=ja}
-### 3.2 設定スキーマ(`.kiritan.*` のスコープ)
+### 3.2 設定スキーマ(`*.kiritanconfig` のスコープ)
 :::
 
 :::kiritan{locale=en}
-The following is everything configurable via `.kiritan.(base|<mode>|local).(c|m)(js|ts)`. This is the entirety of `KiritanConfig` — there are no configuration items beyond it.
+The following is everything configurable via `*.kiritanconfig`. This is the entirety of `KiritanConfig` — there are no configuration items beyond it.
 
 | Top-level key | What it configures |
 | --- | --- |
@@ -255,7 +255,7 @@ The following is everything configurable via `.kiritan.(base|<mode>|local).(c|m)
 | `switcher` | Automatic insertion of language-switcher links (chapter 6.1) |
 | `plugins` | Registration of custom `TranslationStore` / `Renderer` implementations |
 
-(`ResourceSourceConfig`'s `strategy`, custom middlewares passed to `translate.middlewares`, and custom implementations passed to `plugins` are all `import`ed directly and passed in from within a `.kiritan.*` file — configuration stays pure "wiring," and the actual implementation is written as an ordinary TS/JS module.)
+(`ResourceSourceConfig`'s `strategy`, custom middlewares passed to `translate.middlewares`, and custom implementations passed to `plugins` are all `import`ed directly and passed in from within a `*.kiritanconfig` file — configuration stays pure "wiring," and the actual implementation is written as an ordinary TS/JS module.)
 
 ```ts
 interface KiritanConfig {
@@ -305,7 +305,7 @@ interface SourceConfig {
 Since `naming.outputs` (per-locale explicit path overrides) tends to need different values per source in practice, it's written on `SourceConfig.naming` as the primary form (the global `naming` is kept as just "the template's default").
 :::
 :::kiritan{locale=ja}
-`.kiritan.(base|<mode>|local).(c|m)(js|ts)` で設定できる範囲は次の通り。これが `KiritanConfig` の全体像であり、これ以外の設定項目は無い。
+`*.kiritanconfig` で設定できる範囲は次の通り。これが `KiritanConfig` の全体像であり、これ以外の設定項目は無い。
 
 | トップレベルキー | 何を設定するか |
 | --- | --- |
@@ -319,7 +319,7 @@ Since `naming.outputs` (per-locale explicit path overrides) tends to need differ
 | `switcher` | 言語切り替えリンクの自動挿入(6.1章) |
 | `plugins` | カスタム `TranslationStore` / `Renderer` の登録 |
 
-(`ResourceSourceConfig` の `strategy`、`translate.middlewares` に渡すカスタムミドルウェア、`plugins` に渡すカスタム実装は、いずれも `.kiritan.*` ファイル内で `import` して直接渡す — 設定は「配線」に徹し、実装本体は普通の TS/JS モジュールとして書く)
+(`ResourceSourceConfig` の `strategy`、`translate.middlewares` に渡すカスタムミドルウェア、`plugins` に渡すカスタム実装は、いずれも `*.kiritanconfig` ファイル内で `import` して直接渡す — 設定は「配線」に徹し、実装本体は普通の TS/JS モジュールとして書く)
 
 ```ts
 interface KiritanConfig {
@@ -1159,10 +1159,10 @@ kiritan check [--mode] [--config]     # For CI. Exits non-zero on missing/stale/
 ```
 
 :::kiritan{locale=en}
-`kiritan init` (scaffolding `.kiritan.base.mjs` / `README.base.md` / a `.gitignore` entry for `.kiritan.local.*`) and a per-command `--locale` flag (restricting a run to one locale) are both still design-stage, not implemented in v1 (tracked in chapter 13).
+`kiritan init` (scaffolding `.kiritanconfig` / `README.base.md` / a `.gitignore` entry for `local.kiritanconfig`) and a per-command `--locale` flag (restricting a run to one locale) are both still design-stage, not implemented in v1 (tracked in chapter 13).
 :::
 :::kiritan{locale=ja}
-`kiritan init`(`.kiritan.base.mjs` / `README.base.md` の雛形生成、`.kiritan.local.*` の `.gitignore` への追記)と、各コマンド共通の `--locale` フラグ(実行対象を1ロケールに絞る)は、いずれもまだ設計段階でv1では未実装(13章で追跡)。
+`kiritan init`(`.kiritanconfig` / `README.base.md` の雛形生成、`local.kiritanconfig` の `.gitignore` への追記)と、各コマンド共通の `--locale` フラグ(実行対象を1ロケールに絞る)は、いずれもまだ設計段階でv1では未実装(13章で追跡)。
 :::
 
 ```ts
@@ -1236,9 +1236,9 @@ None at this time. Anything that comes up during implementation will be appended
 :::kiritan{locale=en}
 - **Official translate-middleware packages**: adding reference implementations like Google Translate / DeepL as separate packages (`@kiritan/google-translate`, `@kiritan/deepl`) under `packages/*`. Not added in v1 — only implementation examples are provided in the docs.
 - **AI Agent Skill**: [`skills/kiritan`](../skills/kiritan) — done. A single self-contained `SKILL.md` (no npm package, no build step) teaching a coding agent the directive syntax, which CLI command to reach for, and common mistakes to avoid. See [skills/README.md](../skills/README.md) for installation.
-- **VS Code extension**: [`extensions/vscode`](../extensions/vscode) — in progress. Syntax highlighting for `:::kiritan{...}`/`::kiritan{...}` blocks (a declarative TextMate grammar injected into Markdown, no compiled extension code) is done. Published as `otoneko1102.kiritan` (a VS Code extension identifier can't contain a `/`, ruling out `@kiritan/vscode` as originally envisioned; its `package.json` `"name"` is the plain `"kiritan"`). Since that collides with the CLI package's own npm name, it lives under `extensions/` rather than `packages/` and so is never picked up by the root `"workspaces": ["packages/*"]` glob — its build/test tooling lives in the root `package.json`'s `devDependencies` instead (chapter 2.1). Still planned: folding for `:::kiritan` blocks, highlighting and undefined-variable detection for `%{name}`, jumping between `:::kiritan{#<id>}` and its catalog file, and inline display of `missing`/`stale` segments — these need real extension code (a folding range provider, a definition provider), not just a grammar.
+- **VS Code extension**: [`extensions/vscode`](../extensions/vscode) — in progress. Syntax highlighting for `:::kiritan{...}`/`::kiritan{...}` blocks (a declarative TextMate grammar injected into Markdown, no compiled extension code) is done. Published as `otoneko1102.kiritan` (a VS Code extension identifier can't contain a `/`, ruling out `@kiritan/vscode` as originally envisioned; its `package.json` `"name"` is the plain `"kiritan"`). Since that collides with the CLI package's own npm name, it lives under `extensions/` rather than `packages/` and so is never picked up by the root `"workspaces": ["packages/*"]` glob — its build/test tooling lives in the root `package.json`'s `devDependencies` instead (chapter 2.1). Still planned: folding for `:::kiritan` blocks, highlighting and undefined-variable detection for `%{name}`, jumping between `:::kiritan{#<id>}` and its catalog file, and inline display of `missing`/`stale` segments — these need real extension code (a folding range provider, a definition provider), not just a grammar. It also registers `*.kiritanconfig` as its own language, delegating highlighting to `source.js` via a TextMate `include` — this is why config files are named `*.kiritanconfig` rather than `.kiritan.mjs` (chapter 3.1): a file icon theme's own rules always beat a language's fallback icon, so keeping a real `.mjs` extension would have permanently shown a generic JavaScript icon in themes like vscode-icons. No icon theme has a rule for a filename it's never heard of, so registering the language here is enough to get a Kiritan-branded icon everywhere, with no per-theme configuration needed.
 - **Vim/Neovim plugin**: a `kiritan.vim` (or Lua-based Neovim) plugin covering the same ground as the VS Code extension — at minimum syntax highlighting for `:::kiritan{...}` blocks, ideally the same catalog-file jump and stale/missing indicators. Likely built on a shared tree-sitter grammar or LSP so both editors' extensions can reuse the same parsing logic rather than duplicating it.
-- **`kiritan init`**: scaffolds `.kiritan.base.mjs` / `README.base.md` / a `.gitignore` entry for `.kiritan.local.*` in a fresh project. Documented in chapter 10 as part of the eventual CLI shape, but not implemented in v1.
+- **`kiritan init`**: scaffolds `.kiritanconfig` / `README.base.md` / a `.gitignore` entry for `local.kiritanconfig` in a fresh project. Documented in chapter 10 as part of the eventual CLI shape, but not implemented in v1.
 - **A per-command `--locale` flag**: restricts `build`/`translate`/etc. to a single locale instead of every locale in `locales.list`. Not implemented in v1.
 - **Wiring `plugins.stores`/`plugins.renderers`**: making the declared `TranslationStore`/`Renderer` interfaces (chapter 11) actually pluggable, instead of `sidecar`/`inline`/`catalog` and the Markdown renderer being hardcoded into the pipeline as they are in v1.
 - **`text`/`mdx` renderers and front-matter protection**: v1 only implements the `markdown` renderer; `.txt`/`.mdx` support and `translateFrontmatter` (chapter 6) are design-stage only.
@@ -1246,9 +1246,9 @@ None at this time. Anything that comes up during implementation will be appended
 :::kiritan{locale=ja}
 - **翻訳ミドルウェアの公式パッケージ化**: Google 翻訳 / DeepL などの参考実装を `@kiritan/google-translate` `@kiritan/deepl` のような別パッケージとして `packages/*` に追加する。v1 では追加せず、ドキュメントに実装例を載せるだけに留める。
 - **AI Agent Skill**: [`skills/kiritan`](../skills/kiritan) —対応済み。npmパッケージでもビルドも不要な、単一の自己完結した `SKILL.md` として、ディレクティブ記法・どのCLIコマンドを使うべきか・よくある間違いをコーディングエージェントに教える。導入方法は [skills/README.md](../skills/README.md) を参照。
-- **VS Code 拡張機能**: [`extensions/vscode`](../extensions/vscode) —対応中。`:::kiritan{...}`/`::kiritan{...}` ブロックのシンタックスハイライト(Markdownに注入する宣言的なTextMate文法のみ、コンパイル済み拡張機能コードは無し)は完了。`otoneko1102.kiritan` として公開する(VS Code の拡張機能識別子に `/` を含められないため、当初構想していた `@kiritan/vscode` は使えず、`package.json` の `"name"` はそのまま `"kiritan"` にしている)。これはCLIパッケージのnpm名と衝突するため、`packages/` ではなく `extensions/` 配下に置いており、ルートの `"workspaces": ["packages/*"]` には拾われない — ビルド・テストに必要なツールはルートの `package.json` の `devDependencies` に置いている(2.1章)。折りたたみ、`%{name}` 変数のハイライトや未定義検出、`:::kiritan{#<id>}` と catalog ファイル間のジャンプ、`missing`/`stale` セグメントのインライン表示はまだ計画段階 — これらには文法だけでなく実際の拡張機能コード(folding range provider、definition provider)が必要になる。
+- **VS Code 拡張機能**: [`extensions/vscode`](../extensions/vscode) —対応中。`:::kiritan{...}`/`::kiritan{...}` ブロックのシンタックスハイライト(Markdownに注入する宣言的なTextMate文法のみ、コンパイル済み拡張機能コードは無し)は完了。`otoneko1102.kiritan` として公開する(VS Code の拡張機能識別子に `/` を含められないため、当初構想していた `@kiritan/vscode` は使えず、`package.json` の `"name"` はそのまま `"kiritan"` にしている)。これはCLIパッケージのnpm名と衝突するため、`packages/` ではなく `extensions/` 配下に置いており、ルートの `"workspaces": ["packages/*"]` には拾われない — ビルド・テストに必要なツールはルートの `package.json` の `devDependencies` に置いている(2.1章)。折りたたみ、`%{name}` 変数のハイライトや未定義検出、`:::kiritan{#<id>}` と catalog ファイル間のジャンプ、`missing`/`stale` セグメントのインライン表示はまだ計画段階 — これらには文法だけでなく実際の拡張機能コード(folding range provider、definition provider)が必要になる。あわせて `*.kiritanconfig` を独自言語として登録し、ハイライトはTextMateの `include` で `source.js` に委譲している — これが設定ファイルを `.kiritan.mjs` ではなく `*.kiritanconfig` と命名した理由でもある(3.1章)。ファイルアイコンテーマ自身のルールは常に言語のフォールバックアイコンより優先されるため、実在する `.mjs` 拡張子のままではvscode-iconsのようなテーマで永久に汎用的なJavaScriptアイコンのままになってしまう。見たことの無いファイル名に対して具体的なルールを持つアイコンテーマは存在しないため、この言語登録だけで、テーマ側の個別設定なしにあらゆるアイコンテーマでKiritan固有のアイコンが表示される。
 - **Vim/Neovim プラグイン**: VS Code拡張機能と同じ範囲をカバーする `kiritan.vim`(またはLuaベースのNeovim用)プラグイン。最低限 `:::kiritan{...}` ブロックのシンタックスハイライト、できれば同じcatalogファイルジャンプやstale/missingの表示も。両エディタの拡張機能が同じ解析ロジックを重複実装せずに済むよう、共有のtree-sitter文法やLSPの上に構築する形を想定。
-- **`kiritan init`**: 新規プロジェクトで `.kiritan.base.mjs` / `README.base.md` の雛形を生成し、`.kiritan.local.*` を `.gitignore` に追記する。10章でいずれのCLI構成の一部として記載しているが、v1では未実装。
+- **`kiritan init`**: 新規プロジェクトで `.kiritanconfig` / `README.base.md` の雛形を生成し、`local.kiritanconfig` を `.gitignore` に追記する。10章でいずれのCLI構成の一部として記載しているが、v1では未実装。
 - **コマンド共通の `--locale` フラグ**: `build`/`translate` 等の実行対象を `locales.list` 全体ではなく1ロケールに絞る。v1では未実装。
 - **`plugins.stores`/`plugins.renderers` の配線**: 宣言されている `TranslationStore`/`Renderer` インターフェース(11章)を実際にプラガブルにする。v1では `sidecar`/`inline`/`catalog` とMarkdownレンダラーがパイプラインに直接ハードコードされている。
 - **`text`/`mdx` レンダラーとfront matter保護**: v1で実装されているレンダラーは `markdown` のみで、`.txt`/`.mdx` 対応や `translateFrontmatter`(6章)はまだ設計段階。

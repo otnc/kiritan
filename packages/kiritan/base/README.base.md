@@ -60,7 +60,7 @@ English content.
 ```
 
 ```ts
-// .kiritan.mjs
+// .kiritanconfig
 import { defineConfig } from "kiritan";
 
 export default defineConfig({
@@ -95,10 +95,10 @@ await build(config);
 ```
 
 :::kiritan{locale=en}
-`resolveConfig` discovers and merges the `.kiritan.(base|<mode>|local).(c|m)(js|ts)` cascade for the current directory and fills in the documented defaults. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 3 for the full config shape and cascade rules.
+`resolveConfig` discovers and merges the `*.kiritanconfig` cascade for the current directory and fills in the documented defaults. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 3 for the full config shape and cascade rules.
 :::
 :::kiritan{locale=ja}
-`resolveConfig` はカレントディレクトリの `.kiritan.(base|<mode>|local).(c|m)(js|ts)` カスケードを探索・マージし、ドキュメント化された既定値を補完する。設定の全体像とカスケードのルールは [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 3章を参照。
+`resolveConfig` はカレントディレクトリの `*.kiritanconfig` カスケードを探索・マージし、ドキュメント化された既定値を補完する。設定の全体像とカスケードのルールは [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 3章を参照。
 :::
 
 :::kiritan{locale=en}
@@ -131,7 +131,7 @@ All of them accept `--mode <mode>` and `--config <path>` to adjust which config 
 :::kiritan{locale=en}
 ## Requirements
 
-- Node.js >= 22
+- Node.js >= 22.7
 
 ## Related packages
 
@@ -148,7 +148,7 @@ Distributed under the [WTFPL License](https://github.com/otnc/kiritan/blob/main/
 :::kiritan{locale=ja}
 ## 動作環境
 
-- Node.js >= 22
+- Node.js >= 22.7
 
 ## 関連パッケージ
 

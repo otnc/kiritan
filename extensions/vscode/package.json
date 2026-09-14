@@ -1,7 +1,7 @@
 {
   "name": "kiritan",
   "displayName": "Kiritan",
-  "description": "Syntax highlighting for Kiritan's :::kiritan{...} directive blocks in Markdown",
+  "description": "Syntax highlighting for Kiritan's :::kiritan{...} directive blocks in Markdown, and for *.kiritanconfig files",
   "version": "0.1.1",
   "publisher": "otoneko1102",
   "type": "module",
@@ -19,7 +19,7 @@
   },
   "engines": {
     "vscode": "^1.85.0",
-    "node": ">=22"
+    "node": ">=22.7.0"
   },
   "categories": [
     "Programming Languages"
@@ -31,6 +31,21 @@
     "directive"
   ],
   "contributes": {
+    "languages": [
+      {
+        "id": "kiritanconfig",
+        "aliases": [
+          "Kiritan Config"
+        ],
+        "filenamePatterns": [
+          "*.kiritanconfig"
+        ],
+        "icon": {
+          "light": "./images/icon.png",
+          "dark": "./images/icon.png"
+        }
+      }
+    ],
     "grammars": [
       {
         "scopeName": "markdown.kiritan.injection",
@@ -38,6 +53,11 @@
         "injectTo": [
           "text.html.markdown"
         ]
+      },
+      {
+        "language": "kiritanconfig",
+        "scopeName": "source.kiritanconfig",
+        "path": "./syntaxes/kiritanconfig.tmLanguage.json"
       }
     ]
   },
