@@ -22,7 +22,7 @@
 
 ```sh
 npm install
-npm run package   # packages/vscode/*.vsix
+npm run package   # extensions/vscode/*.vsix
 ```
 
 生成された `.vsix` は、VS Codeの「VSIXからのインストール...」コマンドでインストールできます。あるいはこのディレクトリでF5を押すと、Extension Development Hostが起動し動作確認ができます。

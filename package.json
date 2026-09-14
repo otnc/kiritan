@@ -7,8 +7,7 @@
   "author": "otoneko.",
   "type": "module",
   "workspaces": [
-    "packages/kiritan",
-    "packages/runtime"
+    "packages/*"
   ],
   "engines": {
     "node": ">=22"
@@ -18,7 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit -p packages/vscode/tsconfig.json",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit -p extensions/vscode/tsconfig.json",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
