@@ -73,13 +73,14 @@ await build(config);
 
 | コマンド | 内容 |
 | --- | --- |
+| `kiritan init` | 新規プロジェクトで `.kiritanconfig`・`base/README.base.md`・`local.kiritanconfig` の `.gitignore` への追記を生成する。`--force` を付けない限り既存ファイルはそのまま残す |
 | `kiritan build` | 設定済みの全ソースからローカライズされたドキュメントをビルドする |
 | `kiritan check` | missing/stale/機械翻訳のコンテンツを報告する。`check.failOn` に一致すればCIで非ゼロ終了する |
 | `kiritan translate` | `translate.middlewares` でmissing/staleな訳文を埋める(`sidecar`/`catalog`対応。`inline`は未対応) |
 | `kiritan extract` | `catalog`戦略の新規idをスキャフォールドし、オーファンを報告する |
 | `kiritan typegen` | `runtime.sources` を1つの名前空間付き `ResourceModule` に集約し、型定義を書き出す([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9.6章) |
 
-いずれのコマンドも `--mode <mode>` と `--config <path>` を受け付け、適用する設定レイヤーを調整できる。
+`kiritan init` 以外のコマンドはすべて `--mode <mode>` と `--config <path>` を受け付け、適用する設定レイヤーを調整できる — `init` 実行前はまだ重ねる設定自体が無い。
 
 ## 動作環境
 

@@ -73,13 +73,14 @@ await build(config);
 
 | Command | What it does |
 | --- | --- |
+| `kiritan init` | Scaffolds `.kiritanconfig`, `base/README.base.md`, and a `.gitignore` entry for `local.kiritanconfig` in a fresh project. Leaves existing files alone unless `--force` is passed |
 | `kiritan build` | Builds localized documents from every configured source |
 | `kiritan check` | Reports missing/stale/machine-translated content; exits non-zero in CI when `check.failOn` matches |
 | `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` (`sidecar`/`catalog`; `inline` isn't supported yet) |
 | `kiritan extract` | Scaffolds new `catalog`-strategy ids and reports orphaned ones |
 | `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9.6) |
 
-All of them accept `--mode <mode>` and `--config <path>` to adjust which config layers are applied.
+Every command except `kiritan init` accepts `--mode <mode>` and `--config <path>` to adjust which config layers are applied — there's no config to layer yet before `init` has run.
 
 ## Requirements
 
