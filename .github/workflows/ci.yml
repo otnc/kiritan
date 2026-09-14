@@ -18,6 +18,8 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
+      # extensions/vim's tests run against a real headless vim (skipped, not failed, if it's unavailable) — ubuntu-latest doesn't ship it by default.
+      - run: sudo apt-get update && sudo apt-get install -y vim
       - run: npm install
       - run: npm run ci
       - run: npm run typecheck

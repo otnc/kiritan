@@ -26,6 +26,7 @@ This is an npm workspaces monorepo (see [docs/DESIGN.md](./docs/DESIGN.md) chapt
 | `kiritan` | `packages/kiritan` | The CLI + build pipeline (config, stores, renderers, translate middlewares) |
 | `@kiritan/runtime` | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code extension (syntax highlighting for `:::kiritan{...}` blocks). Not an npm workspace member — see "Releasing" below. |
+| — | `extensions/vim` | Vim/Neovim plugin (the same directive highlighting, plus `*.kiritanconfig` filetype detection). Not published anywhere — installed directly from this repo via a plugin manager's `rtp` option. |
 
 The design and rationale for everything above live in [docs/DESIGN.md](./docs/DESIGN.md) — read it before making a structural change.
 

@@ -25,5 +25,10 @@ export default {
       strategy: "inline",
       naming: { template: "extensions/vscode/{base}.{locale}.{ext}" },
     },
+    {
+      glob: "extensions/vim/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "extensions/vim/{base}.{locale}.{ext}" },
+    },
   ],
 };
