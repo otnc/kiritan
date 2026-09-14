@@ -99,3 +99,34 @@ describe("extract", () => {
     expect(result.changes).toEqual([]);
   });
 });
+
+describe("extract (locale option)", () => {
+  it("only scaffolds a catalog for the requested locale", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{#intro}", "hello", ":::"].join("\n"),
+      "utf8"
+    );
+    const config = baseConfig({
+      locales: { default: "en", list: ["en", "ja", "fr"] },
+      sources: [{ glob: "README.base.md", strategy: "catalog" }],
+    });
+    const result = await extract(config, { cwd, locale: "fr" });
+    expect(result.changes).toEqual([
+      { source: "README.base.md", locale: "fr", detail: 'added id "intro"' },
+    ]);
+    await expect(
+      readFile(join(cwd, "README.ja.catalog.json"), "utf8")
+    ).rejects.toThrow();
+  });
+
+  it("rejects a locale that isn't in locales.list", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "catalog" }],
+    });
+    await expect(extract(config, { cwd, locale: "de" })).rejects.toThrow(
+      /locale "de" is not in locales\.list/
+    );
+  });
+});

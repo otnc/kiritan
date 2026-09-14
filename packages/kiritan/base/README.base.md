@@ -113,7 +113,7 @@ await build(config);
 | `kiritan extract` | Scaffolds new `catalog`-strategy ids and reports orphaned ones |
 | `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9.6) |
 
-Every command except `kiritan init` accepts `--mode <mode>` and `--config <path>` to adjust which config layers are applied — there's no config to layer yet before `init` has run.
+Every command except `kiritan init` accepts `--mode <mode>` and `--config <path>` to adjust which config layers are applied — there's no config to layer yet before `init` has run. `build`/`check`/`translate`/`extract` also accept `--locale <locale>` to restrict a run to one locale instead of every locale in `locales.list`; `kiritan typegen` doesn't, since it always aggregates every locale into one runtime module.
 :::
 :::kiritan{locale=ja}
 ## コマンド
@@ -127,7 +127,7 @@ Every command except `kiritan init` accepts `--mode <mode>` and `--config <path>
 | `kiritan extract` | `catalog`戦略の新規idをスキャフォールドし、オーファンを報告する |
 | `kiritan typegen` | `runtime.sources` を1つの名前空間付き `ResourceModule` に集約し、型定義を書き出す([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9.6章) |
 
-`kiritan init` 以外のコマンドはすべて `--mode <mode>` と `--config <path>` を受け付け、適用する設定レイヤーを調整できる — `init` 実行前はまだ重ねる設定自体が無い。
+`kiritan init` 以外のコマンドはすべて `--mode <mode>` と `--config <path>` を受け付け、適用する設定レイヤーを調整できる — `init` 実行前はまだ重ねる設定自体が無い。`build`/`check`/`translate`/`extract` は `--locale <locale>` にも対応し、実行対象を `locales.list` 全体ではなく1ロケールに絞れる。`kiritan typegen` だけは対応しない — 常に全ロケールを1つのランタイムモジュールに集約するコマンドのため。
 :::
 
 :::kiritan{locale=en}

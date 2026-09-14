@@ -416,6 +416,53 @@ describe("check (runtime.sources, embedded strategy)", () => {
   });
 });
 
+describe("check (locale option)", () => {
+  it("restricts document-level checks to the requested locale", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [":::kiritan{locale=en}", "a", ":::"].join("\n"),
+      "utf8"
+    );
+    const config = baseConfig({
+      locales: { default: "en", list: ["en", "ja", "fr"] },
+      sources: [{ glob: "README.base.md", strategy: "inline" }],
+    });
+    const result = await check(config, { cwd, locale: "fr" });
+    expect(result.issues).toEqual([
+      {
+        kind: "missing",
+        source: "README.base.md",
+        locale: "fr",
+        detail: "no :::kiritan{locale=fr} block",
+      },
+    ]);
+  });
+
+  it("restricts the i18n-key-mismatch check to the requested locale", async () => {
+    await mkdir(join(cwd, "src"), { recursive: true });
+    await writeFile(
+      join(cwd, "src", "Button.i18n.mjs"),
+      "export default { submit: { en: 'Submit', fr: 'Envoyer' } };\n",
+      "utf8"
+    );
+    const config = baseConfig({
+      locales: { default: "en", list: ["en", "ja", "fr"] },
+      runtime: {
+        sources: [{ glob: "src/**/*.i18n.mjs", strategy: "colocated" }],
+      },
+    });
+    const result = await check(config, { cwd, locale: "fr" });
+    expect(result.issues).toEqual([]);
+  });
+
+  it("rejects a locale that isn't in locales.list", async () => {
+    const config = baseConfig();
+    await expect(check(config, { cwd, locale: "de" })).rejects.toThrow(
+      /locale "de" is not in locales\.list/
+    );
+  });
+});
+
 describe("resolveInterpolationVariableNames", () => {
   it("returns an empty array when no variables are configured", () => {
     const config = baseConfig();

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { resolveTargetLocales } from "../config/locale.js";
 import type { KiritanConfig } from "../config/types.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { collectCatalogSegments } from "../directive/render.js";
@@ -19,6 +20,8 @@ export interface ExtractChange {
 
 export interface ExtractOptions {
   cwd?: string;
+  /** Restricts extraction to this locale instead of every locale in `config.locales.list`. */
+  locale?: string;
 }
 
 export interface ExtractResult {
@@ -35,6 +38,7 @@ export async function extract(
   options: ExtractOptions = {}
 ): Promise<ExtractResult> {
   const cwd = options.cwd ?? process.cwd();
+  const targetLocales = resolveTargetLocales(config, options.locale);
   const files = await discoverSourceFiles(config.sources, {
     cwd,
     baseSuffix: config.naming?.baseSuffix,
@@ -48,7 +52,7 @@ export async function extract(
     const segments = collectCatalogSegments(parseMarkdown(sourceText));
     const ids = new Set(segments.keys());
 
-    for (const locale of config.locales.list) {
+    for (const locale of targetLocales) {
       if (locale === config.locales.default) continue;
 
       const catalogPath = join(
