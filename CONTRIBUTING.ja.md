@@ -96,7 +96,7 @@ VS Code拡張機能(`extensions/vscode`)はnpmに公開しないため、代わ�
 
 `extensions/vscode` は `packages/` の外にあるため、ルートの `"workspaces": ["packages/*"]` には拾われません(`package.json` の `"name"` が `"kiritan"` のため、同名のCLIパッケージと衝突してしまいます — npm workspaceは同名パッケージを2つ持てません)。ビルド・テストに必要なツール(`@vscode/vsce`・`vscode-textmate`・`vscode-oniguruma`)はルートの `package.json` の `devDependencies` に置いており、`tsc`/`vitest`/`vsce` を実行する際にNode.jsの通常の解決方法で見つかります — このパッケージ用に別途 `npm install` を行う必要はありません。
 
-Vim/Neovimプラグイン(`extensions/vim`)にはビルド・公開すべきものが何もありません — ユーザーはプラグインマネージャーの`rtp`オプション経由でこのリポジトリから直接インストールするため、`release-vim.yml` はテストスイートを実行した後、コミットに `kiritan-vim@<version>` というタグを打ちGitHub Releaseを作成するだけです(添付ファイルなし)。`main`を追従する代わりに特定バージョンにピン留めしたいユーザー向けです。ここには `package.json` が無いためバンプ元が無く、`version` 入力は `release.yml` のようなsemverキーワードではなく、明示的なバージョン文字列である必要があります。
+Vim/Neovimプラグイン(`extensions/vim`)にはビルド・公開すべきものが何もありません — ユーザーはプラグインマネージャーの`rtp`オプション経由でこのリポジトリから直接インストールするため、`release-vim.yml` はテストスイートを実行した後、コミットに `kiritan-vim@<version>` というタグを打ちGitHub Releaseを作成するだけです(添付ファイルなし)。`main`を追従する代わりに特定バージョンにピン留めしたいユーザー向けです。`package.json` が無くバンプ元となる現在のバージョンを保持していないため、既存の `kiritan-vim@*` タグのうち最新のものを起点にし、使い捨ての `package.json` で `npm version` のsemverロジックを借用する形で、`release.yml` と同じく `version` 入力に `patch`/`minor`/`major`/`prerelease` キーワードと明示的なバージョン文字列の両方を受け付けます。
 
 ## ライセンス
 

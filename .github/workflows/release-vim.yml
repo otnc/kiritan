@@ -6,8 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to tag as kiritan-vim@<version> (e.g. 0.1.0) — no package.json to bump here, so give the exact version"
+        description: "Version bump for kiritan-vim: patch/minor/major/prerelease, or an explicit version (e.g. 0.2.0)"
         required: true
+        default: patch
 
 permissions:
   contents: write # create the tag and the GitHub Release
@@ -28,10 +29,25 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
 
-      - name: Tag and push
-        id: tag
+      - name: Determine version
+        id: version
         run: |
-          TAG="kiritan-vim@${{ inputs.version }}"
+          LATEST_TAG="$(git tag --list 'kiritan-vim@*' --sort=-v:refname | head -1)"
+          CURRENT="${LATEST_TAG#kiritan-vim@}"
+          CURRENT="${CURRENT:-0.0.0}"
+
+          # extensions/vim has no package.json to bump the same way release.yml's _release-package.yml does via `npm version` — reuse that exact same semver logic (accepting both a patch/minor/major/prerelease keyword and an explicit version) anyway, via a throwaway package.json.
+          SCRATCH="$(mktemp -d)"
+          echo "{\"name\":\"kiritan-vim-version-scratch\",\"version\":\"$CURRENT\"}" > "$SCRATCH/package.json"
+          NEW="$(npm --prefix "$SCRATCH" version "${{ inputs.version }}" --no-git-tag-version --allow-same-version | sed 's/^v//')"
+          rm -rf "$SCRATCH"
+
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=kiritan-vim@$NEW" >> "$GITHUB_OUTPUT"
+
+      - name: Tag and push
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             echo "::error::Tag $TAG already exists"
             exit 1
@@ -40,12 +56,11 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$TAG"
           git push origin "$TAG"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.tag.outputs.tag }}" \
-            --title "${{ steps.tag.outputs.tag }}" \
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.tag }}" \
             --generate-notes
