@@ -8,7 +8,7 @@ If anything here is unclear, opening an issue to ask is welcome.
 
 ## Getting set up
 
-You'll need Node.js >= 22.
+You'll need Node.js >= 22.7.
 Then install the dependencies:
 
 ```sh

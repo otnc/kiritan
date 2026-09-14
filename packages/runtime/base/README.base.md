@@ -62,7 +62,7 @@ t("submit"); // "送信"
 :::kiritan{locale=en}
 ## Requirements
 
-- Node.js >= 22
+- Node.js >= 22.7
 
 ## Contributing
 
@@ -75,7 +75,7 @@ Distributed under the [WTFPL License](https://github.com/otnc/kiritan/blob/main/
 :::kiritan{locale=ja}
 ## 動作環境
 
-- Node.js >= 22
+- Node.js >= 22.7
 
 ## コントリビュート
 

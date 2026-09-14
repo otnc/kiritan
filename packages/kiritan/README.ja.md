@@ -40,7 +40,7 @@ English content.
 ```
 
 ```ts
-// .kiritan.mjs
+// .kiritanconfig
 import { defineConfig } from "kiritan";
 
 export default defineConfig({
@@ -67,7 +67,7 @@ const config = await resolveConfig({ mode: "production" });
 await build(config);
 ```
 
-`resolveConfig` はカレントディレクトリの `.kiritan.(base|<mode>|local).(c|m)(js|ts)` カスケードを探索・マージし、ドキュメント化された既定値を補完する。設定の全体像とカスケードのルールは [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 3章を参照。
+`resolveConfig` はカレントディレクトリの `*.kiritanconfig` カスケードを探索・マージし、ドキュメント化された既定値を補完する。設定の全体像とカスケードのルールは [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 3章を参照。
 
 ## コマンド
 
@@ -83,7 +83,7 @@ await build(config);
 
 ## 動作環境
 
-- Node.js >= 22
+- Node.js >= 22.7
 
 ## 関連パッケージ
 

@@ -43,7 +43,7 @@ t("submit"); // "送信"
 
 ## Requirements
 
-- Node.js >= 22
+- Node.js >= 22.7
 
 ## Contributing
 

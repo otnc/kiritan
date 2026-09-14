@@ -40,7 +40,7 @@ English content.
 ```
 
 ```ts
-// .kiritan.mjs
+// .kiritanconfig
 import { defineConfig } from "kiritan";
 
 export default defineConfig({
@@ -67,7 +67,7 @@ const config = await resolveConfig({ mode: "production" });
 await build(config);
 ```
 
-`resolveConfig` discovers and merges the `.kiritan.(base|<mode>|local).(c|m)(js|ts)` cascade for the current directory and fills in the documented defaults. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 3 for the full config shape and cascade rules.
+`resolveConfig` discovers and merges the `*.kiritanconfig` cascade for the current directory and fills in the documented defaults. See [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 3 for the full config shape and cascade rules.
 
 ## Commands
 
@@ -83,7 +83,7 @@ All of them accept `--mode <mode>` and `--config <path>` to adjust which config 
 
 ## Requirements
 
-- Node.js >= 22
+- Node.js >= 22.7
 
 ## Related packages
 

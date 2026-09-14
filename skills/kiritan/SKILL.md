@@ -1,6 +1,6 @@
 ---
 name: kiritan
-description: Helps write and maintain Kiritan-based i18n — editing base/*.base.md files with :::kiritan{...} directives, choosing the sidecar/inline/catalog document strategy or the colocated/split/centralized/embedded runtime strategy, running kiritan build/check/translate/extract/typegen, and avoiding common mistakes such as hand-editing generated output. Use when a repo has a .kiritan.* config file, a base/ directory of *.base.md sources, or generated docs carrying a `<!-- kiritan:untranslated -->` / `<!-- kiritan:hash ... -->` marker — or when asked to localize a README/doc, add or fix a translation, or resolve a `kiritan check` failure.
+description: Helps write and maintain Kiritan-based i18n — editing base/*.base.md files with :::kiritan{...} directives, choosing the sidecar/inline/catalog document strategy or the colocated/split/centralized/embedded runtime strategy, running kiritan build/check/translate/extract/typegen, and avoiding common mistakes such as hand-editing generated output. Use when a repo has a *.kiritanconfig config file, a base/ directory of *.base.md sources, or generated docs carrying a `<!-- kiritan:untranslated -->` / `<!-- kiritan:hash ... -->` marker — or when asked to localize a README/doc, add or fix a translation, or resolve a `kiritan check` failure.
 metadata:
   trigger: kiritan i18n documentation and runtime resource work
   language: en, ja
@@ -13,13 +13,13 @@ Kiritan is an i18n tool that, beyond the usual key→string runtime i18n, also b
 ## Recognizing a Kiritan project
 
 Look for any of:
-- A `.kiritan.mjs`/`.kiritan.base.mjs` (or `.cjs`/`.ts`/etc.) config file, usually at the repo root, exporting `defineConfig({...})`.
+- A `.kiritanconfig` (or `dev.kiritanconfig`/`local.kiritanconfig`/etc.) config file, usually at the repo root, exporting `defineConfig({...})`. It has no file extension by design — don't mistake it for a stray/misnamed file.
 - A `base/` directory containing `*.base.md` files (the convention this project itself uses; a project may instead keep base files elsewhere per its own `sources` globs).
 - A generated document carrying a `<!-- kiritan:untranslated (source: ...) -->` or `<!-- kiritan:hash ... -->` HTML comment, or an auto-inserted language-switcher line (`**English** | [日本語](...)`).
 
 ## The one rule that matters most: never hand-edit generated output
 
-Every file listed under the resolved config's `sources` (check `.kiritan.*` and its `naming`/`naming.template` for the actual output paths) is **generated** from a base file — editing it directly gets silently overwritten on the next `kiritan build`, and for `sidecar`/`catalog` strategies it will drift from its embedded hash, which `kiritan check` reports as `stale`.
+Every file listed under the resolved config's `sources` (check `.kiritanconfig` and its `naming`/`naming.template` for the actual output paths) is **generated** from a base file — editing it directly gets silently overwritten on the next `kiritan build`, and for `sidecar`/`catalog` strategies it will drift from its embedded hash, which `kiritan check` reports as `stale`.
 
 Always find and edit the `*.base.md` source instead, then regenerate:
 
@@ -108,7 +108,7 @@ Check the project's `runtime.sources` config before assuming which one is in use
 ## Minimal working config, for reference
 
 ```js
-// .kiritan.mjs
+// .kiritanconfig
 import { defineConfig } from "kiritan";
 
 export default defineConfig({

@@ -50,7 +50,7 @@
     "README.ja.md"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.7.0"
   },
   "scripts": {
     "build": "tsdown",
