@@ -1,7 +1,7 @@
 import { defineCommand } from "citty";
 import { resolveConfig } from "../config/index.js";
 import { build } from "../pipeline/build.js";
-import { check } from "../pipeline/check.js";
+import { check, resolveInterpolationVariableNames } from "../pipeline/check.js";
 import { extract } from "../pipeline/extract.js";
 import { translate } from "../pipeline/translate.js";
 import { typegen } from "../pipeline/typegen.js";
@@ -41,13 +41,33 @@ const checkCommand = defineCommand({
     description:
       "Check for missing/stale/machine-translated content (CI-friendly)",
   },
-  args: configArgs,
+  args: {
+    ...configArgs,
+    json: {
+      type: "boolean",
+      description:
+        "Print machine-readable JSON instead (for editor tooling) — includes interpolationVariableNames and delimiters alongside the usual issues/failed",
+    },
+  },
   async run({ args }) {
     const config = await resolveConfig({
       mode: args.mode,
       overlays: args.config ? [args.config] : undefined,
     });
     const result = await check(config);
+
+    if (args.json) {
+      console.log(
+        JSON.stringify({
+          ...result,
+          interpolationVariableNames: resolveInterpolationVariableNames(config),
+          delimiters: config.interpolation?.delimiters ?? ["%{", "}"],
+        })
+      );
+      if (result.failed) process.exitCode = 1;
+      return;
+    }
+
     for (const issue of result.issues) {
       console.log(
         `[${issue.kind}] ${issue.source} (${issue.locale}): ${issue.detail}`

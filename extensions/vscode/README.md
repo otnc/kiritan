@@ -25,12 +25,9 @@ Beyond highlighting, it also provides, via real (if small) extension code:
 
 - **Folding** for `:::kiritan{...}` blocks, correctly matched by colon count even when other directives are nested inside or around them.
 - **Jump to definition** from a `:::kiritan{#<id>}` block to its entry in the sibling `<base>.<locale>.catalog.json` file(s), for the `catalog` document strategy.
+- **Undefined-`%{name}` warnings** and **inline `missing`/`stale`/`machine` indicators** — by running the workspace's own locally-installed `kiritan check --json` (via `npx --no-install`, so a project that doesn't depend on `kiritan` is silently skipped rather than triggering a surprise install) and mapping its results back onto the open document. `%{name}` uses inside a fenced code block or an inline code span are never flagged, matching `interpolation.skipCodeBlocks`'s own default. Only the default `%{`/`}` delimiters are supported for this particular check; a project with custom `interpolation.delimiters` won't see undefined-variable warnings (but still gets everything else).
 
 It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting, bracket matching, and comment toggling despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen). Real code completion for these files works by mirroring the file's content into an in-memory `javascript` document and forwarding completion requests to VS Code's own built-in JavaScript/TypeScript language service — this is what makes the icon and full IntelliSense compatible, since giving the file the real `javascript` language id directly would let vscode-icons' own language-based rule override the custom icon.
-
-## What it doesn't do yet
-
-Undefined-`%{name}`-variable detection and inline `missing`/`stale` indicators are both still planned but not implemented (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13) — both need to know the project's resolved config (`interpolation.variables`, and the same hash-comparison `kiritan check` uses), not just the open document's own text.
 
 ## Building locally
 

@@ -26,6 +26,8 @@ export interface CheckIssue {
   source: string;
   locale: string;
   detail: string;
+  /** The catalog-strategy segment id this issue is about, if any. */
+  id?: string;
 }
 
 export interface CheckOptions {
@@ -136,6 +138,7 @@ async function checkCatalog(
           source: file.path,
           locale,
           detail: `catalog id "${id}" has no translation`,
+          id,
         });
         continue;
       }
@@ -146,6 +149,7 @@ async function checkCatalog(
           source: file.path,
           locale,
           detail: `catalog id "${id}" is machine-translated and needs review`,
+          id,
         });
       }
 
@@ -160,6 +164,7 @@ async function checkCatalog(
             source: file.path,
             locale,
             detail: `catalog id "${id}" is stale (source changed since it was last translated)`,
+            id,
           });
         }
       }
@@ -190,6 +195,24 @@ async function checkRuntimeResources(
       });
     }
   }
+}
+
+/**
+ * The set of `%{name}` variable names `config.interpolation.variables` declares — for the function form, called once with the default locale as a representative context, since variable *names* aren't expected to vary by locale (only their translated values are). Used for undefined-variable detection (editor tooling only; the build pipeline itself resolves values per-locale via `resolveVariables` in pipeline/build.ts).
+ */
+export function resolveInterpolationVariableNames(
+  config: KiritanConfig
+): string[] {
+  const variables = config.interpolation?.variables;
+  if (!variables) return [];
+  const raw =
+    typeof variables === "function"
+      ? variables({
+          locale: config.locales.default,
+          defaultLocale: config.locales.default,
+        })
+      : variables;
+  return Object.keys(raw);
 }
 
 /**
