@@ -1,6 +1,12 @@
+<div align=center>
+
+![kiritan-logo](../../assets/kiritan-logo.png)
+
 # @kiritan/runtime
 
 [English](README.md) | **日本語**
+
+</div>
 
 > [Kiritan](https://www.npmjs.com/package/kiritan) のうち、ランタイム側の最小限の半分 — `t(key, params)` を、ビルド時依存(remarkやCLI)無しで提供する。Kiritan本体を引き込まずに、単体でどんなプロジェクトでも安全に使える。
 
