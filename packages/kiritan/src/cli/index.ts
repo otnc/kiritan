@@ -3,6 +3,7 @@ import { resolveConfig } from "../config/index.js";
 import { build } from "../pipeline/build.js";
 import { check, resolveInterpolationVariableNames } from "../pipeline/check.js";
 import { extract } from "../pipeline/extract.js";
+import { init } from "../pipeline/init.js";
 import { translate } from "../pipeline/translate.js";
 import { typegen } from "../pipeline/typegen.js";
 
@@ -142,6 +143,29 @@ const typegenCommand = defineCommand({
   },
 });
 
+const initCommand = defineCommand({
+  meta: {
+    name: "init",
+    description:
+      "Scaffold .kiritanconfig, base/README.base.md, and a .gitignore entry for local.kiritanconfig",
+  },
+  args: {
+    force: {
+      type: "boolean",
+      description: "Overwrite files that already exist",
+    },
+  },
+  async run({ args }) {
+    const result = await init({ force: args.force });
+    for (const path of result.created) {
+      console.log(`created ${path}`);
+    }
+    for (const path of result.skipped) {
+      console.log(`skipped ${path} (already exists)`);
+    }
+  },
+});
+
 export const main = defineCommand({
   meta: {
     name: "kiritan",
@@ -149,6 +173,7 @@ export const main = defineCommand({
       "In addition to standard scopes, an internationalization (i18n) utility for Markdown and other plain text documents",
   },
   subCommands: {
+    init: initCommand,
     build: buildCommand,
     check: checkCommand,
     translate: translateCommand,
