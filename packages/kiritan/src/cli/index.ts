@@ -1,4 +1,5 @@
-import { defineCommand } from "citty";
+import { createT, type T } from "@kiritan/runtime";
+import yargs, { type Argv } from "yargs";
 import { resolveConfig } from "../config/index.js";
 import { build } from "../pipeline/build.js";
 import { check, resolveInterpolationVariableNames } from "../pipeline/check.js";
@@ -6,187 +7,196 @@ import { extract } from "../pipeline/extract.js";
 import { init } from "../pipeline/init.js";
 import { translate } from "../pipeline/translate.js";
 import { typegen } from "../pipeline/typegen.js";
+import messages from "./messages.i18n.js";
+import { SUPPORTED_LANGUAGES, type CliLanguage } from "./locale.js";
 
-const configArgs = {
-  mode: {
-    type: "string",
-    description: "Config mode layer to apply (<mode>.kiritanconfig)",
-  },
-  config: {
-    type: "string",
-    description: "Extra config file layered on top of the cascade",
-  },
-} as const;
+export { resolveCliLanguage } from "./locale.js";
+export type { CliLanguage } from "./locale.js";
 
-const localeArg = {
-  locale: {
-    type: "string",
-    description:
-      "Restrict to this locale instead of every locale in locales.list",
-  },
-} as const;
+interface ConfigArgs {
+  mode?: string;
+  config?: string;
+}
 
-const buildCommand = defineCommand({
-  meta: {
-    name: "build",
-    description: "Build localized documents from every configured source",
-  },
-  args: { ...configArgs, ...localeArg },
-  async run({ args }) {
-    const config = await resolveConfig({
-      mode: args.mode,
-      overlays: args.config ? [args.config] : undefined,
-    });
-    const result = await build(config, { locale: args.locale });
-    for (const path of result.written) {
-      console.log(`wrote ${path}`);
-    }
-  },
-});
+async function resolveConfigFromArgs(args: ConfigArgs) {
+  return resolveConfig({
+    mode: args.mode,
+    overlays: args.config ? [args.config] : undefined,
+  });
+}
 
-const checkCommand = defineCommand({
-  meta: {
-    name: "check",
-    description:
-      "Check for missing/stale/machine-translated content (CI-friendly)",
-  },
-  args: {
-    ...configArgs,
-    ...localeArg,
-    json: {
-      type: "boolean",
-      description:
-        "Print machine-readable JSON instead (for editor tooling) — includes interpolationVariableNames and delimiters alongside the usual issues/failed",
-    },
-  },
-  async run({ args }) {
-    const config = await resolveConfig({
-      mode: args.mode,
-      overlays: args.config ? [args.config] : undefined,
-    });
-    const result = await check(config, { locale: args.locale });
+type Translate = T<typeof messages>["t"];
 
-    if (args.json) {
-      console.log(
-        JSON.stringify({
-          ...result,
-          interpolationVariableNames: resolveInterpolationVariableNames(config),
-          delimiters: config.interpolation?.delimiters ?? ["%{", "}"],
-        })
-      );
-      if (result.failed) process.exitCode = 1;
-      return;
-    }
+/** Every command except `init` shares these two — layered onto a command's own options via `{ ...configOptions(t) }`. */
+function configOptions(t: Translate) {
+  return {
+    mode: { type: "string", describe: t("option.mode") },
+    config: { type: "string", describe: t("option.config") },
+  } as const;
+}
 
-    for (const issue of result.issues) {
-      console.log(
-        `[${issue.kind}] ${issue.source} (${issue.locale}): ${issue.detail}`
-      );
-    }
-    if (result.issues.length === 0) {
-      console.log("kiritan check: no issues found");
-    }
-    if (result.failed) {
-      process.exitCode = 1;
-    }
-  },
-});
+/** `build`/`check`/`translate`/`extract` share this; `typegen` doesn't, since it always aggregates every locale into one runtime module. */
+function localeOption(t: Translate) {
+  return {
+    locale: { type: "string", describe: t("option.locale") },
+  } as const;
+}
 
-const translateCommand = defineCommand({
-  meta: {
-    name: "translate",
-    description: "Fill in missing/stale translations via translate.middlewares",
-  },
-  args: { ...configArgs, ...localeArg },
-  async run({ args }) {
-    const config = await resolveConfig({
-      mode: args.mode,
-      overlays: args.config ? [args.config] : undefined,
-    });
-    const result = await translate(config, { locale: args.locale });
-    for (const entry of result.translated) {
-      console.log(`[${entry.locale}] ${entry.source}: ${entry.detail}`);
-    }
-    if (result.translated.length === 0) {
-      console.log("kiritan translate: nothing to do");
-    }
-  },
-});
+export interface CreateCliOptions {
+  /** Default: true. Set to false in tests so an error or --help doesn't call process.exit(). */
+  exitProcess?: boolean;
+}
 
-const extractCommand = defineCommand({
-  meta: {
-    name: "extract",
-    description: "Scaffold catalog files with any new ids from the base file",
-  },
-  args: { ...configArgs, ...localeArg },
-  async run({ args }) {
-    const config = await resolveConfig({
-      mode: args.mode,
-      overlays: args.config ? [args.config] : undefined,
-    });
-    const result = await extract(config, { locale: args.locale });
-    for (const change of result.changes) {
-      console.log(`[${change.locale}] ${change.source}: ${change.detail}`);
-    }
-    if (result.changes.length === 0) {
-      console.log("kiritan extract: nothing to do");
-    }
-  },
-});
+/**
+ * Builds the yargs CLI, already fully translated for `lang` — command/option descriptions have to be resolved strings by the time they reach `.command()`/`.options()`, so the display language must be known before this is called (see `resolveCliLanguage`). `yargs.locale(lang)` separately covers everything yargs renders on its own (USAGE/Options/Commands labels, "Missing required argument", "Unknown argument", etc.) via its own bundled locale files — this only has to supply the strings that are actually ours.
+ */
+export function createCli(
+  lang: CliLanguage,
+  options: CreateCliOptions = {}
+): Argv {
+  const { t } = createT(messages, { locale: lang, fallbackLocale: "en" });
 
-const typegenCommand = defineCommand({
-  meta: {
-    name: "typegen",
-    description: "Generate types for an aggregated runtime.sources t() call",
-  },
-  args: configArgs,
-  async run({ args }) {
-    const config = await resolveConfig({
-      mode: args.mode,
-      overlays: args.config ? [args.config] : undefined,
-    });
-    const result = await typegen(config);
-    console.log(
-      `wrote ${result.dataPath} and ${result.typesPath} (${result.keyCount} keys)`
-    );
-  },
-});
+  return yargs()
+    .locale(lang)
+    .scriptName("kiritan")
+    .exitProcess(options.exitProcess ?? true)
+    .option("lang", {
+      type: "string",
+      choices: SUPPORTED_LANGUAGES,
+      describe: t("option.lang"),
+    })
+    .command(
+      "init",
+      t("command.init.describe"),
+      (y) =>
+        y.options({
+          force: { type: "boolean", describe: t("option.force") },
+        }),
+      async (args) => {
+        const result = await init({ force: args.force });
+        for (const path of result.created) {
+          console.log(t("output.init.created", { path }));
+        }
+        for (const path of result.skipped) {
+          console.log(t("output.init.skipped", { path }));
+        }
+      }
+    )
+    .command(
+      "build",
+      t("command.build.describe"),
+      (y) => y.options({ ...configOptions(t), ...localeOption(t) }),
+      async (args) => {
+        const config = await resolveConfigFromArgs(args);
+        const result = await build(config, { locale: args.locale });
+        for (const path of result.written) {
+          console.log(t("output.wrote", { path }));
+        }
+      }
+    )
+    .command(
+      "check",
+      t("command.check.describe"),
+      (y) =>
+        y.options({
+          ...configOptions(t),
+          ...localeOption(t),
+          json: { type: "boolean", describe: t("option.json") },
+        }),
+      async (args) => {
+        const config = await resolveConfigFromArgs(args);
+        const result = await check(config, { locale: args.locale });
 
-const initCommand = defineCommand({
-  meta: {
-    name: "init",
-    description:
-      "Scaffold .kiritanconfig, base/README.base.md, and a .gitignore entry for local.kiritanconfig",
-  },
-  args: {
-    force: {
-      type: "boolean",
-      description: "Overwrite files that already exist",
-    },
-  },
-  async run({ args }) {
-    const result = await init({ force: args.force });
-    for (const path of result.created) {
-      console.log(`created ${path}`);
-    }
-    for (const path of result.skipped) {
-      console.log(`skipped ${path} (already exists)`);
-    }
-  },
-});
+        if (args.json) {
+          console.log(
+            JSON.stringify({
+              ...result,
+              interpolationVariableNames:
+                resolveInterpolationVariableNames(config),
+              delimiters: config.interpolation?.delimiters ?? ["%{", "}"],
+            })
+          );
+          if (result.failed) process.exitCode = 1;
+          return;
+        }
 
-export const main = defineCommand({
-  meta: {
-    name: "kiritan",
-    description:
-      "In addition to standard scopes, an internationalization (i18n) utility for Markdown and other plain text documents",
-  },
-  subCommands: {
-    init: initCommand,
-    build: buildCommand,
-    check: checkCommand,
-    translate: translateCommand,
-    extract: extractCommand,
-    typegen: typegenCommand,
-  },
-});
+        for (const issue of result.issues) {
+          console.log(
+            t("output.check.issue", {
+              kind: issue.kind,
+              source: issue.source,
+              locale: issue.locale,
+              detail: issue.detail,
+            })
+          );
+        }
+        if (result.issues.length === 0) {
+          console.log(t("output.check.noIssues"));
+        }
+        if (result.failed) {
+          process.exitCode = 1;
+        }
+      }
+    )
+    .command(
+      "translate",
+      t("command.translate.describe"),
+      (y) => y.options({ ...configOptions(t), ...localeOption(t) }),
+      async (args) => {
+        const config = await resolveConfigFromArgs(args);
+        const result = await translate(config, { locale: args.locale });
+        for (const entry of result.translated) {
+          console.log(
+            t("output.translate.entry", {
+              locale: entry.locale,
+              source: entry.source,
+              detail: entry.detail,
+            })
+          );
+        }
+        if (result.translated.length === 0) {
+          console.log(t("output.translate.none"));
+        }
+      }
+    )
+    .command(
+      "extract",
+      t("command.extract.describe"),
+      (y) => y.options({ ...configOptions(t), ...localeOption(t) }),
+      async (args) => {
+        const config = await resolveConfigFromArgs(args);
+        const result = await extract(config, { locale: args.locale });
+        for (const change of result.changes) {
+          console.log(
+            t("output.extract.entry", {
+              locale: change.locale,
+              source: change.source,
+              detail: change.detail,
+            })
+          );
+        }
+        if (result.changes.length === 0) {
+          console.log(t("output.extract.none"));
+        }
+      }
+    )
+    .command(
+      "typegen",
+      t("command.typegen.describe"),
+      (y) => y.options(configOptions(t)),
+      async (args) => {
+        const config = await resolveConfigFromArgs(args);
+        const result = await typegen(config);
+        console.log(
+          t("output.typegen.wrote", {
+            dataPath: result.dataPath,
+            typesPath: result.typesPath,
+            keyCount: result.keyCount,
+          })
+        );
+      }
+    )
+    .demandCommand(1)
+    .strict()
+    .help();
+}

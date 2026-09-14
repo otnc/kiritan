@@ -82,6 +82,8 @@ await build(config);
 
 Every command except `kiritan init` accepts `--mode <mode>` and `--config <path>` to adjust which config layers are applied — there's no config to layer yet before `init` has run. `build`/`check`/`translate`/`extract` also accept `--locale <locale>` to restrict a run to one locale instead of every locale in `locales.list`; `kiritan typegen` doesn't, since it always aggregates every locale into one runtime module.
 
+Every command also accepts `--lang <en|ja>`, picking the CLI's own display language — command/option descriptions, `--help` output, and the CLI's own plain-text output lines (not `--json`, which stays machine-readable regardless). This is unrelated to `--locale`, which picks which *document* locale a run acts on. Without `--lang`, it falls back to the `KIRITAN_LANG`/`LC_ALL`/`LC_MESSAGES`/`LANG` environment variables, then `en`.
+
 ## Requirements
 
 - Node.js >= 22.7
