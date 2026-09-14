@@ -57,7 +57,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@kiritan/runtime": "^0.1.0",
+    "@kiritan/runtime": "^0.2.0",
     "citty": "^0.2.2",
     "jiti": "^2.4.2",
     "remark-directive": "^4.0.0",
