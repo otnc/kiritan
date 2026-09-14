@@ -1,10 +1,11 @@
 {
   "name": "kiritan",
   "displayName": "Kiritan",
-  "description": "Syntax highlighting for Kiritan's :::kiritan{...} directive blocks in Markdown, and for *.kiritanconfig files",
+  "description": "Syntax highlighting, folding, and catalog jump for Kiritan's :::kiritan{...} directive blocks in Markdown, and syntax highlighting/completion for *.kiritanconfig files",
   "version": "0.2.0",
   "publisher": "otoneko1102",
   "type": "module",
+  "main": "./extension.cjs",
   "icon": "images/icon.png",
   "license": "WTFPL",
   "author": "otoneko.",
@@ -24,6 +25,9 @@
   "categories": [
     "Programming Languages"
   ],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "keywords": [
     "kiritan",
     "i18n",
@@ -40,6 +44,7 @@
         "filenamePatterns": [
           "*.kiritanconfig"
         ],
+        "configuration": "./syntaxes/kiritanconfig-language-configuration.json",
         "icon": {
           "light": "./images/icon.png",
           "dark": "./images/icon.png"
@@ -63,7 +68,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "package": "vsce package --no-dependencies",
-    "publish": "vsce publish --no-dependencies"
+    "package": "vsce package --no-dependencies --baseContentUrl https://github.com/otnc/kiritan/blob/HEAD/extensions/vscode",
+    "publish": "vsce publish --no-dependencies --baseContentUrl https://github.com/otnc/kiritan/blob/HEAD/extensions/vscode"
   }
 }

@@ -81,6 +81,18 @@ describe("kiritan-injection.tmLanguage.json", () => {
     const scopes = scopesFor(grammar, ":::note").flat();
     expect(scopes).not.toContain("entity.name.tag.directive.kiritan");
   });
+
+  it("tags a %{name} interpolation", () => {
+    const scopes = scopesFor(grammar, "Hello, %{name}!").flat();
+    expect(scopes).toContain("variable.other.interpolation.kiritan");
+    expect(scopes).toContain("variable.parameter.kiritan");
+  });
+
+  it("tags an escaped \\%{name} as a literal, not an interpolation", () => {
+    const scopes = scopesFor(grammar, "Use \\%{name} literally.").flat();
+    expect(scopes).toContain("constant.character.escape.kiritan");
+    expect(scopes).not.toContain("variable.other.interpolation.kiritan");
+  });
 });
 
 describe("kiritanconfig.tmLanguage.json", () => {

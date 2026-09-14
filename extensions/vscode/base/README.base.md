@@ -1,6 +1,6 @@
 <div align=center>
 
-![kiritan-logo](../../assets/kiritan-logo.png)
+![kiritan-logo](https://raw.githubusercontent.com/otnc/kiritan/main/assets/kiritan-logo.png)
 
 # Kiritan (VS Code extension)
 
@@ -31,19 +31,31 @@ Colors the directive fences and their attributes distinctly from surrounding Mar
 - `:::kiritan{locale=en}` / `:::kiritan{locale=ja}` container directives, and their closing `:::`.
 - `:::kiritan{#usage-intro}` catalog-strategy segment ids.
 - `::kiritan{switcher}` leaf directive.
+- `%{name}` interpolation placeholders, and their `\%{name}` escaped form.
 
-This is a purely declarative TextMate grammar injection — no compiled extension code, no activation cost beyond what Markdown already has.
+This directive highlighting is a purely declarative TextMate grammar injection — no compiled extension code, no activation cost beyond what Markdown already has.
 
-It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen).
+Beyond highlighting, it also provides, via real (if small) extension code:
+
+- **Folding** for `:::kiritan{...}` blocks, correctly matched by colon count even when other directives are nested inside or around them.
+- **Jump to definition** from a `:::kiritan{#<id>}` block to its entry in the sibling `<base>.<locale>.catalog.json` file(s), for the `catalog` document strategy.
+
+It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`, `local.kiritanconfig`) as its own language, so these files get JavaScript-equivalent syntax highlighting, bracket matching, and comment toggling despite having no real file extension — and, as a side effect, a Kiritan-branded file icon in any icon theme, since no theme has a specific rule for a filename it's never heard of (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 for why this file naming was chosen). Real code completion for these files works by mirroring the file's content into an in-memory `javascript` document and forwarding completion requests to VS Code's own built-in JavaScript/TypeScript language service — this is what makes the icon and full IntelliSense compatible, since giving the file the real `javascript` language id directly would let vscode-icons' own language-based rule override the custom icon.
 :::
 :::kiritan{locale=ja}
 - `:::kiritan{locale=en}` / `:::kiritan{locale=ja}` コンテナディレクティブと、閉じの `:::`。
 - `:::kiritan{#usage-intro}` のようなcatalog戦略のセグメントid。
 - `::kiritan{switcher}` leafディレクティブ。
+- `%{name}` 補間プレースホルダーと、そのエスケープ形式 `\%{name}`。
 
-コンパイル済みの拡張機能コードは無い、宣言的なTextMate文法の注入のみです。Markdownが元々持っている以上のアクティベーションコストはありません。
+このディレクティブハイライトはコンパイル済みの拡張機能コード無しの、宣言的なTextMate文法の注入のみです。Markdownが元々持っている以上のアクティベーションコストはありません。
 
-あわせて `*.kiritanconfig`(例: `.kiritanconfig`、`dev.kiritanconfig`、`local.kiritanconfig`)を独自言語として登録しており、実在する拡張子を持たないにもかかわらずJavaScript相当のシンタックスハイライトが効きます。副次効果として、どのアイコンテーマでもKiritan固有のファイルアイコンが表示されます — 見たことの無いファイル名に対する具体的なルールを持つテーマは存在しないためです(この命名を選んだ理由は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。
+ハイライトに加えて、小規模ながら実際の拡張機能コードで以下も提供しています:
+
+- **折りたたみ**: `:::kiritan{...}` ブロックを、他のディレクティブが内側・外側にネストしていても、コロンの個数で正しく対応させて折りたたみます。
+- **定義へのジャンプ**: `catalog` ドキュメント戦略において、`:::kiritan{#<id>}` ブロックから、隣接する `<base>.<locale>.catalog.json` ファイル内の該当エントリへジャンプします。
+
+あわせて `*.kiritanconfig`(例: `.kiritanconfig`、`dev.kiritanconfig`、`local.kiritanconfig`)を独自言語として登録しており、実在する拡張子を持たないにもかかわらずJavaScript相当のシンタックスハイライト・括弧の対応・コメントのトグルが効きます。副次効果として、どのアイコンテーマでもKiritan固有のファイルアイコンが表示されます — 見たことの無いファイル名に対する具体的なルールを持つテーマは存在しないためです(この命名を選んだ理由は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。これらのファイルの本物のコード補完は、ファイルの内容をメモリ上の `javascript` ドキュメントに複製し、補完リクエストをVS Code組み込みのJavaScript/TypeScript言語サービスへ転送することで実現しています — ファイルに実際に `javascript` 言語IDを与えてしまうと、vscode-icons自身の言語ベースのルールがカスタムアイコンを上書きしてしまうため、アイコンとフルIntelliSenseを両立させるにはこの方式が必要でした。
 :::
 
 :::kiritan{locale=en}
@@ -54,10 +66,10 @@ It also registers `*.kiritanconfig` (e.g. `.kiritanconfig`, `dev.kiritanconfig`,
 :::
 
 :::kiritan{locale=en}
-Folding, jumping between a `:::kiritan{#<id>}` block and its catalog file, and inline `missing`/`stale` indicators are all planned but not implemented (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13) — those need real extension code (a folding range provider, a definition provider), not just a grammar.
+Undefined-`%{name}`-variable detection and inline `missing`/`stale` indicators are both still planned but not implemented (see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13) — both need to know the project's resolved config (`interpolation.variables`, and the same hash-comparison `kiritan check` uses), not just the open document's own text.
 :::
 :::kiritan{locale=ja}
-折りたたみ、`:::kiritan{#<id>}` ブロックとcatalogファイル間のジャンプ、`missing`/`stale` のインライン表示は、いずれも計画中ですがまだ実装されていません([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。これらには文法だけでなく、実際の拡張機能コード(folding range provider、definition provider)が必要です。
+未定義の`%{name}`変数の検出と、`missing`/`stale`のインライン表示は、いずれも計画中ですがまだ実装されていません([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 13章を参照)。どちらもプロジェクトの解決済み設定(`interpolation.variables`、および`kiritan check`と同じハッシュ比較)を把握する必要があり、開いているドキュメント自身のテキストだけでは完結しません。
 :::
 
 :::kiritan{locale=en}
