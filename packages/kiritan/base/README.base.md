@@ -114,6 +114,8 @@ await build(config);
 | `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9.6) |
 
 Every command except `kiritan init` accepts `--mode <mode>` and `--config <path>` to adjust which config layers are applied — there's no config to layer yet before `init` has run. `build`/`check`/`translate`/`extract` also accept `--locale <locale>` to restrict a run to one locale instead of every locale in `locales.list`; `kiritan typegen` doesn't, since it always aggregates every locale into one runtime module.
+
+Every command also accepts `--lang <en|ja>`, picking the CLI's own display language — command/option descriptions, `--help` output, and the CLI's own plain-text output lines (not `--json`, which stays machine-readable regardless). This is unrelated to `--locale`, which picks which *document* locale a run acts on. Without `--lang`, it falls back to the `KIRITAN_LANG`/`LC_ALL`/`LC_MESSAGES`/`LANG` environment variables, then `en`.
 :::
 :::kiritan{locale=ja}
 ## コマンド
@@ -128,6 +130,8 @@ Every command except `kiritan init` accepts `--mode <mode>` and `--config <path>
 | `kiritan typegen` | `runtime.sources` を1つの名前空間付き `ResourceModule` に集約し、型定義を書き出す([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9.6章) |
 
 `kiritan init` 以外のコマンドはすべて `--mode <mode>` と `--config <path>` を受け付け、適用する設定レイヤーを調整できる — `init` 実行前はまだ重ねる設定自体が無い。`build`/`check`/`translate`/`extract` は `--locale <locale>` にも対応し、実行対象を `locales.list` 全体ではなく1ロケールに絞れる。`kiritan typegen` だけは対応しない — 常に全ロケールを1つのランタイムモジュールに集約するコマンドのため。
+
+すべてのコマンドは `--lang <en|ja>` にも対応しており、CLI自身の表示言語(コマンド/オプションの説明文、`--help`出力、CLI自身が出すプレーンテキストの出力行 — `--json`は機械可読のまま変わらない)を選べる。どの*ドキュメント*ロケールに対して実行するかを選ぶ`--locale`とは無関係。`--lang`を指定しない場合は`KIRITAN_LANG`/`LC_ALL`/`LC_MESSAGES`/`LANG`環境変数、最後に`en`にフォールバックする。
 :::
 
 :::kiritan{locale=en}

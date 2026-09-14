@@ -82,6 +82,8 @@ await build(config);
 
 `kiritan init` 以外のコマンドはすべて `--mode <mode>` と `--config <path>` を受け付け、適用する設定レイヤーを調整できる — `init` 実行前はまだ重ねる設定自体が無い。`build`/`check`/`translate`/`extract` は `--locale <locale>` にも対応し、実行対象を `locales.list` 全体ではなく1ロケールに絞れる。`kiritan typegen` だけは対応しない — 常に全ロケールを1つのランタイムモジュールに集約するコマンドのため。
 
+すべてのコマンドは `--lang <en|ja>` にも対応しており、CLI自身の表示言語(コマンド/オプションの説明文、`--help`出力、CLI自身が出すプレーンテキストの出力行 — `--json`は機械可読のまま変わらない)を選べる。どの*ドキュメント*ロケールに対して実行するかを選ぶ`--locale`とは無関係。`--lang`を指定しない場合は`KIRITAN_LANG`/`LC_ALL`/`LC_MESSAGES`/`LANG`環境変数、最後に`en`にフォールバックする。
+
 ## 動作環境
 
 - Node.js >= 22.7

@@ -599,18 +599,20 @@ export function Button() {
 
 ## 10. CLI / プログラム API
 
-CLI の骨組みは [citty](https://github.com/unjs/citty) を使う(サブコマンド定義・ヘルプ表示・型付き引数を自前実装しない)。
+CLI の骨組みは [yargs](https://github.com/yargs/yargs) を使う(サブコマンド定義・ヘルプ表示・型付き引数を自前実装しない)。`kiritan` は以前 [citty](https://github.com/unjs/citty) を使っていたが、citty には自身の`--help`出力や引数解析エラー(`Missing required argument`、`Unknown argument` 等)を翻訳するフックが無く、ライブラリ自身にハードコードされた英語の文字列だった。yargsはこうした定型文言すべてに対する翻訳をバンドルで持っており(`.locale("ja")`で`Commands:`/`Options:`/`Missing required argument: %s`等が日本語に切り替わる)、これによってCLI自身の`console.log`だけでなく`--help`とエラー出力まで実際に多言語化できるようになった。
 
 ```
-kiritan init [--force]                            # Scaffolds .kiritanconfig / base/README.base.md / a .gitignore entry for local.kiritanconfig
-kiritan build [--mode] [--config] [--locale]     # Runs the full pipeline (every strategy)
-kiritan extract [--mode] [--config] [--locale]   # catalog-strategy sources only. Creates/updates catalogs
-kiritan translate [--mode] [--config] [--locale] # Fills missing/stale via translate.middlewares (every strategy)
-kiritan typegen [--mode] [--config]              # Generates a .d.ts from the runtime.sources aggregation (chapter 9.6)
-kiritan check [--mode] [--config] [--locale] [--json] # For CI (or editor tooling with --json). Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
+kiritan init [--lang] [--force]                            # Scaffolds .kiritanconfig / base/README.base.md / a .gitignore entry for local.kiritanconfig
+kiritan build [--lang] [--mode] [--config] [--locale]     # Runs the full pipeline (every strategy)
+kiritan extract [--lang] [--mode] [--config] [--locale]   # catalog-strategy sources only. Creates/updates catalogs
+kiritan translate [--lang] [--mode] [--config] [--locale] # Fills missing/stale via translate.middlewares (every strategy)
+kiritan typegen [--lang] [--mode] [--config]              # Generates a .d.ts from the runtime.sources aggregation (chapter 9.6)
+kiritan check [--lang] [--mode] [--config] [--locale] [--json] # For CI (or editor tooling with --json). Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
 ```
 
 `kiritan init` は書き込み先のファイルが既に存在する場合はそのまま残す(`--force` で上書き) — 3つのうち一部だけ既に用意されているプロジェクトでも再実行して安全。`build`/`check`/`translate`/`extract` はいずれも `--locale <locale>` を受け付け、実行対象を `locales.list` 全体ではなく1ロケールに絞れる。`kiritan typegen` だけは対応しない — 常に全ロケールを1つのランタイムモジュールに集約するコマンドのため。
+
+`--lang <en|ja>` はCLI自身の表示言語を選ぶ — 各コマンド/オプションの説明文、`--help`出力、CLI自身が出す成功/何もしなかった旨のプレーンテキスト行(`--json`出力は機械可読のまま変わらない)が対象で、どの*ドキュメント*ロケールに対して実行するかを選ぶ`--locale`とは別物。`--lang`を指定しない場合は`KIRITAN_LANG`、次に通常のPOSIXロケール環境変数(`LC_ALL`、`LC_MESSAGES`、`LANG`)、最後に`en`にフォールバックする。明示的だが未対応の`--lang`(例: `--lang fr`)は黙ってフォールバックするのではなく、通常の不正な選択肢エラーとして報告される。CLI自身の文字列は`packages/kiritan/src/cli/messages.i18n.ts`に置かれており、このリポジトリ自身の`.kiritanconfig`における`colocated`戦略の`runtime.sources`リソースになっている — そのため`kiritan check`/`kiritan typegen`は、他のプロジェクト自身のリソースと同じようにここでのen/ja対の欠落も検出する。パイプライン関数(`packages/kiritan/src/pipeline/*.ts`)由来の`CheckIssue.detail`やスローされる`Error.message`は翻訳されない — これらはCLIとプログラムAPIの両方が使うライブラリレベルの文字列であり、`--lang`に関わらずNodeのライブラリ自身の例外と同じく英語のままとなる。
 
 ```ts
 export { defineConfig, build } from 'kiritan';

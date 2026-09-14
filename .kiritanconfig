@@ -31,4 +31,10 @@ export default {
       naming: { template: "extensions/vim/{base}.{locale}.{ext}" },
     },
   ],
+  // Dogfooding: the CLI's own display strings (packages/kiritan/src/cli/messages.i18n.ts) are a runtime.sources resource too, so `kiritan check`/`kiritan typegen` catch a missing en/ja pair the same way any other project's own resources would.
+  runtime: {
+    sources: [
+      { glob: "packages/kiritan/src/cli/*.i18n.ts", strategy: "colocated" },
+    ],
+  },
 };

@@ -599,18 +599,20 @@ Adds an item to `kiritan check` (chapter 8) that detects **cross-locale key mism
 
 ## 10. CLI / programmatic API
 
-The CLI's skeleton uses [citty](https://github.com/unjs/citty) (subcommand definitions, help output, and typed args aren't hand-rolled).
+The CLI's skeleton uses [yargs](https://github.com/yargs/yargs) (subcommand definitions, help output, and typed args aren't hand-rolled). `kiritan` previously used [citty](https://github.com/unjs/citty) for this, but citty has no hook for translating its own `--help` output or argument-parsing errors ("Missing required argument", "Unknown argument", etc.) — they're hardcoded English strings baked into the library itself. yargs ships full bundled translations for all of that boilerplate (`.locale("ja")` switches "Commands:"/"Options:"/"Missing required argument: %s"/etc. to their Japanese equivalents), which is what actually made localizing the CLI's own `--help` and error output possible, not just its own `console.log` lines.
 
 ```
-kiritan init [--force]                            # Scaffolds .kiritanconfig / base/README.base.md / a .gitignore entry for local.kiritanconfig
-kiritan build [--mode] [--config] [--locale]     # Runs the full pipeline (every strategy)
-kiritan extract [--mode] [--config] [--locale]   # catalog-strategy sources only. Creates/updates catalogs
-kiritan translate [--mode] [--config] [--locale] # Fills missing/stale via translate.middlewares (every strategy)
-kiritan typegen [--mode] [--config]              # Generates a .d.ts from the runtime.sources aggregation (chapter 9.6)
-kiritan check [--mode] [--config] [--locale] [--json] # For CI (or editor tooling with --json). Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
+kiritan init [--lang] [--force]                            # Scaffolds .kiritanconfig / base/README.base.md / a .gitignore entry for local.kiritanconfig
+kiritan build [--lang] [--mode] [--config] [--locale]     # Runs the full pipeline (every strategy)
+kiritan extract [--lang] [--mode] [--config] [--locale]   # catalog-strategy sources only. Creates/updates catalogs
+kiritan translate [--lang] [--mode] [--config] [--locale] # Fills missing/stale via translate.middlewares (every strategy)
+kiritan typegen [--lang] [--mode] [--config]              # Generates a .d.ts from the runtime.sources aggregation (chapter 9.6)
+kiritan check [--lang] [--mode] [--config] [--locale] [--json] # For CI (or editor tooling with --json). Exits non-zero on missing/stale/unreviewed/i18n-key-mismatch
 ```
 
 `kiritan init` leaves every file it would write alone if it already exists (`--force` overwrites) — safe to run again in a project that already has some of the three set up. `build`/`check`/`translate`/`extract` all accept `--locale <locale>` to restrict a run to one locale instead of every locale in `locales.list`; `kiritan typegen` doesn't, since it always aggregates every locale into one runtime module.
+
+`--lang <en|ja>` picks the CLI's own display language — every command/option description, `--help` output, and the CLI's own plain-text success/no-op lines (not `--json` output, which stays machine-readable regardless) — as opposed to `--locale`, which picks which *document* locale a run acts on. Without `--lang`, it falls back to `KIRITAN_LANG`, then the usual POSIX locale env vars (`LC_ALL`, `LC_MESSAGES`, `LANG`), then `en`; an explicit but unsupported `--lang` (e.g. `--lang fr`) is reported back as a normal invalid-choice error rather than silently falling back. The CLI's own strings live in `packages/kiritan/src/cli/messages.i18n.ts` — a `colocated`-strategy `runtime.sources` resource in this repo's own `.kiritanconfig`, so `kiritan check`/`kiritan typegen` catch a missing en/ja pair here the same way they would for any other project's own resources. A `CheckIssue.detail` or a thrown `Error.message` from a pipeline function (`packages/kiritan/src/pipeline/*.ts`) is never translated, though — those are library-level strings used by both the CLI and the programmatic API, and stay in English the same way any Node library's own exceptions would, regardless of `--lang`.
 
 ```ts
 export { defineConfig, build } from 'kiritan';
