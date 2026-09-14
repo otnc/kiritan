@@ -2,7 +2,7 @@
   "name": "kiritan",
   "displayName": "Kiritan",
   "description": "Syntax highlighting for Kiritan's :::kiritan{...} directive blocks in Markdown",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "otoneko1102",
   "type": "module",
   "icon": "images/icon.png",
