@@ -215,6 +215,40 @@ describe("translate (catalog strategy)", () => {
   });
 });
 
+describe("translate (locale option)", () => {
+  it("only translates the requested locale, leaving other missing locales alone", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const config = baseConfig({
+      locales: { default: "en", list: ["en", "ja", "fr"] },
+      sources: [
+        {
+          glob: "README.base.md",
+          strategy: "sidecar",
+          translate: { middlewares: [uppercase] },
+        },
+      ],
+    });
+    const result = await translate(config, { cwd, locale: "fr" });
+    expect(result.translated).toEqual([
+      { source: "README.base.md", locale: "fr", detail: "wrote README.fr.md" },
+    ]);
+    expect(await readFile(join(cwd, "README.fr.md"), "utf8")).toContain(
+      "HELLO"
+    );
+    await expect(readFile(join(cwd, "README.ja.md"), "utf8")).rejects.toThrow();
+  });
+
+  it("rejects a locale that isn't in locales.list", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+    });
+    await expect(translate(config, { cwd, locale: "de" })).rejects.toThrow(
+      /locale "de" is not in locales\.list/
+    );
+  });
+});
+
 describe("translate (inline strategy)", () => {
   it("throws when middlewares are configured, since inline isn't supported yet", async () => {
     await writeFile(

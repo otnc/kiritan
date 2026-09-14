@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { resolveTargetLocales } from "../config/locale.js";
 import type {
   KiritanConfig,
   SourceConfig,
@@ -32,6 +33,8 @@ export interface TranslatedEntry {
 
 export interface TranslateOptions {
   cwd?: string;
+  /** Restricts translation to this locale instead of every locale in `config.locales.list`. */
+  locale?: string;
 }
 
 export interface TranslateResult {
@@ -54,7 +57,8 @@ async function translateSidecar(
   file: DiscoveredFile,
   config: KiritanConfig,
   cwd: string,
-  translated: TranslatedEntry[]
+  translated: TranslatedEntry[],
+  allowedLocales: string[]
 ): Promise<void> {
   const middlewares = middlewaresFor(file.source, config);
   if (middlewares.length === 0) return;
@@ -62,8 +66,8 @@ async function translateSidecar(
   const naming = resolveNamingOptions(file.source.naming ?? config.naming);
   const sourceText = await readFile(join(cwd, file.path), "utf8");
   const sourceHash = hashText(sourceText);
-  const targetLocales: string[] = [];
-  for (const locale of config.locales.list) {
+  const staleOrMissingLocales: string[] = [];
+  for (const locale of allowedLocales) {
     if (locale === config.locales.default) continue;
     const outPath = resolveOutputPath(
       file.base,
@@ -73,15 +77,17 @@ async function translateSidecar(
     );
     const existing = await readFileIfExists(join(cwd, outPath));
     if (existing === undefined) {
-      targetLocales.push(locale);
+      staleOrMissingLocales.push(locale);
       continue;
     }
     const existingHash = extractHashComment(existing);
-    if (existingHash && existingHash !== sourceHash) targetLocales.push(locale);
+    if (existingHash && existingHash !== sourceHash) {
+      staleOrMissingLocales.push(locale);
+    }
   }
-  if (targetLocales.length === 0) return;
+  if (staleOrMissingLocales.length === 0) return;
 
-  const contexts: TranslateContext[] = targetLocales.map((locale) => ({
+  const contexts: TranslateContext[] = staleOrMissingLocales.map((locale) => ({
     text: sourceText,
     from: config.locales.default,
     to: locale,
@@ -89,7 +95,7 @@ async function translateSidecar(
   }));
   const results = await runTranslateMiddlewares(middlewares, contexts);
 
-  for (const [index, locale] of targetLocales.entries()) {
+  for (const [index, locale] of staleOrMissingLocales.entries()) {
     const result = results[index];
     if (result == null) continue;
     const outPath = resolveOutputPath(
@@ -112,7 +118,8 @@ async function translateCatalog(
   file: DiscoveredFile,
   config: KiritanConfig,
   cwd: string,
-  translated: TranslatedEntry[]
+  translated: TranslatedEntry[],
+  allowedLocales: string[]
 ): Promise<void> {
   const middlewares = middlewaresFor(file.source, config);
   if (middlewares.length === 0) return;
@@ -123,7 +130,7 @@ async function translateCatalog(
     stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] });
   const segmentHashFor = (id: string) => hashText(segmentTextFor(id));
 
-  for (const locale of config.locales.list) {
+  for (const locale of allowedLocales) {
     if (locale === config.locales.default) continue;
     const catalogPath = join(
       cwd,
@@ -180,6 +187,7 @@ export async function translate(
   options: TranslateOptions = {}
 ): Promise<TranslateResult> {
   const cwd = options.cwd ?? process.cwd();
+  const targetLocales = resolveTargetLocales(config, options.locale);
   const files = await discoverSourceFiles(config.sources, {
     cwd,
     baseSuffix: config.naming?.baseSuffix,
@@ -188,11 +196,11 @@ export async function translate(
 
   for (const file of files) {
     if (file.source.strategy === "sidecar") {
-      await translateSidecar(file, config, cwd, translated);
+      await translateSidecar(file, config, cwd, translated, targetLocales);
       continue;
     }
     if (file.source.strategy === "catalog") {
-      await translateCatalog(file, config, cwd, translated);
+      await translateCatalog(file, config, cwd, translated, targetLocales);
       continue;
     }
     if (

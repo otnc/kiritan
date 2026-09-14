@@ -8,6 +8,7 @@ import type {
   SourceConfig,
   SwitcherConfig,
 } from "../config/types.js";
+import { resolveTargetLocales } from "../config/locale.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { renderForLocale } from "../directive/render.js";
 import { resolveNamingOptions, resolveOutputPath } from "../discover/naming.js";
@@ -22,6 +23,8 @@ import {
 
 export interface BuildOptions {
   cwd?: string;
+  /** Restricts the build to this locale instead of every locale in `config.locales.list`. */
+  locale?: string;
 }
 
 export interface BuildResult {
@@ -90,6 +93,7 @@ export async function build(
   options: BuildOptions = {}
 ): Promise<BuildResult> {
   const cwd = options.cwd ?? process.cwd();
+  const targetLocales = resolveTargetLocales(config, options.locale);
   const files = await discoverSourceFiles(config.sources, {
     cwd,
     baseSuffix: config.naming?.baseSuffix,
@@ -119,7 +123,7 @@ export async function build(
     const sourceText = await readFile(join(cwd, file.path), "utf8");
 
     if (file.source.strategy === "sidecar") {
-      for (const locale of config.locales.list) {
+      for (const locale of targetLocales) {
         const outPath = outputPathFor(locale);
         let text = sourceText;
         if (locale !== config.locales.default) {
@@ -146,7 +150,7 @@ export async function build(
         parseMarkdown(sourceText),
         switcherConfig
       );
-      for (const locale of config.locales.list) {
+      for (const locale of targetLocales) {
         const outPath = outputPathFor(locale);
         const rendered = renderForLocale(baseTree, {
           targetLocale: locale,
@@ -164,7 +168,7 @@ export async function build(
         parseMarkdown(sourceText),
         switcherConfig
       );
-      for (const locale of config.locales.list) {
+      for (const locale of targetLocales) {
         const outPath = outputPathFor(locale);
         const catalogData =
           locale === config.locales.default

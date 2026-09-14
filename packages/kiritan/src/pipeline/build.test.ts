@@ -89,6 +89,48 @@ describe("build (inline strategy)", () => {
     expect(ja).toContain("[English](README.md)");
     expect(ja).toContain("**日本語**");
   });
+
+  it("with a locale option, only writes that locale's output but still links every locale in the switcher", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [
+        ":::kiritan{locale=en}",
+        "English.",
+        ":::",
+        ":::kiritan{locale=ja}",
+        "日本語。",
+        ":::",
+        ":::kiritan{locale=fr}",
+        "Français.",
+        ":::",
+      ].join("\n"),
+      "utf8"
+    );
+
+    const config = baseConfig({
+      locales: { default: "en", list: ["en", "ja", "fr"] },
+      sources: [{ glob: "README.base.md", strategy: "inline" }],
+    });
+
+    const result = await build(config, { cwd, locale: "ja" });
+    expect(result.written).toEqual(["README.ja.md"]);
+
+    const ja = await readFile(join(cwd, "README.ja.md"), "utf8");
+    expect(ja).toContain("日本語。");
+    // The switcher still links every configured locale, even ones this run didn't (re)build.
+    expect(ja).toContain("[English](README.md)");
+    expect(ja).toContain("[français](README.fr.md)");
+  });
+
+  it("rejects a locale that isn't in locales.list", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const config = baseConfig({
+      sources: [{ glob: "README.base.md", strategy: "inline" }],
+    });
+    await expect(build(config, { cwd, locale: "de" })).rejects.toThrow(
+      /locale "de" is not in locales\.list/
+    );
+  });
 });
 
 describe("build (sidecar strategy)", () => {

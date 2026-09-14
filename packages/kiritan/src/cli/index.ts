@@ -18,18 +18,26 @@ const configArgs = {
   },
 } as const;
 
+const localeArg = {
+  locale: {
+    type: "string",
+    description:
+      "Restrict to this locale instead of every locale in locales.list",
+  },
+} as const;
+
 const buildCommand = defineCommand({
   meta: {
     name: "build",
     description: "Build localized documents from every configured source",
   },
-  args: configArgs,
+  args: { ...configArgs, ...localeArg },
   async run({ args }) {
     const config = await resolveConfig({
       mode: args.mode,
       overlays: args.config ? [args.config] : undefined,
     });
-    const result = await build(config);
+    const result = await build(config, { locale: args.locale });
     for (const path of result.written) {
       console.log(`wrote ${path}`);
     }
@@ -44,6 +52,7 @@ const checkCommand = defineCommand({
   },
   args: {
     ...configArgs,
+    ...localeArg,
     json: {
       type: "boolean",
       description:
@@ -55,7 +64,7 @@ const checkCommand = defineCommand({
       mode: args.mode,
       overlays: args.config ? [args.config] : undefined,
     });
-    const result = await check(config);
+    const result = await check(config, { locale: args.locale });
 
     if (args.json) {
       console.log(
@@ -88,13 +97,13 @@ const translateCommand = defineCommand({
     name: "translate",
     description: "Fill in missing/stale translations via translate.middlewares",
   },
-  args: configArgs,
+  args: { ...configArgs, ...localeArg },
   async run({ args }) {
     const config = await resolveConfig({
       mode: args.mode,
       overlays: args.config ? [args.config] : undefined,
     });
-    const result = await translate(config);
+    const result = await translate(config, { locale: args.locale });
     for (const entry of result.translated) {
       console.log(`[${entry.locale}] ${entry.source}: ${entry.detail}`);
     }
@@ -109,13 +118,13 @@ const extractCommand = defineCommand({
     name: "extract",
     description: "Scaffold catalog files with any new ids from the base file",
   },
-  args: configArgs,
+  args: { ...configArgs, ...localeArg },
   async run({ args }) {
     const config = await resolveConfig({
       mode: args.mode,
       overlays: args.config ? [args.config] : undefined,
     });
-    const result = await extract(config);
+    const result = await extract(config, { locale: args.locale });
     for (const change of result.changes) {
       console.log(`[${change.locale}] ${change.source}: ${change.detail}`);
     }

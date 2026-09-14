@@ -1,4 +1,5 @@
 export { defineConfig } from "./define-config.js";
+export { resolveTargetLocales } from "./locale.js";
 export {
   applyDefaults,
   loadConfigFile,

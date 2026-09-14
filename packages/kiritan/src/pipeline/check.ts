@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { resolveTargetLocales } from "../config/locale.js";
 import type { KiritanConfig } from "../config/types.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import {
@@ -32,6 +33,8 @@ export interface CheckIssue {
 
 export interface CheckOptions {
   cwd?: string;
+  /** Restricts the check to this locale instead of every locale in `config.locales.list`. */
+  locale?: string;
 }
 
 export interface CheckResult {
@@ -59,11 +62,12 @@ async function checkSidecar(
   sourceText: string,
   config: KiritanConfig,
   cwd: string,
-  issues: CheckIssue[]
+  issues: CheckIssue[],
+  targetLocales: string[]
 ): Promise<void> {
   const naming = resolveNamingOptions(file.source.naming ?? config.naming);
   const sourceHash = hashText(sourceText);
-  for (const locale of config.locales.list) {
+  for (const locale of targetLocales) {
     if (locale === config.locales.default) continue;
     const outPath = resolveOutputPath(
       file.base,
@@ -99,10 +103,11 @@ function checkInline(
   file: DiscoveredFile,
   sourceText: string,
   config: KiritanConfig,
-  issues: CheckIssue[]
+  issues: CheckIssue[],
+  targetLocales: string[]
 ): void {
   const declared = collectLocaleBlocks(parseMarkdown(sourceText));
-  for (const locale of config.locales.list) {
+  for (const locale of targetLocales) {
     if (locale === config.locales.default) continue;
     if (!declared.has(locale)) {
       issues.push({
@@ -120,12 +125,13 @@ async function checkCatalog(
   sourceText: string,
   config: KiritanConfig,
   cwd: string,
-  issues: CheckIssue[]
+  issues: CheckIssue[],
+  targetLocales: string[]
 ): Promise<void> {
   const tree = parseMarkdown(sourceText);
   const ids = collectCatalogIds(tree);
   const segments = collectCatalogSegments(tree);
-  for (const locale of config.locales.list) {
+  for (const locale of targetLocales) {
     if (locale === config.locales.default) continue;
     const catalogData = await readCatalogFile(
       join(cwd, catalogPathFor(file.base.dir, file.base.base, locale))
@@ -175,18 +181,15 @@ async function checkCatalog(
 async function checkRuntimeResources(
   config: KiritanConfig,
   cwd: string,
-  issues: CheckIssue[]
+  issues: CheckIssue[],
+  targetLocales: string[]
 ): Promise<void> {
   const sources = config.runtime?.sources ?? [];
   if (sources.length === 0) return;
 
-  const aggregated = await aggregateResources(
-    sources,
-    config.locales.list,
-    cwd
-  );
+  const aggregated = await aggregateResources(sources, targetLocales, cwd);
   for (const { resource, files } of aggregated) {
-    for (const mismatch of findKeyMismatches(resource, config.locales.list)) {
+    for (const mismatch of findKeyMismatches(resource, targetLocales)) {
       issues.push({
         kind: "i18n-key-mismatch",
         source: files.join(", "),
@@ -225,6 +228,7 @@ export async function check(
   options: CheckOptions = {}
 ): Promise<CheckResult> {
   const cwd = options.cwd ?? process.cwd();
+  const targetLocales = resolveTargetLocales(config, options.locale);
   const files = await discoverSourceFiles(config.sources, {
     cwd,
     baseSuffix: config.naming?.baseSuffix,
@@ -235,22 +239,22 @@ export async function check(
     const sourceText = await readFile(join(cwd, file.path), "utf8");
 
     if (file.source.strategy === "sidecar") {
-      await checkSidecar(file, sourceText, config, cwd, issues);
+      await checkSidecar(file, sourceText, config, cwd, issues, targetLocales);
       continue;
     }
 
     if (file.source.strategy === "inline") {
-      checkInline(file, sourceText, config, issues);
+      checkInline(file, sourceText, config, issues, targetLocales);
       continue;
     }
 
     if (file.source.strategy === "catalog") {
-      await checkCatalog(file, sourceText, config, cwd, issues);
+      await checkCatalog(file, sourceText, config, cwd, issues, targetLocales);
       continue;
     }
   }
 
-  await checkRuntimeResources(config, cwd, issues);
+  await checkRuntimeResources(config, cwd, issues, targetLocales);
 
   const failOn = new Set(config.check?.failOn ?? DEFAULT_FAIL_ON);
   const failed = issues.some((issue) => failOn.has(issue.kind));
