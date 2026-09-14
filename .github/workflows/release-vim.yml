@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # actions/checkout doesn't fetch tags by default even for a full clone — without this, `git tag --list 'kiritan-vim@*'` below always comes back empty, silently re-deriving every version from 0.0.0 instead of the last release (this is what broke the 0.1.0 -> 0.1.0 "minor" bump and the tag-already-exists push failure).
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version: 22
