@@ -1,6 +1,12 @@
+<div align=center>
+
+![kiritan-logo](../../assets/kiritan-logo.png)
+
 # Kiritan (VS Code extension)
 
 [English](README.md) | **日本語**
+
+</div>
 
 [Kiritan](https://www.npmjs.com/package/kiritan) の `:::kiritan{...}` / `::kiritan{...}` ディレクティブブロック — `inline`/`catalog` ドキュメント戦略、および言語切り替えマーカー(docs/DESIGN.md 4.2/4.3/6.1章)— のMarkdown内シンタックスハイライト。
 

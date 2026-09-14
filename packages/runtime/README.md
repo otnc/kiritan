@@ -1,6 +1,12 @@
+<div align=center>
+
+![kiritan-logo](../../assets/kiritan-logo.png)
+
 # @kiritan/runtime
 
 **English** | [日本語](README.ja.md)
+
+</div>
 
 > The minimal runtime i18n half of [Kiritan](https://www.npmjs.com/package/kiritan) — `t(key, params)`, with no build-time dependencies (no remark, no CLI). Safe to use on its own, in any project, without pulling in the rest of Kiritan.
 

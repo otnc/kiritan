@@ -12,7 +12,7 @@ However, the following are **prohibited**:
 - Embedding or bundling the images into any application, service, or product.
 - Claiming, implying, or misrepresenting yourself as the author or creator of these images.
 
-The author of these images is [otnc](https://github.com/otnc).
+These prohibitions don't apply to this project's (kiritan) own official use of these images — e.g. as this repository's README banner or as the icon of its own VS Code extension — since the author of these images, [otnc](https://github.com/otnc), is also this project's author.
 
 ## 東北ずん子ずんだもんプロジェクト guideline
 

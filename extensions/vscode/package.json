@@ -5,6 +5,7 @@
   "version": "0.1.0",
   "publisher": "otoneko1102",
   "type": "module",
+  "icon": "images/icon.png",
   "license": "WTFPL",
   "author": "otoneko.",
   "homepage": "https://github.com/otnc/kiritan#readme",

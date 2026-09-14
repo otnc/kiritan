@@ -1,4 +1,10 @@
+<div align=center>
+
+![kiritan-logo](../../assets/kiritan-logo.png)
+
 # Kiritan (VS Code extension)
+
+</div>
 
 :::kiritan{locale=en}
 Syntax highlighting for [Kiritan](https://www.npmjs.com/package/kiritan)'s `:::kiritan{...}` / `::kiritan{...}` directive blocks inside Markdown — the `inline`/`catalog` document strategies, and the language-switcher marker (docs/DESIGN.md chapters 4.2/4.3/6.1).
