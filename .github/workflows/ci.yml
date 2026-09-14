@@ -18,8 +18,14 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-      # extensions/vim's tests run against a real headless vim (skipped, not failed, if it's unavailable) — ubuntu-latest doesn't ship it by default.
+      # extensions/vim's tests run against real headless vim and nvim processes (skipped, not failed, if either is unavailable) — ubuntu-latest doesn't ship either by default. apt's neovim package is too old for vim.system/vim.fs.root (added in 0.10), so install a real release directly instead.
       - run: sudo apt-get update && sudo apt-get install -y vim
+      - name: Install Neovim
+        run: |
+          curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+          sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+          sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+          rm nvim-linux-x86_64.tar.gz
       - run: npm install
       - run: npm run ci
       - run: npm run typecheck

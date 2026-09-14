@@ -8,7 +8,7 @@
 
 </div>
 
-Syntax highlighting for [Kiritan](https://www.npmjs.com/package/kiritan)'s `:::kiritan{...}` / `::kiritan{...}` directive blocks and `%{name}` interpolation inside Markdown, plus filetype detection for `*.kiritanconfig` files (docs/DESIGN.md chapters 3.1/4.2/4.3/5).
+Syntax highlighting, folding, and catalog jump for [Kiritan](https://www.npmjs.com/package/kiritan)'s `:::kiritan{...}` / `::kiritan{...}` directive blocks in Vim and Neovim alike, plus filetype detection for `*.kiritanconfig` files — and, on Neovim specifically, the same undefined-`%{name}`/`missing`/`stale`/`machine` diagnostics as the VS Code extension (docs/DESIGN.md chapters 3.1/4.2/4.3/5/13).
 
 ## Install
 
@@ -38,14 +38,11 @@ To pin to a specific release instead of tracking `main`, use the `kiritan-vim@<v
   ```vim
   autocmd FileType markdown nmap <buffer> gd <Plug>(kiritan-jump-to-catalog)
   ```
-
-## What it doesn't do yet
-
-Undefined-`%{name}` detection and inline `missing`/`stale`/`machine` indicators — see [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 13 — aren't implemented here yet. Both need the project's *resolved* config, not just the open document's own text, the same as the VS Code extension's `diagnostics.cjs`; the most natural port would be a small Lua plugin wired through Neovim's own diagnostic/virtual-text APIs, shelling out to the workspace's own `kiritan check --json` the same way.
+- **Undefined-`%{name}` warnings and inline `missing`/`stale`/`machine` indicators — Neovim only** (`nvim-0.10+`, `lua/kiritan/diagnostics.lua`, auto-loaded by `plugin/kiritan.lua`). Same approach as the VS Code extension: shells out to the workspace's own locally-installed `kiritan check --json` via `npx --no-install` and maps the results onto the open buffer as real `vim.diagnostic` entries, refreshed on save and (from the in-memory buffer text, without re-running the check) on edit. Plain Vim has no `vim.diagnostic`/`vim.system` equivalent to port this to, so it simply isn't loaded there at all — Vim's own runtime loader only globs `plugin/*.vim`, never `.lua`, so there's nothing to explicitly disable for Vim users.
 
 ## Testing locally
 
-`extensions/vim/src/syntax.test.ts` and `autoload.test.ts` drive a real headless `vim -u NONE` process (queried via `synID()`/`synIDattr()`, and by calling the `autoload/kiritan.vim` functions directly) rather than just asserting against the `.vim` source — the same rigor the VS Code extension's grammar tests use with the real oniguruma/vscode-textmate engine. They're picked up automatically by the root `npm test`, and skip themselves (not a failure) if `vim` isn't on `PATH`.
+`extensions/vim/src/syntax.test.ts` and `autoload.test.ts` drive a real headless `vim -u NONE` process (queried via `synID()`/`synIDattr()`, and by calling the `autoload/kiritan.vim` functions directly) rather than just asserting against the `.vim` source — the same rigor the VS Code extension's grammar tests use with the real oniguruma/vscode-textmate engine. `diagnostics.test.ts` does the same for `lua/kiritan/diagnostics.lua` against a real headless `nvim --clean`. They're picked up automatically by the root `npm test`, and each skips itself (not a failure) if `vim`/`nvim` respectively isn't on `PATH`.
 
 ## License
 

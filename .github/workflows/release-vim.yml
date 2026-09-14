@@ -22,8 +22,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # So extensions/vim's tests actually run (not just skip) before tagging.
+      # So extensions/vim's tests actually run (not just skip) before tagging. apt's neovim package is too old for vim.system/vim.fs.root (added in 0.10), so install a real release directly instead.
       - run: sudo apt-get update && sudo apt-get install -y vim
+      - name: Install Neovim
+        run: |
+          curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz
+          sudo tar -C /opt -xzf nvim-linux-x86_64.tar.gz
+          sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+          rm nvim-linux-x86_64.tar.gz
       - run: npm ci
       - run: npm run ci
       - run: npm run typecheck
