@@ -19,8 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # actions/checkout doesn't fetch tags by default even for a full clone — without this, `git tag --list 'kiritan-vim@*'` below always comes back empty, silently re-deriving every version from 0.0.0 instead of the last release (this is what broke the 0.1.0 -> 0.1.0 "minor" bump and the tag-already-exists push failure).
-          fetch-tags: true
+          # `fetch-tags: true` alone isn't enough with the default shallow (depth-1) fetch: git only auto-follows tags that point at commits already in the fetched history, and an existing release tag almost always points further back than the latest commit. Fetch full history instead — the same fix _release-package.yml and release-vscode.yml already use — so `git tag --list 'kiritan-vim@*'` below actually sees the last release instead of silently re-deriving every version from 0.0.0 (this is what broke the 0.1.0 -> 0.1.0 "minor" bump and the tag-already-exists push failure).
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
