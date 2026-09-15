@@ -34,5 +34,7 @@ In particular, the following sections of the guideline must be observed:
 
 - `assets/kiritan-logo.png`
 - `assets/kiritan-logo.gal`
+- `assets/kiritan-thumbnail.png`
+- `assets/kiritan-thumbnail.gal`
 - `assets/kiritan.png`
 - `assets/kiritan.gal`
