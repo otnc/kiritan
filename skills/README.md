@@ -2,24 +2,19 @@
 
 Instructions for AI coding agents — not an npm package, not something Kiritan itself loads. `skills/kiritan/SKILL.md` teaches an agent how to work correctly inside a project that already uses Kiritan: editing `*.base.md` sources instead of generated output, the `:::kiritan{...}` directive syntax, which CLI command to reach for, and common mistakes to avoid.
 
-It's plain Markdown with YAML frontmatter (a `name` and `description`) and no agent-specific instructions in the body, so it isn't tied to any one product — any agent that can be pointed at extra context or instructions can use it.
+It's plain Markdown with YAML frontmatter (a `name` and `description`) and no agent-specific instructions in the body, so it isn't tied to any one product — any agent built around the [Agent Skills](https://github.com/vercel-labs/skills) convention, or that can simply be pointed at extra context, can use it.
 
 ## Installing
 
-The one approach that always works, regardless of agent: **paste or include `skills/kiritan/SKILL.md`'s content into whatever your agent reads as project context** — a system prompt, a "custom instructions" field, or a repo-level instructions file.
+The recommended way is the [Skills CLI](https://github.com/vercel-labs/skills) (`npx skills`), which fetches the skill straight from this repository and installs it for whichever agent(s) you use, with no cloning or manual copying:
 
-A few ecosystems have their own convention for this kind of file, so a specific project may prefer one of these instead:
+```sh
+npx skills add otnc/kiritan --skill kiritan
+```
 
-- **Claude Code**: copy the whole `skills/kiritan/` directory into `.claude/skills/kiritan/` (project-level) or `~/.claude/skills/kiritan/` (user-level):
+Add `-a <agent>` (e.g. `-a claude-code`, `-a cursor`) to target a specific agent instead of being prompted, or `-y` for a non-interactive install in CI. See the [Skills CLI documentation](https://github.com/vercel-labs/skills) for the full list of supported agents and flags.
 
-  ```sh
-  cp -r skills/kiritan /path/to/your-project/.claude/skills/kiritan
-  ```
+If your agent isn't one the CLI supports, or you'd rather not add the dependency, either of these works just as well:
 
-  Claude Code loads a skill's `SKILL.md` automatically based on its `description` frontmatter — no further configuration needed.
-
-- **`AGENTS.md`-based agents** (an increasingly common open convention several tools read automatically): append `skills/kiritan/SKILL.md`'s body to your project's `AGENTS.md`, or add a line pointing at it (e.g. `See skills/kiritan/SKILL.md for Kiritan usage.`).
-
-- **Anything with a project-level rules/instructions file** (Cursor, Windsurf, and similar each have their own — check that tool's docs for the exact filename/location): copy or reference `skills/kiritan/SKILL.md`'s content the same way you would any other project rule.
-
-If your agent doesn't fit any of the above, it very likely still has *some* mechanism for extra context — that's the one to use.
+- **Paste it in directly**: copy `skills/kiritan/SKILL.md`'s content into whatever your agent reads as project context — a system prompt, a "custom instructions" field, or a repo-level instructions file.
+- **A project-level rules/instructions file** (`AGENTS.md`, or a tool-specific one like Cursor's or Windsurf's): append the file's body, or add a line pointing at it, e.g. `See skills/kiritan/SKILL.md for Kiritan usage.`
