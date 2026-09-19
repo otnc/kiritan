@@ -24,9 +24,9 @@
     "lint:fix": "eslint --fix .",
     "check": "prettier --write . && eslint --fix .",
     "ci": "prettier --check . && eslint .",
-    "docs:build": "npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs build",
-    "docs:check": "npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs check",
-    "docs:verify": "npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs verify"
+    "docs:build": "npm run build --workspace=@kiritan/runtime && npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs build",
+    "docs:check": "npm run build --workspace=@kiritan/runtime && npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs check",
+    "docs:verify": "npm run build --workspace=@kiritan/runtime && npm run build --workspace=kiritan && node packages/kiritan/dist/cli.mjs verify"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
