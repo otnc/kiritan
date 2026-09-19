@@ -1,6 +1,6 @@
 {
   "name": "@kiritan/middleware",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A layer that turns any translate function into a Kiritan translate middleware / 任意の翻訳関数をKiritanの翻訳ミドルウェアにする中間層",
   "keywords": [
     "translate",
