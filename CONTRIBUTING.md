@@ -58,6 +58,7 @@ npm run docs:build
 | `npm run ci` | The same checks without writing — what CI runs |
 | `npm run docs:build` | Regenerate every `base/*.base.md`-derived doc (see Generated docs above) |
 | `npm run docs:check` | Report missing/stale generated docs without writing anything |
+| `npm run docs:verify` | Check that every generated doc matches what `docs:build` would write (by hash), without writing anything |
 
 `build` and `typecheck` fan out to every package under `packages/*`; `test`/`format`/`lint` already run across the whole workspace from the root.
 

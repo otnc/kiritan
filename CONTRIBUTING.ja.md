@@ -58,6 +58,7 @@ npm run docs:build
 | `npm run ci` | 書き込みなしで同じチェックを実行(CI が実行するもの) |
 | `npm run docs:build` | `base/*.base.md` から生成される全ドキュメントを再生成する(上記「生成ドキュメント」参照) |
 | `npm run docs:check` | 何も書き込まずに、未翻訳・staleな生成ドキュメントを報告する |
+| `npm run docs:verify` | 生成済みの全ドキュメントが`docs:build`の出力と(ハッシュで)一致するか、何も書き込まずに確認する |
 
 `build` と `typecheck` は `packages/*` 配下の全パッケージに展開されます。`test` / `format` / `lint` はルートから既にワークスペース全体に対して実行されます。
 

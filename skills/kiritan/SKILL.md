@@ -78,6 +78,7 @@ Use `%{name}`, not `{{name}}` — Kiritan follows the Ruby/Rails-style conventio
 | --- | --- |
 | `kiritan build` | After editing any `*.base.md` — regenerates every configured output. |
 | `kiritan check` | After any base-file or translation change, before calling the work done — CI-friendly, reports `missing`/`stale`/`machine`/`i18n-key-mismatch`. |
+| `kiritan verify` | To confirm generated docs are in sync with their base files (no hand edits, nothing out of date) — writes nothing, exits non-zero on a mismatch. Different from `check`, which is about missing/stale *translations*. |
 | `kiritan extract` | After adding a new `:::kiritan{#<id>}` block, for `catalog`-strategy sources — scaffolds the new id into each locale's catalog file. |
 | `kiritan translate` | To auto-fill missing/stale translations — only does anything if the source configures `translate.middlewares`; the default is an empty array (no-op). |
 | `kiritan typegen` | Only for runtime i18n, when `runtime.sources` aggregates multiple files into one shared `t()` — regenerates the aggregated type declaration. |

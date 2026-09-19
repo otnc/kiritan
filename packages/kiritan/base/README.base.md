@@ -109,6 +109,7 @@ await build(config);
 | `kiritan init` | Scaffolds `.kiritanconfig`, `base/README.base.md`, and a `.gitignore` entry for `local.kiritanconfig` in a fresh project. Leaves existing files alone unless `--force` is passed |
 | `kiritan build` | Builds localized documents from every configured source |
 | `kiritan check` | Reports missing/stale/machine-translated content; exits non-zero in CI when `check.failOn` matches |
+| `kiritan verify` | Checks that every generated document matches what `build` would write today (by hash), without writing anything; exits non-zero in CI on a mismatch or a missing file. Catches an out-of-date or hand-edited generated doc |
 | `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` (`sidecar`/`catalog`; `inline` isn't supported yet) |
 | `kiritan extract` | Scaffolds new `catalog`-strategy ids and reports orphaned ones |
 | `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9.6) |
@@ -125,6 +126,7 @@ Every command also accepts `--lang <en|ja>`, picking the CLI's own display langu
 | `kiritan init` | 新規プロジェクトで `.kiritanconfig`・`base/README.base.md`・`local.kiritanconfig` の `.gitignore` への追記を生成する。`--force` を付けない限り既存ファイルはそのまま残す |
 | `kiritan build` | 設定済みの全ソースからローカライズされたドキュメントをビルドする |
 | `kiritan check` | missing/stale/機械翻訳のコンテンツを報告する。`check.failOn` に一致すればCIで非ゼロ終了する |
+| `kiritan verify` | 生成済みの全ドキュメントが、今`build`を実行した場合の出力と(ハッシュで)一致するかを、何も書き込まずに確認する。不一致やファイルの欠落があればCIで非ゼロ終了する。古くなった、または手で編集された生成ドキュメントを検出できる |
 | `kiritan translate` | `translate.middlewares` でmissing/staleな訳文を埋める(`sidecar`/`catalog`対応。`inline`は未対応) |
 | `kiritan extract` | `catalog`戦略の新規idをスキャフォールドし、オーファンを報告する |
 | `kiritan typegen` | `runtime.sources` を1つの名前空間付き `ResourceModule` に集約し、型定義を書き出す([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9.6章) |
