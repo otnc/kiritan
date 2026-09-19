@@ -83,10 +83,9 @@ describe("googleTranslate()", () => {
       "https://translation.googleapis.com/language/translate/v2"
     );
     expect(calls[0].init.method).toBe("POST");
-    expect(calls[0].init.headers).toMatchObject({
-      "X-goog-api-key": "secret",
-      "Content-Type": "application/json",
-    });
+    const headers = new Headers(calls[0].init.headers);
+    expect(headers.get("X-goog-api-key")).toBe("secret");
+    expect(headers.get("Content-Type")).toBe("application/json");
     expect(calls[0].body).toEqual({
       q: ['Hello <span translate="no">%{name}</span>'],
       source: "en",
@@ -155,6 +154,70 @@ describe("googleTranslate()", () => {
     await expect(
       googleTranslate({ apiKey: "k", fetch })(ctx("Hi"), next)
     ).rejects.toThrow("Google responded 400: API key not valid");
+  });
+
+  it("retries a 429 and then succeeds", async () => {
+    let attempts = 0;
+    const flaky = (async () => {
+      attempts += 1;
+      return attempts === 1
+        ? new Response("slow down", { status: 429 })
+        : Response.json({ data: { translations: [{ translatedText: "ok" }] } });
+    }) as unknown as typeof fetch;
+
+    const result = await googleTranslate({
+      apiKey: "k",
+      fetch: flaky,
+      retryDelay: 0,
+    })(ctx("Hi"), next);
+
+    expect(result).toBe("ok");
+    expect(attempts).toBe(2);
+  });
+
+  it("gives up after `retry` attempts and reports the last status", async () => {
+    let attempts = 0;
+    const down = (async () => {
+      attempts += 1;
+      return new Response("unavailable", { status: 503 });
+    }) as unknown as typeof fetch;
+
+    await expect(
+      googleTranslate({ apiKey: "k", fetch: down, retry: 1, retryDelay: 0 })(
+        ctx("Hi"),
+        next
+      )
+    ).rejects.toThrow("Google responded 503: unavailable");
+    expect(attempts).toBe(2);
+  });
+
+  it("does not retry a non-retryable status", async () => {
+    let attempts = 0;
+    const denied = (async () => {
+      attempts += 1;
+      return new Response("bad key", { status: 403 });
+    }) as unknown as typeof fetch;
+
+    await expect(
+      googleTranslate({ apiKey: "k", fetch: denied, retryDelay: 0 })(
+        ctx("Hi"),
+        next
+      )
+    ).rejects.toThrow("Google responded 403: bad key");
+    expect(attempts).toBe(1);
+  });
+
+  it("wraps a network failure with a readable message", async () => {
+    const offline = (async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+
+    await expect(
+      googleTranslate({ apiKey: "k", fetch: offline, retry: 0 })(
+        ctx("Hi"),
+        next
+      )
+    ).rejects.toThrow("request to Google failed");
   });
 
   it("throws if the number of translations doesn't match", async () => {

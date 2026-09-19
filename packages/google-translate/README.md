@@ -56,17 +56,20 @@ export default {
 | `baseUrl`       | Overrides the endpoint.                                                                                          |
 | `languageCodes` | Per-locale overrides of the language code sent as `source`/`target`, e.g. `{ zh: "zh-CN" }`. Others go as-is.    |
 | `extraParams`   | Extra fields merged into the request body, e.g. `{ model: "nmt" }`.                                              |
+| `retry` | How many times to retry a failed request (network errors, 408/409/425/429/5xx). Default: 2. |
+| `retryDelay` | Delay between retries, in ms. Default: 500. |
+| `timeout` | Per-request timeout, in ms. Default: 30000. |
 | `fetch`         | A custom `fetch`, for testing or a proxy.                                                                        |
 
 ### Behavior
 
 - This uses the Basic (v2) API. `%{name}` placeholders come back unchanged: they're wrapped in `<span translate="no">` and the text is sent as `format: "html"`, so the rest of the text is HTML-escaped on the way in and un-escaped on the way out (Google also escapes characters like `'` on its own, which is decoded too).
 - Otherwise the text is sent as-is, so Markdown syntax in a segment (links, emphasis, code) is left to Google's own handling. Review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
-- A non-OK response throws, and `kiritan translate` stops with Google's own message (an invalid key, an exhausted quota, ...).
+- A failed request is retried (see `retry`) and then throws, and `kiritan translate` stops with Google's own message (an invalid key, an exhausted quota, ...).
 
 ## Requirements
 
-- Node.js >= 22.7 (uses the global `fetch`)
+- Node.js >= 22.7 (HTTP goes through [ofetch](https://github.com/unjs/ofetch), its only dependency of note)
 
 ## Contributing
 
