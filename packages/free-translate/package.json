@@ -1,15 +1,13 @@
 {
   "name": "@kiritan/free-translate",
   "version": "0.1.0",
-  "description": "Translate middlewares that need no API key (MyMemory, Google keyless, Apertium, LibreTranslate) / APIキー不要の翻訳ミドルウェア(MyMemory、GoogleキーレスAPI、Apertium、LibreTranslate)",
+  "description": "Translate middlewares that need no API key (MyMemory, Google's keyless endpoint) / APIキー不要の翻訳ミドルウェア(MyMemory、Googleのキーレスエンドポイント)",
   "keywords": [
     "translate",
     "translation",
     "free",
     "no-api-key",
     "mymemory",
-    "apertium",
-    "libretranslate",
     "middleware",
     "i18n",
     "kiritan"

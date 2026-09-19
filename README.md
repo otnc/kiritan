@@ -23,7 +23,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | A [DeepL](https://www.deepl.com/) translate middleware for `translate.middlewares` |
 | [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | A [Google Cloud Translation](https://cloud.google.com/translate) middleware for `translate.middlewares` |
 | [`@kiritan/middleware`](./packages/middleware) | `packages/middleware` | Turns any translate function into a middleware: protects code/URLs/`%{name}`, splits, batches, retries, caches |
-| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | Translate middlewares that need no API key: MyMemory, Google's keyless endpoint, Apertium, self-hosted LibreTranslate |
+| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | Translate middlewares that need no API key: MyMemory and Google's keyless endpoint |
 
 ## Related tooling
 

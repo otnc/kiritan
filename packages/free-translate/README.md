@@ -8,7 +8,7 @@
 
 </div>
 
-> Kiritan translate middlewares that need **no API key**: MyMemory, Google's keyless endpoint, Apertium, and self-hosted LibreTranslate. Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so code, URLs and `%{name}` are protected and long documents are split for you.
+> Kiritan translate middlewares that need **no API key**: MyMemory and Google's keyless endpoint. Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so code, URLs and `%{name}` are protected and long documents are split for you.
 
 [![npm](https://img.shields.io/npm/v/%40kiritan%2Ffree-translate)](https://www.npmjs.com/package/@kiritan/free-translate)
 
@@ -37,8 +37,6 @@ export default {
 | --- | --- | --- | --- |
 | `myMemory()` | Yes, documented free API | Most | About 5,000 characters a day anonymously, about 50,000 with `email`. Mixes human translation memory with MT, so quality varies. Limited to 500 bytes per request, handled for you. |
 | `googleFree()` | **No.** The endpoint Google's own Chrome dictionary extension uses | About 130 | Best quality of the four, no stated quota. Unofficial: it can be throttled, blocked (a CAPTCHA page comes back as HTTP 429) or change without notice, and may be against Google's terms. For occasional documentation runs, not for anything you depend on. Use `@kiritan/google-translate` with a key for a supported service. |
-| `apertium()` | Yes, open-source public server | European and related languages only | **No Japanese, Chinese or Korean.** Rule-based, so output is literal; suits related languages such as Spanish/Catalan/Portuguese best. |
-| `libreTranslate({ baseUrl })` | Yes, open-source engine | Many | The public libretranslate.com now needs a paid key, so this is for a server you host (no key unless you enable `--api-keys`). |
 
 Every provider takes the same tuning options as [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) — `concurrency`, `minInterval`, `retry`, `cache`, `protect`, `onError` — plus `timeout`, `fetch` (a custom transport) and `languageCodes` (per-locale overrides of the code sent to the service). Each provider ships sensible limits, so you rarely need them.
 
@@ -50,7 +48,7 @@ Every provider takes the same tuning options as [`@kiritan/middleware`](https://
 
 ### Notes
 
-- An unsupported language is an error, not silence: Google's endpoint answers an unknown code with the original text, so `googleFree` validates the code first; MyMemory and Apertium errors are reported with the service's own message.
+- An unsupported language is an error, not silence: Google's endpoint answers an unknown code with the original text, so `googleFree` validates the code first; MyMemory reports errors with the service's own message.
 - An engine that drops a protected code span or URL makes the run fail instead of writing a translation that lost it.
 - `%{name}` and code stay verbatim, but the *wording around them* is up to the engine, so review the result.
 

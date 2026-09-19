@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { tuning } from "./http.js";
-import { apertium, googleFree, libreTranslate, myMemory } from "./index.js";
+import { googleFree, myMemory } from "./index.js";
 
 interface Call {
   url: URL;
@@ -285,86 +285,5 @@ describe("googleFree", () => {
     expect(
       calls.map((c) => (c.body as URLSearchParams).getAll("q").length)
     ).toEqual([20, 20, 5]);
-  });
-});
-
-describe("apertium", () => {
-  it("posts a 3-letter langpair", async () => {
-    const { calls, fetch } = fakeFetch(() => ({
-      responseData: { translatedText: "Hola" },
-      responseStatus: 200,
-    }));
-    const [out] = await apertium({ fetch, ...fast }).handle(
-      [ctx("Hello", "en", "es")],
-      next
-    );
-    expect(out).toBe("Hola");
-    expect(calls[0].method).toBe("POST");
-    expect((calls[0].body as URLSearchParams).get("langpair")).toBe("eng|spa");
-    expect((calls[0].body as URLSearchParams).get("q")).toBe("Hello");
-    expect((calls[0].body as URLSearchParams).get("markUnknown")).toBe("no");
-  });
-
-  it("explains a pair the public server doesn't have, and doesn't retry it", async () => {
-    const { calls, fetch } = fakeFetch(() => ({
-      __status: 400,
-      body: {
-        status: "error",
-        code: 400,
-        explanation: "That pair is not installed",
-      },
-    }));
-    await expect(
-      apertium({ fetch, ...fast }).handle([ctx("Hello", "en", "es")], next)
-    ).rejects.toThrow(/no "eng\|spa" language pair/);
-    expect(calls).toHaveLength(1);
-  });
-
-  it("rejects an unmapped 2-letter code before any request", async () => {
-    const { calls, fetch } = fakeFetch(() => ({}));
-    await expect(
-      apertium({ fetch, ...fast }).handle([ctx("Hi", "en", "ja")], next)
-    ).rejects.toThrow(/no Apertium language code known for "ja"/);
-    expect(calls).toHaveLength(0);
-  });
-});
-
-describe("libreTranslate", () => {
-  it("needs a baseUrl", () => {
-    expect(() => libreTranslate({} as never)).toThrow(/baseUrl/);
-  });
-
-  it("posts an array of texts as JSON and reads the array back", async () => {
-    const { calls, fetch } = fakeFetch((call) => ({
-      translatedText: (
-        (call.body as Record<string, unknown>).q as string[]
-      ).map((t) => `T:${t}`),
-    }));
-    const out = await libreTranslate({
-      baseUrl: "http://localhost:5000/",
-      apiKey: "k",
-      fetch,
-      ...fast,
-    }).handle([ctx("a"), ctx("b", "en", "zh-Hans")], next);
-
-    expect(out).toEqual(["T:a", "T:b"]);
-    expect(calls[0].url.href).toBe("http://localhost:5000/translate");
-    expect(
-      calls.map((c) => (c.body as Record<string, unknown>).target)
-    ).toEqual(["ja", "zh"]);
-    expect(calls[0].body).toMatchObject({
-      source: "en",
-      format: "text",
-      api_key: "k",
-    });
-  });
-
-  it("omits api_key when there is none", async () => {
-    const { calls, fetch } = fakeFetch(() => ({ translatedText: ["x"] }));
-    await libreTranslate({ baseUrl: "http://h", fetch, ...fast }).handle(
-      [ctx("a")],
-      next
-    );
-    expect(calls[0].body).not.toHaveProperty("api_key");
   });
 });

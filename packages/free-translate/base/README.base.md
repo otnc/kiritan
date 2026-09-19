@@ -7,10 +7,10 @@
 </div>
 
 :::kiritan{locale=en}
-> Kiritan translate middlewares that need **no API key**: MyMemory, Google's keyless endpoint, Apertium, and self-hosted LibreTranslate. Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so code, URLs and `%{name}` are protected and long documents are split for you.
+> Kiritan translate middlewares that need **no API key**: MyMemory and Google's keyless endpoint. Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so code, URLs and `%{name}` are protected and long documents are split for you.
 :::
 :::kiritan{locale=ja}
-> **APIキー不要**のKiritan翻訳ミドルウェア集: MyMemory、Googleのキーレスエンドポイント、Apertium、自前ホストのLibreTranslate。[`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) の上に作られているため、コード・URL・`%{name}` の保護や長い文書の分割は自動で行われる。
+> **APIキー不要**のKiritan翻訳ミドルウェア集: MyMemoryとGoogleのキーレスエンドポイント。[`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) の上に作られているため、コード・URL・`%{name}` の保護や長い文書の分割は自動で行われる。
 :::
 
 [![npm](https://img.shields.io/npm/v/%40kiritan%2Ffree-translate)](https://www.npmjs.com/package/@kiritan/free-translate)
@@ -51,8 +51,6 @@ export default {
 | --- | --- | --- | --- |
 | `myMemory()` | Yes, documented free API | Most | About 5,000 characters a day anonymously, about 50,000 with `email`. Mixes human translation memory with MT, so quality varies. Limited to 500 bytes per request, handled for you. |
 | `googleFree()` | **No.** The endpoint Google's own Chrome dictionary extension uses | About 130 | Best quality of the four, no stated quota. Unofficial: it can be throttled, blocked (a CAPTCHA page comes back as HTTP 429) or change without notice, and may be against Google's terms. For occasional documentation runs, not for anything you depend on. Use `@kiritan/google-translate` with a key for a supported service. |
-| `apertium()` | Yes, open-source public server | European and related languages only | **No Japanese, Chinese or Korean.** Rule-based, so output is literal; suits related languages such as Spanish/Catalan/Portuguese best. |
-| `libreTranslate({ baseUrl })` | Yes, open-source engine | Many | The public libretranslate.com now needs a paid key, so this is for a server you host (no key unless you enable `--api-keys`). |
 
 Every provider takes the same tuning options as [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) — `concurrency`, `minInterval`, `retry`, `cache`, `protect`, `onError` — plus `timeout`, `fetch` (a custom transport) and `languageCodes` (per-locale overrides of the code sent to the service). Each provider ships sensible limits, so you rarely need them.
 
@@ -64,7 +62,7 @@ Every provider takes the same tuning options as [`@kiritan/middleware`](https://
 
 ### Notes
 
-- An unsupported language is an error, not silence: Google's endpoint answers an unknown code with the original text, so `googleFree` validates the code first; MyMemory and Apertium errors are reported with the service's own message.
+- An unsupported language is an error, not silence: Google's endpoint answers an unknown code with the original text, so `googleFree` validates the code first; MyMemory reports errors with the service's own message.
 - An engine that drops a protected code span or URL makes the run fail instead of writing a translation that lost it.
 - `%{name}` and code stay verbatim, but the *wording around them* is up to the engine, so review the result.
 :::
@@ -75,8 +73,6 @@ Every provider takes the same tuning options as [`@kiritan/middleware`](https://
 | --- | --- | --- | --- |
 | `myMemory()` | はい(公開されている無料API) | 大半 | 匿名で1日約5,000文字、`email` を指定すると約50,000文字。人手の翻訳メモリとMTの混合なので品質にばらつきがある。1リクエスト500バイトまでの制限は自動で処理される。 |
 | `googleFree()` | **いいえ。** Google自身のChrome辞書拡張機能が使うエンドポイント | 約130言語 | 4つの中で最も品質が高く、上限の記載もない。非公式のため、制限されたりブロックされたり(CAPTCHAページがHTTP 429で返る)、予告なく変わったりする可能性があり、Googleの規約に反する場合もある。たまに行うドキュメント生成向けで、頼りにするものには向かない。サポートされたサービスが必要なら、キーを使う `@kiritan/google-translate` を使うこと。 |
-| `apertium()` | はい(オープンソースの公開サーバー) | ヨーロッパ系とその関連言語のみ | **日本語・中国語・韓国語は非対応。** ルールベースのため出力は直訳的で、スペイン語・カタルーニャ語・ポルトガル語のような近縁の言語に向く。 |
-| `libreTranslate({ baseUrl })` | はい(オープンソースのエンジン) | 多数 | 公開のlibretranslate.comは有料キーが必要になったため、自分でホストするサーバー向け(`--api-keys` を有効にしなければキー不要)。 |
 
 どのプロバイダーも、[`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) と同じ調整オプション(`concurrency`・`minInterval`・`retry`・`cache`・`protect`・`onError`)に加え、`timeout`、`fetch`(独自のトランスポート)、`languageCodes`(サービスへ送る言語コードのロケール別上書き)を受け付ける。各プロバイダーには妥当な上限が組み込まれているため、通常は指定する必要はない。
 
@@ -88,7 +84,7 @@ Every provider takes the same tuning options as [`@kiritan/middleware`](https://
 
 ### 補足
 
-- 非対応の言語は、黙って通さずエラーにする: Googleのエンドポイントは未知のコードに原文をそのまま返すため、`googleFree` は先にコードを検証する。MyMemoryとApertiumのエラーは、サービス自身のメッセージとともに報告される。
+- 非対応の言語は、黙って通さずエラーにする: Googleのエンドポイントは未知のコードに原文をそのまま返すため、`googleFree` は先にコードを検証する。MyMemoryのエラーは、サービス自身のメッセージとともに報告される。
 - 保護対象のコードやURLをエンジンが落とした場合は、それを失った翻訳を書き込むのではなく、実行が失敗する。
 - `%{name}` とコードはそのまま保たれるが、その*周りの文言*はエンジン任せなので、結果をレビューすること。
 :::
