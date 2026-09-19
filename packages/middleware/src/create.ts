@@ -40,6 +40,8 @@ export interface TranslatorOptions {
   translateBatch?: (texts: string[], pair: LanguagePair) => Promise<string[]>;
   /** The most characters the provider accepts in one text. Longer texts are split at paragraph boundaries and joined back. Default: no limit. */
   maxChars?: number;
+  /** How `maxChars`/`maxBatchChars` are counted. Default: string length. Pass a byte counter for a provider that limits bytes, e.g. `(t) => Buffer.byteLength(t)`. */
+  measure?: (text: string) => number;
   /** The most texts per `translateBatch` call. Default: 50. */
   maxBatchSize?: number;
   /** The most total characters per `translateBatch` call. Default: no limit. */
@@ -111,6 +113,7 @@ export function createTranslator(
     options.retry === false ? { retries: 0 } : (options.retry ?? {});
   const maxBatchSize = options.maxBatchSize ?? 50;
   const maxChars = options.maxChars ?? Number.MAX_SAFE_INTEGER;
+  const measure = options.measure ?? ((text: string) => text.length);
 
   const call = <T>(task: () => Promise<T>) =>
     limit(() => withRetry(task, retry));
@@ -167,7 +170,7 @@ export function createTranslator(
       for (const job of group) {
         const overChars =
           options.maxBatchChars !== undefined &&
-          chars + job.text.length > options.maxBatchChars;
+          chars + measure(job.text) > options.maxBatchChars;
         if (
           current.length > 0 &&
           (current.length >= maxBatchSize || overChars)
@@ -175,7 +178,7 @@ export function createTranslator(
           flush();
         }
         current.push(job);
-        chars += job.text.length;
+        chars += measure(job.text);
       }
       flush();
     }
@@ -197,7 +200,7 @@ export function createTranslator(
           const { text: masked, spans } = mask(ctx.text, patterns);
           const chunks = isOnlyTokens(masked)
             ? []
-            : splitText(masked, maxChars);
+            : splitText(masked, maxChars, measure);
           const jobs = chunks.map((chunk): Job => ({
             key: cacheKey([ctx.from, ctx.to, chunk.text]),
             text: chunk.text,

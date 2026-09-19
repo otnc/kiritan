@@ -88,6 +88,16 @@ describe("splitText", () => {
     );
   });
 
+  it("counts with a custom measure, e.g. bytes, and never splits a surrogate pair", () => {
+    const bytes = (t: string) => Buffer.byteLength(t);
+    const chunks = splitText("猫".repeat(10), 9, bytes);
+    expect(chunks.every((c) => bytes(c.text) <= 9)).toBe(true);
+    expect(chunks.map((c) => c.text).join("")).toBe("猫".repeat(10));
+    const emoji = splitText("😀".repeat(5), 8, bytes);
+    expect(emoji.map((c) => c.text).join("")).toBe("😀".repeat(5));
+    expect(emoji.every((c) => !/[�-�]$/.test(c.text))).toBe(true);
+  });
+
   it("falls back to sentences, then a hard cut", () => {
     const sentences = splitText("One. Two. Three. Four.", 10);
     expect(sentences.every((c) => c.text.length <= 10)).toBe(true);

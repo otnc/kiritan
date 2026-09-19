@@ -5,6 +5,24 @@ export interface Chunk {
   before: string;
 }
 
+/** The longest prefix length whose measure is within `limit` (at least 1, so progress is always made). */
+function fitLength(
+  text: string,
+  limit: number,
+  measure: (text: string) => number
+): number {
+  let low = 1;
+  let high = text.length;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2);
+    if (measure(text.slice(0, mid)) <= limit) low = mid;
+    else high = mid - 1;
+  }
+  // Never end in the middle of a surrogate pair.
+  const code = text.charCodeAt(low - 1);
+  return low > 1 && code >= 0xd800 && code <= 0xdbff ? low - 1 : low;
+}
+
 /** Splits `text` at the last boundary within `limit`: blank line, then newline, then sentence end, then space, then a hard cut. */
 function cutPoint(text: string, limit: number): number {
   const window = text.slice(0, limit);
@@ -22,9 +40,13 @@ function cutPoint(text: string, limit: number): number {
 
 /**
  * Splits a text longer than `maxChars` into chunks that each fit, breaking at paragraph boundaries where it can and only at sentence/space/hard cuts where it can't. Whitespace between chunks is preserved in `before`, so `join(chunks translated)` reassembles the original layout exactly.
- * Length is counted in UTF-16 code units of the (already masked) text. Text at or under the limit comes back as one chunk.
+ * Length is counted with `measure` (UTF-16 code units by default) on the already-masked text, so a provider that limits bytes can pass a byte counter. Text at or under the limit comes back as one chunk.
  */
-export function splitText(text: string, maxChars: number): Chunk[] {
+export function splitText(
+  text: string,
+  maxChars: number,
+  measure: (text: string) => number = (t) => t.length
+): Chunk[] {
   const chunks: Chunk[] = [];
   let rest = text;
   let before = "";
@@ -36,8 +58,8 @@ export function splitText(text: string, maxChars: number): Chunk[] {
     if (rest.length === 0) break;
 
     let piece = rest;
-    if (rest.length > maxChars) {
-      piece = rest.slice(0, cutPoint(rest, maxChars));
+    if (measure(rest) > maxChars) {
+      piece = rest.slice(0, cutPoint(rest, fitLength(rest, maxChars, measure)));
     }
     rest = rest.slice(piece.length);
     const trimmed = piece.replace(/\s+$/, "");
