@@ -1,0 +1,49 @@
+{
+  "name": "@kiritan/middleware",
+  "version": "0.1.0",
+  "description": "A layer that turns any translate function into a Kiritan translate middleware / 任意の翻訳関数をKiritanの翻訳ミドルウェアにする中間層",
+  "keywords": [
+    "translate",
+    "translation",
+    "middleware",
+    "machine-translation",
+    "i18n",
+    "kiritan"
+  ],
+  "homepage": "https://github.com/otnc/kiritan#readme",
+  "bugs": {
+    "url": "https://github.com/otnc/kiritan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otnc/kiritan.git",
+    "directory": "packages/middleware"
+  },
+  "license": "WTFPL",
+  "author": "otoneko.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.ja.md"
+  ],
+  "engines": {
+    "node": ">=22.7.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  }
+}
