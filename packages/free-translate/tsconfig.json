@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Type-check against @kiritan/middleware's source, so `tsc --noEmit` doesn't depend on packages/middleware having been built first (see packages/kiritan/tsconfig.json).
+    "paths": {
+      "@kiritan/middleware": ["../middleware/src/index.ts"]
+    }
+  },
+  "include": ["src", "tsdown.config.ts"]
+}

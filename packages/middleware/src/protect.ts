@@ -15,6 +15,8 @@ export const defaultProtectPatterns: RegExp[] = [
   /%\{[^}\n]*\}/,
   // Link/image destinations: the `(url)` in `[text](url)`.
   /(?<=\]\()[^)\s]*(?:\s+"[^"]*")?(?=\))/,
+  // Line-start Markdown markers — heading #, quote >, bullet, ordered number — with the space after them. Engines tend to drop that space, and `#Title` is no longer a heading.
+  /^[ \t]*(?:#{1,6}|>+|[-*+]|\d{1,9}[.)])[ \t]+/m,
   // Bare URLs.
   /https?:\/\/[^\s<>)\]]+/,
   // HTML tags and comments (engines mangle attributes and drop comments).

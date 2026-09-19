@@ -51,6 +51,14 @@ describe("mask / unmask", () => {
     expect(text).toContain("See [docs]");
   });
 
+  it("keeps line-start markers (heading, quote, bullet, number) with their space", () => {
+    const md = "# Title\n\n> quote\n\n- one\n- two\n\n1. first\n";
+    const { text, spans } = mask(md);
+    expect(text).not.toMatch(/[#>-]/);
+    expect(text).toContain("Title");
+    expect(unmask(text, spans)).toBe(md);
+  });
+
   it("round-trips exactly", () => {
     const { text, spans } = mask(doc);
     expect(unmask(text, spans)).toBe(doc);
