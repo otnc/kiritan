@@ -1,6 +1,7 @@
 import { extname } from "node:path";
 import type { KiritanConfig, Renderer, SourceConfig } from "../config/types.js";
 import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
+import { textRenderer } from "./text.js";
 
 const BUILTIN_STRATEGIES = new Set(["sidecar", "inline", "catalog"]);
 
@@ -15,7 +16,7 @@ export const markdownRenderer: Renderer = {
 
 /** Every renderer kiritan ships with, keyed by id. */
 export function builtinRenderers(): Record<string, Renderer> {
-  return { markdown: markdownRenderer };
+  return { markdown: markdownRenderer, text: textRenderer };
 }
 
 function findByExtension(
