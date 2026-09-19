@@ -21,6 +21,7 @@
 | [`kiritan`](./packages/kiritan) | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | `translate.middlewares` 用の [DeepL](https://www.deepl.com/) 翻訳ミドルウェア |
+| [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | `translate.middlewares` 用の [Google Cloud Translation](https://cloud.google.com/translate) ミドルウェア |
 
 ## 関連ツール
 
