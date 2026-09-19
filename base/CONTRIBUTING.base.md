@@ -121,6 +121,7 @@ npm run docs:build
 | `npm run ci` | The same checks without writing — what CI runs |
 | `npm run docs:build` | Regenerate every `base/*.base.md`-derived doc (see Generated docs above) |
 | `npm run docs:check` | Report missing/stale generated docs without writing anything |
+| `npm run docs:verify` | Check that every generated doc matches what `docs:build` would write (by hash), without writing anything |
 
 `build` and `typecheck` fan out to every package under `packages/*`; `test`/`format`/`lint` already run across the whole workspace from the root.
 
@@ -141,6 +142,7 @@ Before opening a pull request, make sure the full set passes:
 | `npm run ci` | 書き込みなしで同じチェックを実行(CI が実行するもの) |
 | `npm run docs:build` | `base/*.base.md` から生成される全ドキュメントを再生成する(上記「生成ドキュメント」参照) |
 | `npm run docs:check` | 何も書き込まずに、未翻訳・staleな生成ドキュメントを報告する |
+| `npm run docs:verify` | 生成済みの全ドキュメントが`docs:build`の出力と(ハッシュで)一致するか、何も書き込まずに確認する |
 
 `build` と `typecheck` は `packages/*` 配下の全パッケージに展開されます。`test` / `format` / `lint` はルートから既にワークスペース全体に対して実行されます。
 
