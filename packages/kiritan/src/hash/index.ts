@@ -7,12 +7,26 @@ export function hashText(text: string): string {
   return createHash("sha1").update(text).digest("hex").slice(0, 16);
 }
 
-// Matches the marker inside whatever comment syntax the file's renderer wraps it in (`<!-- ... -->` for Markdown).
-const HASH_COMMENT = /kiritan:hash\s+([0-9a-f]+)/;
+const defaultComment = (text: string) => `<!-- ${text} -->`;
 
-/** Extracts the `kiritan:hash` marker from a `sidecar` output file, if present. */
-export function extractHashComment(text: string): string | undefined {
-  return HASH_COMMENT.exec(text)?.[1];
+const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Extracts the `kiritan:hash` marker from a `sidecar` output file, if present.
+ * The pattern is derived from `comment` (a `Renderer.comment`), so only a marker written the way that renderer writes it matches — the same words in prose or a code sample don't. Whitespace inside the comment is matched loosely.
+ */
+export function extractHashComment(
+  text: string,
+  comment: (text: string) => string = defaultComment
+): string | undefined {
+  const [before, after = ""] = comment("kiritan:hash \u0000").split("\u0000");
+  const pattern = new RegExp(
+    escapeRegExp(before).replace(/ /g, "\\s*") +
+      "([0-9a-f]+)" +
+      escapeRegExp(after).replace(/ /g, "\\s*")
+  );
+  return pattern.exec(text)?.[1];
 }
 
 /**
@@ -22,7 +36,7 @@ export function extractHashComment(text: string): string | undefined {
 export function withHashComment(
   text: string,
   hash: string,
-  comment: (text: string) => string = (t) => `<!-- ${t} -->`
+  comment: (text: string) => string = defaultComment
 ): string {
   return `${text.replace(/\n+$/, "")}\n\n${comment(`kiritan:hash ${hash}`)}\n`;
 }
