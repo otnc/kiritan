@@ -22,6 +22,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | A [DeepL](https://www.deepl.com/) translate middleware for `translate.middlewares` |
 | [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | A [Google Cloud Translation](https://cloud.google.com/translate) middleware for `translate.middlewares` |
+| [`@kiritan/middleware`](./packages/middleware) | `packages/middleware` | Turns any translate function into a middleware: protects code/URLs/`%{name}`, splits, batches, retries, caches |
 
 ## Related tooling
 

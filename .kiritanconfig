@@ -31,6 +31,11 @@ export default {
       naming: { template: "packages/google-translate/{base}.{locale}.{ext}" },
     },
     {
+      glob: "packages/middleware/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "packages/middleware/{base}.{locale}.{ext}" },
+    },
+    {
       glob: "extensions/vscode/base/README.base.md",
       strategy: "inline",
       naming: { template: "extensions/vscode/{base}.{locale}.{ext}" },
