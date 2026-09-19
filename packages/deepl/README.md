@@ -26,14 +26,16 @@ import { deepl } from "@kiritan/deepl";
 
 export default {
   locales: { default: "en", list: ["en", "ja"] },
-  sources: [{ glob: "base/README.base.md", strategy: "catalog" }],
+  sources: [{ glob: "base/README.base.md", strategy: "sidecar" }],
   translate: {
     middlewares: [deepl({ apiKey: process.env.DEEPL_API_KEY })],
   },
 };
 ```
 
-Use `deeplBatch` instead of `deepl` to send many segments per request (up to DeepL's limit of 50), which is much faster for a `catalog` source with lots of ids:
+With `sidecar`, the whole document goes to DeepL as one text and comes back as the translated sidecar file. With `catalog`, each `:::kiritan{#id}` block in the base file is translated separately — the base file needs those blocks, or there is nothing to translate.
+
+Use `deeplBatch` instead of `deepl` to send many segments per request (up to DeepL's limits of 50 texts / 128 KiB), which is much faster for a `catalog` source with lots of ids:
 
 ```js
 import { deeplBatch } from "@kiritan/deepl";

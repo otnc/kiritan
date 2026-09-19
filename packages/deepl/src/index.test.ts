@@ -122,6 +122,21 @@ describe("deepl()", () => {
     });
   });
 
+  it("never lets extraParams override the fields the middleware depends on", async () => {
+    const { calls, fetch } = fakeFetch();
+    await deepl({
+      apiKey: "k",
+      extraParams: { tag_handling: "html", ignore_tags: [], text: ["x"] },
+      fetch,
+    })(ctx("Hi %{a}"), next);
+
+    expect(calls[0].body).toMatchObject({
+      text: ["Hi <x>%{a}</x>"],
+      tag_handling: "xml",
+      ignore_tags: ["x"],
+    });
+  });
+
   it("un-escapes and un-wraps what DeepL returns", async () => {
     const { fetch } = fakeFetch(() => ["<x>%{name}</x> &lt;3 &amp; more"]);
     const result = await deepl({ apiKey: "k", fetch })(ctx("x"), next);
@@ -187,6 +202,31 @@ describe("deeplBatch()", () => {
     ]);
     expect(results[0]).toBe("T(t0)");
     expect(results[119]).toBe("T(t119)");
+  });
+
+  it("chunks at 120 KiB of request body as well as at 50 texts", async () => {
+    const { calls, fetch } = fakeFetch();
+    const big = "x".repeat(70 * 1024);
+    const results = await run({ apiKey: "k", fetch }, [
+      ctx(big),
+      ctx(big),
+      ctx("small"),
+    ]);
+
+    expect(calls.map((call) => (call.body.text as string[]).length)).toEqual([
+      1, 2,
+    ]);
+    expect(results).toEqual([`T(${big})`, `T(${big})`, "T(small)"]);
+  });
+
+  it("counts bytes, not characters, and the XML escaping", async () => {
+    const { calls, fetch } = fakeFetch();
+    // 30k "&" -> 150k bytes once escaped to "&amp;"; 30k CJK characters -> 90k bytes.
+    await run({ apiKey: "k", fetch }, [
+      ctx("&".repeat(30_000)),
+      ctx("あ".repeat(30_000)),
+    ]);
+    expect(calls).toHaveLength(2);
   });
 
   it("makes no request for no contexts", async () => {
