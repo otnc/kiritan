@@ -3,10 +3,10 @@ import { join } from "node:path";
 import { resolveTargetLocales } from "../config/locale.js";
 import type {
   KiritanConfig,
+  Renderer,
   StoreContext,
   TranslationStore,
 } from "../config/types.js";
-import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import {
   collectCatalogIds,
   collectCatalogSegments,
@@ -20,6 +20,7 @@ import {
 import { extractHashComment, hashText } from "../hash/index.js";
 import { aggregateResources } from "../i18n/aggregate.js";
 import { findKeyMismatches } from "../i18n/mismatch.js";
+import { resolveRenderer } from "../renderers/index.js";
 import { catalogPathFor, readCatalogFile } from "../stores/catalog.js";
 
 export type CheckIssueKind =
@@ -63,6 +64,7 @@ async function readFileIfExists(path: string): Promise<string | undefined> {
 
 async function checkSidecar(
   file: DiscoveredFile,
+  renderer: Renderer,
   sourceText: string,
   config: KiritanConfig,
   cwd: string,
@@ -90,8 +92,10 @@ async function checkSidecar(
       continue;
     }
 
-    // No hash comment means the file predates this feature (or was hand-authored without one) — only flag staleness once a hash comment exists and no longer matches.
-    const existingHash = extractHashComment(outputText);
+    // No hash comment means the file predates this feature (or was hand-authored without one) — only flag staleness once a hash comment exists and no longer matches. A renderer with no comment syntax never gets one, so it's never flagged.
+    const existingHash = renderer.comment
+      ? extractHashComment(outputText)
+      : undefined;
     if (existingHash && existingHash !== sourceHash) {
       issues.push({
         kind: "stale",
@@ -105,12 +109,13 @@ async function checkSidecar(
 
 function checkInline(
   file: DiscoveredFile,
+  renderer: Renderer,
   sourceText: string,
   config: KiritanConfig,
   issues: CheckIssue[],
   targetLocales: string[]
 ): void {
-  const declared = collectLocaleBlocks(parseMarkdown(sourceText));
+  const declared = collectLocaleBlocks(renderer.parse(sourceText));
   for (const locale of targetLocales) {
     if (locale === config.locales.default) continue;
     if (!declared.has(locale)) {
@@ -126,13 +131,14 @@ function checkInline(
 
 async function checkCatalog(
   file: DiscoveredFile,
+  renderer: Renderer,
   sourceText: string,
   config: KiritanConfig,
   cwd: string,
   issues: CheckIssue[],
   targetLocales: string[]
 ): Promise<void> {
-  const tree = parseMarkdown(sourceText);
+  const tree = renderer.parse(sourceText);
   const ids = collectCatalogIds(tree);
   const segments = collectCatalogSegments(tree);
   for (const locale of targetLocales) {
@@ -166,7 +172,7 @@ async function checkCatalog(
       // No stored hash means the entry predates this feature (or was written by hand) — only flag staleness once a hash exists and no longer matches.
       if (entry.hash) {
         const currentHash = hashText(
-          stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] })
+          renderer.stringify({ type: "root", children: segments.get(id) ?? [] })
         );
         if (currentHash !== entry.hash) {
           issues.push({
@@ -273,20 +279,37 @@ export async function check(
   const issues: CheckIssue[] = [];
 
   for (const file of files) {
+    const renderer = resolveRenderer(config, file.source, file.path);
     const sourceText = await readFile(join(cwd, file.path), "utf8");
 
     if (file.source.strategy === "sidecar") {
-      await checkSidecar(file, sourceText, config, cwd, issues, targetLocales);
+      await checkSidecar(
+        file,
+        renderer,
+        sourceText,
+        config,
+        cwd,
+        issues,
+        targetLocales
+      );
       continue;
     }
 
     if (file.source.strategy === "inline") {
-      checkInline(file, sourceText, config, issues, targetLocales);
+      checkInline(file, renderer, sourceText, config, issues, targetLocales);
       continue;
     }
 
     if (file.source.strategy === "catalog") {
-      await checkCatalog(file, sourceText, config, cwd, issues, targetLocales);
+      await checkCatalog(
+        file,
+        renderer,
+        sourceText,
+        config,
+        cwd,
+        issues,
+        targetLocales
+      );
       continue;
     }
 

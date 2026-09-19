@@ -26,3 +26,4 @@ export { init } from "./pipeline/init.js";
 export type { InitOptions, InitResult } from "./pipeline/init.js";
 export { aggregateResources } from "./i18n/aggregate.js";
 export type { AggregatedResource } from "./i18n/aggregate.js";
+export { markdownRenderer, resolveRenderer } from "./renderers/index.js";

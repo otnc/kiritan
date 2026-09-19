@@ -1,20 +1,21 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { InterpolationParams } from "@kiritan/runtime";
-import type { RootContent } from "mdast";
+import type { Root, RootContent } from "mdast";
 import type {
   BuildContext,
   KiritanConfig,
+  Renderer,
   SourceConfig,
   StoreContext,
   SwitcherConfig,
 } from "../config/types.js";
 import { resolveTargetLocales } from "../config/locale.js";
-import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { renderForLocale } from "../directive/render.js";
 import { resolveNamingOptions, resolveOutputPath } from "../discover/naming.js";
 import { discoverSourceFiles } from "../discover/sources.js";
 import { interpolateTree } from "../interpolate/index.js";
+import { resolveRenderer } from "../renderers/index.js";
 import { catalogPathFor, readCatalogFile } from "../stores/catalog.js";
 import {
   buildSwitcherLinks,
@@ -76,7 +77,8 @@ function resolveSwitcherConfig(
 
 /** Builds one locale's document, given its already-directive-resolved tree. */
 function finalizeTree(
-  tree: ReturnType<typeof parseMarkdown>,
+  tree: Root,
+  renderer: Renderer,
   config: KiritanConfig,
   locale: string
 ): string {
@@ -85,7 +87,7 @@ function finalizeTree(
     resolveVariables(config, locale),
     config.interpolation
   );
-  return stringifyMarkdown(interpolated);
+  return renderer.stringify(interpolated);
 }
 
 /** `kiritan build` (docs/DESIGN.md chapter 2): discover -> parse -> resolve -> interpolate -> reassemble -> write. */
@@ -121,6 +123,22 @@ export async function build(
           switcherConfig
         );
 
+    const renderer = resolveRenderer(config, file.source, file.path);
+    // A format without directives (e.g. plain text) has nothing for `renderForLocale` to resolve and nowhere to put a switcher.
+    const prepareTree = (text: string): Root => {
+      const tree = renderer.parse(text);
+      return renderer.supportsDirectives === false
+        ? tree
+        : ensureSwitcherMarker(tree, switcherConfig);
+    };
+    const renderOptions = (locale: string, outPath: string) => ({
+      targetLocale: locale,
+      defaultLocale: config.locales.default,
+      renderSwitcher: renderSwitcherFor(locale, outPath),
+      parseFragment: (text: string) => renderer.parse(text).children,
+      comment: renderer.comment ?? null,
+    });
+
     const sourceText = await readFile(join(cwd, file.path), "utf8");
 
     if (file.source.strategy === "sidecar") {
@@ -131,44 +149,43 @@ export async function build(
           try {
             text = await readFile(join(cwd, outPath), "utf8");
           } catch {
-            text = `<!-- kiritan:untranslated (source: ${config.locales.default}) -->\n\n${sourceText}`;
+            text = renderer.comment
+              ? `${renderer.comment(`kiritan:untranslated (source: ${config.locales.default})`)}\n\n${sourceText}`
+              : sourceText;
           }
         }
-        const tree = ensureSwitcherMarker(parseMarkdown(text), switcherConfig);
-        const rendered = renderForLocale(tree, {
-          targetLocale: locale,
-          defaultLocale: config.locales.default,
-          renderSwitcher: renderSwitcherFor(locale, outPath),
-        });
-        await writeOutput(cwd, outPath, finalizeTree(rendered, config, locale));
+        const tree = prepareTree(text);
+        const rendered = renderForLocale(tree, renderOptions(locale, outPath));
+        await writeOutput(
+          cwd,
+          outPath,
+          finalizeTree(rendered, renderer, config, locale)
+        );
         written.push(outPath);
       }
       continue;
     }
 
     if (file.source.strategy === "inline") {
-      const baseTree = ensureSwitcherMarker(
-        parseMarkdown(sourceText),
-        switcherConfig
-      );
+      const baseTree = prepareTree(sourceText);
       for (const locale of targetLocales) {
         const outPath = outputPathFor(locale);
-        const rendered = renderForLocale(baseTree, {
-          targetLocale: locale,
-          defaultLocale: config.locales.default,
-          renderSwitcher: renderSwitcherFor(locale, outPath),
-        });
-        await writeOutput(cwd, outPath, finalizeTree(rendered, config, locale));
+        const rendered = renderForLocale(
+          baseTree,
+          renderOptions(locale, outPath)
+        );
+        await writeOutput(
+          cwd,
+          outPath,
+          finalizeTree(rendered, renderer, config, locale)
+        );
         written.push(outPath);
       }
       continue;
     }
 
     if (file.source.strategy === "catalog") {
-      const baseTree = ensureSwitcherMarker(
-        parseMarkdown(sourceText),
-        switcherConfig
-      );
+      const baseTree = prepareTree(sourceText);
       for (const locale of targetLocales) {
         const outPath = outputPathFor(locale);
         const catalogData =
@@ -178,14 +195,16 @@ export async function build(
                 join(cwd, catalogPathFor(file.base.dir, file.base.base, locale))
               );
         const rendered = renderForLocale(baseTree, {
-          targetLocale: locale,
-          defaultLocale: config.locales.default,
+          ...renderOptions(locale, outPath),
           resolveCatalogText: catalogData
             ? (id) => catalogData[id]?.text
             : undefined,
-          renderSwitcher: renderSwitcherFor(locale, outPath),
         });
-        await writeOutput(cwd, outPath, finalizeTree(rendered, config, locale));
+        await writeOutput(
+          cwd,
+          outPath,
+          finalizeTree(rendered, renderer, config, locale)
+        );
         written.push(outPath);
       }
       continue;
@@ -193,25 +212,21 @@ export async function build(
 
     const store = config.plugins?.stores?.[file.source.strategy];
     if (store) {
-      const baseTree = ensureSwitcherMarker(
-        parseMarkdown(sourceText),
-        switcherConfig
-      );
+      const baseTree = prepareTree(sourceText);
       const ctx: StoreContext = { source: file.source, filePath: file.path };
 
       for (const locale of targetLocales) {
         const outPath = outputPathFor(locale);
 
         if (locale === config.locales.default) {
-          const rendered = renderForLocale(baseTree, {
-            targetLocale: locale,
-            defaultLocale: config.locales.default,
-            renderSwitcher: renderSwitcherFor(locale, outPath),
-          });
+          const rendered = renderForLocale(
+            baseTree,
+            renderOptions(locale, outPath)
+          );
           await writeOutput(
             cwd,
             outPath,
-            finalizeTree(rendered, config, locale)
+            finalizeTree(rendered, renderer, config, locale)
           );
           written.push(outPath);
           continue;
@@ -221,19 +236,15 @@ export async function build(
 
         // A "full-text" result replaces the whole document, the same way a sidecar file's own content does — it's parsed fresh rather than layered onto the base tree.
         if (content?.kind === "full-text") {
-          const tree = ensureSwitcherMarker(
-            parseMarkdown(content.text),
-            switcherConfig
+          const tree = prepareTree(content.text);
+          const rendered = renderForLocale(
+            tree,
+            renderOptions(locale, outPath)
           );
-          const rendered = renderForLocale(tree, {
-            targetLocale: locale,
-            defaultLocale: config.locales.default,
-            renderSwitcher: renderSwitcherFor(locale, outPath),
-          });
           await writeOutput(
             cwd,
             outPath,
-            finalizeTree(rendered, config, locale)
+            finalizeTree(rendered, renderer, config, locale)
           );
           written.push(outPath);
           continue;
@@ -243,12 +254,14 @@ export async function build(
         const segments =
           content?.kind === "segments" ? content.segments : undefined;
         const rendered = renderForLocale(baseTree, {
-          targetLocale: locale,
-          defaultLocale: config.locales.default,
+          ...renderOptions(locale, outPath),
           resolveCatalogText: segments ? (id) => segments[id]?.text : undefined,
-          renderSwitcher: renderSwitcherFor(locale, outPath),
         });
-        await writeOutput(cwd, outPath, finalizeTree(rendered, config, locale));
+        await writeOutput(
+          cwd,
+          outPath,
+          finalizeTree(rendered, renderer, config, locale)
+        );
         written.push(outPath);
       }
       continue;

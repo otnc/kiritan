@@ -3,12 +3,12 @@ import { dirname, join } from "node:path";
 import { resolveTargetLocales } from "../config/locale.js";
 import type {
   KiritanConfig,
+  Renderer,
   SourceConfig,
   StoreContext,
   TranslateContext,
   TranslationStore,
 } from "../config/types.js";
-import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { collectCatalogSegments } from "../directive/render.js";
 import { resolveNamingOptions, resolveOutputPath } from "../discover/naming.js";
 import {
@@ -20,6 +20,7 @@ import {
   hashText,
   withHashComment,
 } from "../hash/index.js";
+import { resolveRenderer } from "../renderers/index.js";
 import {
   catalogPathFor,
   readCatalogFile,
@@ -57,6 +58,7 @@ function middlewaresFor(source: SourceConfig, config: KiritanConfig) {
 
 async function translateSidecar(
   file: DiscoveredFile,
+  renderer: Renderer,
   config: KiritanConfig,
   cwd: string,
   translated: TranslatedEntry[],
@@ -82,7 +84,9 @@ async function translateSidecar(
       staleOrMissingLocales.push(locale);
       continue;
     }
-    const existingHash = extractHashComment(existing);
+    const existingHash = renderer.comment
+      ? extractHashComment(existing)
+      : undefined;
     if (existingHash && existingHash !== sourceHash) {
       staleOrMissingLocales.push(locale);
     }
@@ -109,7 +113,9 @@ async function translateSidecar(
     await mkdir(dirname(join(cwd, outPath)), { recursive: true });
     await writeFile(
       join(cwd, outPath),
-      withHashComment(result, sourceHash),
+      renderer.comment
+        ? withHashComment(result, sourceHash, renderer.comment)
+        : result,
       "utf8"
     );
     translated.push({ source: file.path, locale, detail: `wrote ${outPath}` });
@@ -118,6 +124,7 @@ async function translateSidecar(
 
 async function translateCatalog(
   file: DiscoveredFile,
+  renderer: Renderer,
   config: KiritanConfig,
   cwd: string,
   translated: TranslatedEntry[],
@@ -127,9 +134,9 @@ async function translateCatalog(
   if (middlewares.length === 0) return;
 
   const sourceText = await readFile(join(cwd, file.path), "utf8");
-  const segments = collectCatalogSegments(parseMarkdown(sourceText));
+  const segments = collectCatalogSegments(renderer.parse(sourceText));
   const segmentTextFor = (id: string) =>
-    stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] });
+    renderer.stringify({ type: "root", children: segments.get(id) ?? [] });
   const segmentHashFor = (id: string) => hashText(segmentTextFor(id));
 
   for (const locale of allowedLocales) {
@@ -183,6 +190,7 @@ async function translateCatalog(
  */
 async function translatePluginStore(
   file: DiscoveredFile,
+  renderer: Renderer,
   config: KiritanConfig,
   cwd: string,
   translated: TranslatedEntry[],
@@ -226,9 +234,9 @@ async function translatePluginStore(
       continue;
     }
 
-    const segments = collectCatalogSegments(parseMarkdown(sourceText));
+    const segments = collectCatalogSegments(renderer.parse(sourceText));
     const segmentTextFor = (id: string) =>
-      stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] });
+      renderer.stringify({ type: "root", children: segments.get(id) ?? [] });
     const idsNeedingTranslation = [...segments.keys()].filter(
       (id) => !existing.segments[id]?.text
     );
@@ -281,12 +289,27 @@ export async function translate(
   const translated: TranslatedEntry[] = [];
 
   for (const file of files) {
+    const renderer = resolveRenderer(config, file.source, file.path);
     if (file.source.strategy === "sidecar") {
-      await translateSidecar(file, config, cwd, translated, targetLocales);
+      await translateSidecar(
+        file,
+        renderer,
+        config,
+        cwd,
+        translated,
+        targetLocales
+      );
       continue;
     }
     if (file.source.strategy === "catalog") {
-      await translateCatalog(file, config, cwd, translated, targetLocales);
+      await translateCatalog(
+        file,
+        renderer,
+        config,
+        cwd,
+        translated,
+        targetLocales
+      );
       continue;
     }
     if (file.source.strategy === "inline") {
@@ -302,6 +325,7 @@ export async function translate(
     if (store) {
       await translatePluginStore(
         file,
+        renderer,
         config,
         cwd,
         translated,
