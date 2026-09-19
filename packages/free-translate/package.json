@@ -1,7 +1,7 @@
 {
   "name": "@kiritan/free-translate",
   "version": "0.1.0",
-  "description": "Translate middlewares that need no API key (MyMemory, Google's keyless endpoint) / APIキー不要の翻訳ミドルウェア(MyMemory、Googleのキーレスエンドポイント)",
+  "description": "Translate middlewares that need no API key: MyMemory, Google's keyless endpoint, self-hosted LibreTranslate and Google Apps Script / APIキー不要の翻訳ミドルウェア: MyMemory、Googleのキーレスエンドポイント、自前ホストのLibreTranslateとGoogle Apps Script",
   "keywords": [
     "translate",
     "translation",
@@ -10,7 +10,10 @@
     "mymemory",
     "middleware",
     "i18n",
-    "kiritan"
+    "kiritan",
+    "libretranslate",
+    "google-apps-script",
+    "self-hosted"
   ],
   "homepage": "https://github.com/otnc/kiritan#readme",
   "bugs": {

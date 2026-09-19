@@ -28,7 +28,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | A [DeepL](https://www.deepl.com/) translate middleware for `translate.middlewares` |
 | [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | A [Google Cloud Translation](https://cloud.google.com/translate) middleware for `translate.middlewares` |
 | [`@kiritan/middleware`](./packages/middleware) | `packages/middleware` | Turns any translate function into a middleware: protects code/URLs/`%{name}`, splits, batches, retries, caches |
-| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | Translate middlewares that need no API key: MyMemory and Google's keyless endpoint |
+| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | Translate middlewares that need no API key: MyMemory, Google's keyless endpoint, self-hosted LibreTranslate and Google Apps Script |
 
 ## Related tooling
 
@@ -49,7 +49,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | `translate.middlewares` 用の [DeepL](https://www.deepl.com/) 翻訳ミドルウェア |
 | [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | `translate.middlewares` 用の [Google Cloud Translation](https://cloud.google.com/translate) ミドルウェア |
 | [`@kiritan/middleware`](./packages/middleware) | `packages/middleware` | 任意の翻訳関数をミドルウェアにする層: コード/URL/`%{name}` の保護、分割、まとめ送信、再試行、キャッシュ |
-| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | APIキー不要の翻訳ミドルウェア: MyMemoryとGoogleのキーレスエンドポイント |
+| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | APIキー不要の翻訳ミドルウェア: MyMemory、Googleのキーレスエンドポイント、自前ホストのLibreTranslateとGoogle Apps Script |
 
 ## 関連ツール
 

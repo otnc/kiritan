@@ -190,3 +190,154 @@ export function googleFree(
     },
   });
 }
+
+// ───────────────────────── LibreTranslate ─────────────────────────
+
+export interface LibreTranslateOptions extends CommonOptions {
+  /** The server's URL, e.g. `http://localhost:5000`. Required: the public libretranslate.com instance now needs a paid key, so this is meant for a server you host. */
+  baseUrl: string;
+  /** Only if your server was started with `--api-keys`. */
+  apiKey?: string;
+}
+
+/**
+ * [LibreTranslate](https://libretranslate.com/), the open-source engine, on a server you run yourself (no key needed unless you turn `--api-keys` on). Several texts go in one request via the API's array form of `q`.
+ * Its language codes are its own (`en`, `ja`, `zh-Hans`, ...); the Kiritan locale is sent as-is, with `zh-CN`/`zh-Hans`-style names normalised to `zh`. Override with `languageCodes`.
+ */
+export function libreTranslate(
+  options: LibreTranslateOptions
+): TranslatorMiddleware {
+  if (!options.baseUrl) {
+    throw new Error(
+      "@kiritan/free-translate: libreTranslate needs a `baseUrl`"
+    );
+  }
+  const base = options.baseUrl.replace(/\/+$/, "");
+  const code = (locale: string) =>
+    resolveCode(locale, options.languageCodes, (l) =>
+      toCode(l, { hans: "zh", hant: "zt" })
+    );
+
+  return createTranslator({
+    name: "libretranslate",
+    maxBatchSize: 50,
+    concurrency: 4,
+    ...tuning(options),
+    async translateBatch(texts, { from, to }) {
+      const body = await send<{
+        translatedText?: string | string[];
+        error?: string;
+      }>(
+        "LibreTranslate",
+        `${base}/translate`,
+        {
+          method: "POST",
+          body: {
+            q: texts,
+            source: code(from),
+            target: code(to),
+            format: "text",
+            ...(options.apiKey ? { api_key: options.apiKey } : {}),
+          },
+        },
+        options
+      );
+      const translated = body.translatedText;
+      const list = Array.isArray(translated)
+        ? translated
+        : translated === undefined
+          ? []
+          : [translated];
+      if (list.length !== texts.length) {
+        throw new ProviderError(
+          `@kiritan/free-translate: LibreTranslate returned ${list.length} result(s) for ${texts.length} text(s)${body.error ? `: ${body.error}` : ""}`,
+          undefined,
+          false
+        );
+      }
+      return list;
+    },
+  });
+}
+
+// ───────────────────── Google Apps Script (self-hosted) ─────────────────────
+
+export interface AppsScriptOptions extends CommonOptions {
+  /** The deployed web app's URL: `https://script.google.com/macros/s/<id>/exec`. */
+  url: string;
+  /**
+   * A shared secret, sent as `secret` and checked by the script. A web app deployed for "Anyone" answers whoever finds its URL, so this is what keeps it from being a free translation service for the world (and from spending your quota).
+   */
+  secret?: string;
+}
+
+/**
+ * Translates through a small Google Apps Script web app that *you* deploy from your own Google account, using Apps Script's built-in `LanguageApp.translate` (Google Translate). No API key or billing is involved, and the quota is your own account's. The README has the script to paste in.
+ * The request is a JSON POST `{ secret, source, target, q: [texts] }` and the script answers `{ translations: [texts] }` (or `{ error }`). Apps Script replies through a redirect, which `fetch` follows. Language codes are Google's, mapped the same way as `googleFree`.
+ * If the response isn't JSON, the deployment is usually not set to "Anyone" (Google answers with a sign-in page), and that is what the error says.
+ */
+export function appsScript(options: AppsScriptOptions): TranslatorMiddleware {
+  if (!options.url) {
+    throw new Error("@kiritan/free-translate: appsScript needs a `url`");
+  }
+  const code = (locale: string) =>
+    resolveCode(locale, options.languageCodes, toGoogleCode);
+
+  return createTranslator({
+    name: "apps-script",
+    // Each text is one `LanguageApp.translate` call inside a script that has a runtime limit per request, so batches stay modest.
+    maxChars: 5000,
+    maxBatchChars: 20_000,
+    maxBatchSize: 20,
+    concurrency: 2,
+    minInterval: 200,
+    ...tuning(options),
+    async translateBatch(texts, { from, to }) {
+      const body = await send<{
+        translations?: unknown;
+        error?: unknown;
+      }>(
+        "Google Apps Script",
+        options.url,
+        {
+          method: "POST",
+          body: {
+            ...(options.secret !== undefined ? { secret: options.secret } : {}),
+            source: code(from),
+            target: code(to),
+            q: texts,
+          },
+        },
+        options
+      );
+
+      if (typeof body !== "object" || body === null) {
+        throw new ProviderError(
+          '@kiritan/free-translate: the Apps Script URL didn\'t return JSON. Check the deployment: "Execute as" should be you and "Who has access" should be "Anyone" (otherwise Google answers with a sign-in page), and re-deploy after editing the script',
+          undefined,
+          false
+        );
+      }
+      if (body.error !== undefined) {
+        throw new ProviderError(
+          `@kiritan/free-translate: the Apps Script reported: ${String(body.error)}`,
+          undefined,
+          false
+        );
+      }
+      const list = body.translations;
+      if (
+        !Array.isArray(list) ||
+        list.length !== texts.length ||
+        list.some((entry) => typeof entry !== "string")
+      ) {
+        throw new ProviderError(
+          `@kiritan/free-translate: the Apps Script returned an unexpected response (${texts.length} text(s) sent); expected { "translations": [strings] }`,
+          undefined,
+          false
+        );
+      }
+      return list as string[];
+    },
+  });
+}

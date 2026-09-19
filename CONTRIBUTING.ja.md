@@ -28,7 +28,7 @@ npm install
 | `@kiritan/deepl` | `packages/deepl` | `translate.middlewares` 用のDeepL翻訳ミドルウェア |
 | `@kiritan/google-translate` | `packages/google-translate` | `translate.middlewares` 用のGoogle Cloud Translationミドルウェア |
 | `@kiritan/middleware` | `packages/middleware` | 任意の翻訳関数を翻訳ミドルウェアにする層 |
-| `@kiritan/free-translate` | `packages/free-translate` | APIキー不要の翻訳ミドルウェア |
+| `@kiritan/free-translate` | `packages/free-translate` | APIキー不要の翻訳ミドルウェア(セルフホストのLibreTranslateとGoogle Apps Scriptを含む) |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト)。npm workspaceのメンバーではない — 詳細は後述の「リリース」を参照。 |
 | — | `extensions/vim` | Vim/Neovimプラグイン(同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定)。どこにも公開せず、プラグインマネージャーの`rtp`オプションでこのリポジトリから直接インストールする。 |
 
