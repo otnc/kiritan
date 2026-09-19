@@ -20,6 +20,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | --- | --- | --- |
 | [`kiritan`](./packages/kiritan) | `packages/kiritan` | The CLI + build pipeline: config, translation stores, renderers, translate middlewares |
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
+| [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | A [DeepL](https://www.deepl.com/) translate middleware for `translate.middlewares` |
 
 ## Related tooling
 
