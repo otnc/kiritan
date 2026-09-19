@@ -77,7 +77,7 @@ await build(config);
 | `kiritan build` | Builds localized documents from every configured source |
 | `kiritan check` | Reports missing/stale/machine-translated content; exits non-zero in CI when `check.failOn` matches |
 | `kiritan verify` | Checks that every generated document matches what `build` would write today (by hash), without writing anything; exits non-zero in CI on a mismatch or a missing file. Catches an out-of-date or hand-edited generated doc |
-| `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` (`sidecar`/`catalog`; `inline` isn't supported yet) |
+| `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` — only when `translate.auto` is `true`, otherwise it reports that nothing ran (`sidecar`/`catalog`; `inline` isn't supported yet) |
 | `kiritan extract` | Scaffolds new `catalog`-strategy ids and reports orphaned ones |
 | `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9.6) |
 

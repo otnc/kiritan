@@ -192,3 +192,27 @@ describe("createCli (verify)", () => {
     expect(parsed.entries).toHaveLength(2);
   });
 });
+
+describe("createCli (translate.auto)", () => {
+  it("tells you when middlewares are configured but translate.auto isn't true", async () => {
+    await writeFile(
+      join(cwd, ".kiritanconfig"),
+      [
+        "export default {",
+        '  locales: { default: "en", list: ["en", "ja"] },',
+        '  sources: [{ glob: "README.base.md", strategy: "sidecar" }],',
+        '  naming: { template: "{base}.{locale}.{ext}" },',
+        "  translate: { middlewares: [async (ctx) => ctx.text.toUpperCase()] },",
+        "};",
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+
+    await createCli("en", { exitProcess: false }).parseAsync(["translate"]);
+    expect(logged()).toEqual([
+      "kiritan translate: translate.middlewares are configured for 1 source(s), but translate.auto is not true, so they did not run (set translate: { auto: true } to enable them)",
+      "kiritan translate: nothing to do",
+    ]);
+  });
+});

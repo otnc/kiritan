@@ -42,6 +42,8 @@ export interface TranslateOptions {
 
 export interface TranslateResult {
   translated: TranslatedEntry[];
+  /** Sources that have `translate.middlewares` but were skipped because `translate.auto` isn't `true`. */
+  autoDisabled: string[];
 }
 
 async function readFileIfExists(path: string): Promise<string | undefined> {
@@ -52,8 +54,18 @@ async function readFileIfExists(path: string): Promise<string | undefined> {
   }
 }
 
+/**
+ * The middlewares that may run for a source. Auto-translation is opt-in: nothing runs unless the effective `translate` config (the source's own, which replaces the top-level one entirely, else the top-level one) has `auto: true`, however many middlewares are configured (docs/DESIGN.md chapter 7).
+ */
 function middlewaresFor(source: SourceConfig, config: KiritanConfig) {
-  return (source.translate ?? config.translate)?.middlewares ?? [];
+  const effective = source.translate ?? config.translate;
+  return effective?.auto === true ? (effective.middlewares ?? []) : [];
+}
+
+/** Whether a source has middlewares configured that `auto` is currently keeping from running. */
+function isAutoOff(source: SourceConfig, config: KiritanConfig): boolean {
+  const effective = source.translate ?? config.translate;
+  return effective?.auto !== true && (effective?.middlewares?.length ?? 0) > 0;
 }
 
 async function translateSidecar(
@@ -287,9 +299,11 @@ export async function translate(
     baseSuffix: config.naming?.baseSuffix,
   });
   const translated: TranslatedEntry[] = [];
+  const autoDisabled: string[] = [];
 
   for (const file of files) {
     const renderer = resolveRenderer(config, file.source, file.path);
+    if (isAutoOff(file.source, config)) autoDisabled.push(file.path);
     if (file.source.strategy === "sidecar") {
       await translateSidecar(
         file,
@@ -340,5 +354,5 @@ export async function translate(
     );
   }
 
-  return { translated };
+  return { translated, autoDisabled };
 }

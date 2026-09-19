@@ -28,6 +28,7 @@ export default {
   locales: { default: "en", list: ["en", "ja"] },
   sources: [{ glob: "base/README.base.md", strategy: "sidecar" }],
   translate: {
+    auto: true,
     middlewares: [deepl({ apiKey: process.env.DEEPL_API_KEY })],
   },
 };
@@ -43,6 +44,7 @@ import { deeplBatch } from "@kiritan/deepl";
 export default {
   // ...
   translate: {
+    auto: true,
     middlewares: [deeplBatch({ apiKey: process.env.DEEPL_API_KEY })],
   },
 };

@@ -39,7 +39,7 @@ const myProvider = createTranslator({
 export default {
   locales: { default: "en", list: ["en", "ja"] },
   sources: [{ glob: "base/README.base.md", strategy: "sidecar" }],
-  translate: { middlewares: [myProvider] },
+  translate: { auto: true, middlewares: [myProvider] },
 };
 ```
 
