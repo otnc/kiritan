@@ -3,16 +3,17 @@ import { dirname, join } from "node:path";
 import { resolveTargetLocales } from "../config/locale.js";
 import type {
   KiritanConfig,
+  Renderer,
   StoreContext,
   TranslationStore,
 } from "../config/types.js";
-import { parseMarkdown, stringifyMarkdown } from "../directive/parse.js";
 import { collectCatalogSegments } from "../directive/render.js";
 import {
   discoverSourceFiles,
   type DiscoveredFile,
 } from "../discover/sources.js";
 import { hashText } from "../hash/index.js";
+import { resolveRenderer } from "../renderers/index.js";
 import {
   catalogPathFor,
   readCatalogFile,
@@ -44,12 +45,13 @@ async function extractPluginStore(
   cwd: string,
   changes: ExtractChange[],
   store: TranslationStore,
-  targetLocales: string[]
+  targetLocales: string[],
+  renderer: Renderer
 ): Promise<void> {
   if (!store.write) return;
 
   const sourceText = await readFile(join(cwd, file.path), "utf8");
-  const segments = collectCatalogSegments(parseMarkdown(sourceText));
+  const segments = collectCatalogSegments(renderer.parse(sourceText));
   const ids = new Set(segments.keys());
   const ctx: StoreContext = { source: file.source, filePath: file.path };
 
@@ -112,6 +114,7 @@ export async function extract(
   const changes: ExtractChange[] = [];
 
   for (const file of files) {
+    const renderer = resolveRenderer(config, file.source, file.path);
     if (
       file.source.strategy === "sidecar" ||
       file.source.strategy === "inline"
@@ -128,7 +131,8 @@ export async function extract(
           cwd,
           changes,
           store,
-          targetLocales
+          targetLocales,
+          renderer
         );
         continue;
       }
@@ -138,7 +142,7 @@ export async function extract(
     }
 
     const sourceText = await readFile(join(cwd, file.path), "utf8");
-    const segments = collectCatalogSegments(parseMarkdown(sourceText));
+    const segments = collectCatalogSegments(renderer.parse(sourceText));
     const ids = new Set(segments.keys());
 
     for (const locale of targetLocales) {
@@ -154,7 +158,7 @@ export async function extract(
       for (const id of ids) {
         if (id in existing) continue;
         const hash = hashText(
-          stringifyMarkdown({ type: "root", children: segments.get(id) ?? [] })
+          renderer.stringify({ type: "root", children: segments.get(id) ?? [] })
         );
         existing[id] = { text: "", hash };
         changed = true;

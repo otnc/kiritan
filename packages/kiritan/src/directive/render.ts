@@ -42,17 +42,31 @@ export interface RenderForLocaleOptions {
   renderSwitcher?: () => RootContent[];
   /** フォールバック(未翻訳)が発生するたびに呼ばれる。`kiritan check` 等での検出に使う。 */
   onFallback?: (kind: FallbackKind, key: string) => void;
+  /** catalog の訳文(Markdown 断片)を木に戻す際のパーサ。省略時は Markdown。 */
+  parseFragment?: (text: string) => RootContent[];
+  /** `Renderer.comment` 相当。省略時、フォールバックの `kiritan:untranslated` マーカーは Markdown のコメントになる。`null` を渡すとマーカーを出さない。 */
+  comment?: ((text: string) => string) | null;
 }
 
-function fallbackCommentNode(defaultLocale: string): RootContent {
-  return {
-    type: "html",
-    value: `<!-- kiritan:untranslated (source: ${defaultLocale}) -->`,
-  } as RootContent;
+function fallbackCommentNode(
+  defaultLocale: string,
+  options: RenderForLocaleOptions
+): RootContent[] {
+  if (options.comment === null) return [];
+  const wrap = options.comment ?? ((text: string) => `<!-- ${text} -->`);
+  return [
+    {
+      type: "html",
+      value: wrap(`kiritan:untranslated (source: ${defaultLocale})`),
+    } as RootContent,
+  ];
 }
 
-function parseFragment(text: string): RootContent[] {
-  return parseMarkdown(text).children;
+function parseFragment(
+  text: string,
+  options: RenderForLocaleOptions
+): RootContent[] {
+  return options.parseFragment?.(text) ?? parseMarkdown(text).children;
 }
 
 function transformNodes(
@@ -83,10 +97,10 @@ function transformNodes(
             options.targetLocale
           );
           if (translated !== undefined) {
-            result.push(...parseFragment(translated));
+            result.push(...parseFragment(translated, options));
           } else {
             options.onFallback?.("catalog-id", id);
-            result.push(fallbackCommentNode(options.defaultLocale));
+            result.push(...fallbackCommentNode(options.defaultLocale, options));
             result.push(...transformNodes(childrenOf(node), options));
           }
         }

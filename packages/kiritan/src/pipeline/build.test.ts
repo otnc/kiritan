@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
   KiritanConfig,
+  Renderer,
   TranslatedContent,
   TranslationStore,
 } from "../config/types.js";
@@ -313,5 +314,89 @@ describe("build (plugins.stores)", () => {
     await expect(build(config, { cwd })).rejects.toThrow(
       /the "unregistered" strategy isn't implemented yet/
     );
+  });
+});
+
+describe("build (plugins.renderers)", () => {
+  // A toy format: the whole file is one text node, and no directives or comments exist.
+  const plainRenderer: Renderer = {
+    id: "plain",
+    extensions: [".rst"],
+    strategies: ["sidecar"],
+    supportsDirectives: false,
+    parse: (source) => ({
+      type: "root",
+      children: [
+        {
+          type: "paragraph",
+          children: [{ type: "text", value: source }],
+        },
+      ],
+    }),
+    stringify: (tree) =>
+      tree.children
+        .map((node) =>
+          "children" in node
+            ? node.children
+                .map((child) => ("value" in child ? child.value : ""))
+                .join("")
+            : ""
+        )
+        .join(""),
+  };
+
+  it("parses and writes a source through the matching custom renderer, without switcher or markers", async () => {
+    await writeFile(join(cwd, "doc.base.rst"), "Hello %{name}.\n  indented\n");
+    await writeFile(join(cwd, "doc.ja.rst"), "こんにちは %{name}。\n");
+
+    const result = await build(
+      baseConfig({
+        sources: [{ glob: "doc.base.rst", strategy: "sidecar" }],
+        interpolation: {
+          delimiters: ["%{", "}"],
+          onMissing: "keep",
+          skipCodeBlocks: true,
+          variables: { name: "Kiritan" },
+        },
+        plugins: { renderers: { plain: plainRenderer } },
+      }),
+      { cwd }
+    );
+
+    expect(result.written.sort()).toEqual(["doc.ja.rst", "doc.rst"]);
+    expect(await readFile(join(cwd, "doc.rst"), "utf8")).toBe(
+      "Hello Kiritan.\n  indented\n"
+    );
+    expect(await readFile(join(cwd, "doc.ja.rst"), "utf8")).toBe(
+      "こんにちは Kiritan。\n"
+    );
+  });
+
+  it("leaves a missing translation as the plain source, with no untranslated marker", async () => {
+    await writeFile(join(cwd, "doc.base.rst"), "Hello.\n");
+
+    await build(
+      baseConfig({
+        sources: [{ glob: "doc.base.rst", strategy: "sidecar" }],
+        plugins: { renderers: { plain: plainRenderer } },
+      }),
+      { cwd }
+    );
+
+    expect(await readFile(join(cwd, "doc.ja.rst"), "utf8")).toBe("Hello.\n");
+  });
+
+  it("rejects a strategy the renderer doesn't support before writing anything", async () => {
+    await writeFile(join(cwd, "doc.base.rst"), "Hello.\n");
+
+    await expect(
+      build(
+        baseConfig({
+          sources: [{ glob: "doc.base.rst", strategy: "inline" }],
+          plugins: { renderers: { plain: plainRenderer } },
+        }),
+        { cwd }
+      )
+    ).rejects.toThrow(/"plain" renderer doesn't support the "inline" strategy/);
   });
 });

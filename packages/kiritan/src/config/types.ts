@@ -1,3 +1,5 @@
+import type { Root } from "mdast";
+
 /**
  * Type contracts from docs/DESIGN.md.
  */
@@ -137,24 +139,30 @@ export interface TranslationStore {
   status(ctx: StoreContext, locale: string): Promise<StoreStatus>;
 }
 
-/** docs/DESIGN.md chapter 6. Not implemented yet — declared for config type-checking. */
-export interface ParsedDocument {
-  raw: string;
-}
-
+/**
+ * docs/DESIGN.md chapter 6. A renderer is one file format's parse/stringify pair over the mdast tree every pipeline stage (directive resolution, interpolation, switcher insertion) already operates on — a non-Markdown format parses into the same `Root` shape, it doesn't get a parallel pipeline.
+ */
 export interface Renderer {
   id: string;
+  /** Extensions (lowercase, with the leading dot) this renderer handles when a source doesn't name one via `renderer`. */
+  extensions?: string[];
+  /** The built-in strategies (`sidecar`/`inline`/`catalog`) this format can support. A custom `plugins.stores` strategy name isn't checked against this. */
   strategies: StoreStrategy[];
-  parse(sourceText: string): ParsedDocument;
-  reassemble(
-    doc: ParsedDocument,
-    translated: Record<string, string> | string
-  ): string;
+  /** Whether `:::kiritan{...}` directives and the switcher apply to this format. Default: true. */
+  supportsDirectives?: boolean;
+  parse(sourceText: string): Root;
+  stringify(tree: Root): string;
+  /**
+   * Wraps text as a comment that's invisible in the rendered output, used for the `kiritan:hash`/`kiritan:untranslated` markers. A format with no such syntax leaves this out, and gets neither marker (so no staleness detection either).
+   */
+  comment?(text: string): string;
 }
 
 export interface SourceConfig {
   glob: string;
   strategy: StoreStrategy;
+  /** A renderer id, from `plugins.renderers` or the built-ins. Default: chosen by the file's extension, falling back to `markdown`. */
+  renderer?: string;
   /** Overrides the top-level `naming` entirely for this source. */
   naming?: NamingConfig;
   /** Overrides the top-level `translate` entirely for this source. */
