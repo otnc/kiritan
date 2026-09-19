@@ -183,6 +183,26 @@ describe("build (sidecar strategy)", () => {
     expect(ja).toContain("日本語のコンテンツ。");
   });
 
+  it("puts the fallback marker after leading front matter, which stays verbatim", async () => {
+    await writeFile(
+      join(cwd, "README.base.md"),
+      "---\ntitle: Hi %{name}\n---\n\n# Kiritan\n",
+      "utf8"
+    );
+
+    await build(
+      baseConfig({
+        sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+        switcher: { enabled: false },
+      }),
+      { cwd }
+    );
+
+    expect(await readFile(join(cwd, "README.ja.md"), "utf8")).toBe(
+      "---\ntitle: Hi %{name}\n---\n\n<!-- kiritan:untranslated (source: en) -->\n\n# Kiritan\n"
+    );
+  });
+
   it("falls back to the base content with a marker when the sidecar file is missing", async () => {
     await writeFile(
       join(cwd, "README.base.md"),

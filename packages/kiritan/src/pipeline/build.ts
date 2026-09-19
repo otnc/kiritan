@@ -90,6 +90,18 @@ function finalizeTree(
   return renderer.stringify(interpolated);
 }
 
+// A leading `---` YAML block only counts as front matter as the very first thing in the file, so a marker has to go after it, not before.
+const FRONT_MATTER = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/;
+
+function insertAfterFrontMatter(source: string, marker: string): string {
+  const end = FRONT_MATTER.exec(source)?.[0].length ?? 0;
+  const head = source.slice(0, end);
+  const separator = head && !head.endsWith("\n") ? "\n" : "";
+  return (
+    head + separator + marker + "\n\n" + source.slice(end).replace(/^\r?\n/, "")
+  );
+}
+
 /** `kiritan build` (docs/DESIGN.md chapter 2): discover -> parse -> resolve -> interpolate -> reassemble -> write. */
 export async function build(
   config: KiritanConfig,
@@ -150,7 +162,12 @@ export async function build(
             text = await readFile(join(cwd, outPath), "utf8");
           } catch {
             text = renderer.comment
-              ? `${renderer.comment(`kiritan:untranslated (source: ${config.locales.default})`)}\n\n${sourceText}`
+              ? insertAfterFrontMatter(
+                  sourceText,
+                  renderer.comment(
+                    `kiritan:untranslated (source: ${config.locales.default})`
+                  )
+                )
               : sourceText;
           }
         }

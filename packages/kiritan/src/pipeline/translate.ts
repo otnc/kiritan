@@ -85,7 +85,7 @@ async function translateSidecar(
       continue;
     }
     const existingHash = renderer.comment
-      ? extractHashComment(existing)
+      ? extractHashComment(existing, renderer.comment)
       : undefined;
     if (existingHash && existingHash !== sourceHash) {
       staleOrMissingLocales.push(locale);

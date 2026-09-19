@@ -94,7 +94,7 @@ async function checkSidecar(
 
     // No hash comment means the file predates this feature (or was hand-authored without one) — only flag staleness once a hash comment exists and no longer matches. A renderer with no comment syntax never gets one, so it's never flagged.
     const existingHash = renderer.comment
-      ? extractHashComment(outputText)
+      ? extractHashComment(outputText, renderer.comment)
       : undefined;
     if (existingHash && existingHash !== sourceHash) {
       issues.push({
