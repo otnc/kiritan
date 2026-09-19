@@ -1,0 +1,50 @@
+{
+  "name": "@kiritan/google-translate",
+  "version": "0.0.0",
+  "description": "A Google Cloud Translation middleware for Kiritan / KiritanのGoogle Cloud Translation翻訳ミドルウェア",
+  "keywords": [
+    "google-translate",
+    "translate",
+    "translation",
+    "machine-translation",
+    "middleware",
+    "i18n",
+    "kiritan"
+  ],
+  "homepage": "https://github.com/otnc/kiritan#readme",
+  "bugs": {
+    "url": "https://github.com/otnc/kiritan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otnc/kiritan.git",
+    "directory": "packages/google-translate"
+  },
+  "license": "WTFPL",
+  "author": "otoneko.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.ja.md"
+  ],
+  "engines": {
+    "node": ">=22.7.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  }
+}
