@@ -19,11 +19,11 @@
 | パッケージ | npm | パス | 内容 |
 | --- | --- | --- | --- |
 | [`kiritan`](./packages/kiritan) | [npm](https://www.npmjs.com/package/kiritan) | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
+| [`@kiritan/runtime`](./packages/runtime) | [npm](https://www.npmjs.com/package/@kiritan/runtime) | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
 | [`@kiritan/middleware`](./packages/middleware) | [npm](https://www.npmjs.com/package/@kiritan/middleware) | `packages/middleware` | 任意の翻訳関数をミドルウェアにする層: コード/URL/`%{name}` の保護、分割、まとめ送信、再試行、キャッシュ |
 | [`@kiritan/free-translate`](./packages/free-translate) | [npm](https://www.npmjs.com/package/@kiritan/free-translate) | `packages/free-translate` | APIキー不要の翻訳ミドルウェア: MyMemory、Googleのキーレスエンドポイント、自前ホストのLibreTranslateとGoogle Apps Script |
 | [`@kiritan/deepl`](./packages/deepl) | [npm](https://www.npmjs.com/package/@kiritan/deepl) | `packages/deepl` | `translate.middlewares` 用の [DeepL](https://www.deepl.com/) 翻訳ミドルウェア |
 | [`@kiritan/google-translate`](./packages/google-translate) | [npm](https://www.npmjs.com/package/@kiritan/google-translate) | `packages/google-translate` | `translate.middlewares` 用の [Google Cloud Translation](https://cloud.google.com/translate) ミドルウェア |
-| [`@kiritan/runtime`](./packages/runtime) | [npm](https://www.npmjs.com/package/@kiritan/runtime) | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
 
 ## 関連ツール
 

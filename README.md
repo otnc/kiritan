@@ -19,11 +19,11 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | Package | npm | Path | What it is |
 | --- | --- | --- | --- |
 | [`kiritan`](./packages/kiritan) | [npm](https://www.npmjs.com/package/kiritan) | `packages/kiritan` | The CLI + build pipeline: config, translation stores, renderers, translate middlewares |
+| [`@kiritan/runtime`](./packages/runtime) | [npm](https://www.npmjs.com/package/@kiritan/runtime) | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
 | [`@kiritan/middleware`](./packages/middleware) | [npm](https://www.npmjs.com/package/@kiritan/middleware) | `packages/middleware` | Turns any translate function into a middleware: protects code/URLs/`%{name}`, splits, batches, retries, caches |
 | [`@kiritan/free-translate`](./packages/free-translate) | [npm](https://www.npmjs.com/package/@kiritan/free-translate) | `packages/free-translate` | Translate middlewares that need no API key: MyMemory, Google's keyless endpoint, self-hosted LibreTranslate and Google Apps Script |
 | [`@kiritan/deepl`](./packages/deepl) | [npm](https://www.npmjs.com/package/@kiritan/deepl) | `packages/deepl` | A [DeepL](https://www.deepl.com/) translate middleware for `translate.middlewares` |
 | [`@kiritan/google-translate`](./packages/google-translate) | [npm](https://www.npmjs.com/package/@kiritan/google-translate) | `packages/google-translate` | A [Google Cloud Translation](https://cloud.google.com/translate) middleware for `translate.middlewares` |
-| [`@kiritan/runtime`](./packages/runtime) | [npm](https://www.npmjs.com/package/@kiritan/runtime) | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
 
 ## Related tooling
 
