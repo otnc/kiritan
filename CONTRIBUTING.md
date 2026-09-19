@@ -28,6 +28,7 @@ This is an npm workspaces monorepo (see [docs/DESIGN.md](./docs/DESIGN.md) chapt
 | `@kiritan/deepl` | `packages/deepl` | A DeepL translate middleware for `translate.middlewares` |
 | `@kiritan/google-translate` | `packages/google-translate` | A Google Cloud Translation middleware for `translate.middlewares` |
 | `@kiritan/middleware` | `packages/middleware` | A layer that turns any translate function into a translate middleware |
+| `@kiritan/free-translate` | `packages/free-translate` | Translate middlewares that need no API key |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code extension (syntax highlighting for `:::kiritan{...}` blocks). Not an npm workspace member — see "Releasing" below. |
 | — | `extensions/vim` | Vim/Neovim plugin (the same directive highlighting, plus `*.kiritanconfig` filetype detection). Not published anywhere — installed directly from this repo via a plugin manager's `rtp` option. |
 
@@ -59,6 +60,7 @@ npm run docs:build
 | `npm run ci` | The same checks without writing — what CI runs |
 | `npm run docs:build` | Regenerate every `base/*.base.md`-derived doc (see Generated docs above) |
 | `npm run docs:check` | Report missing/stale generated docs without writing anything |
+| `npm run docs:verify` | Check that every generated doc matches what `docs:build` would write (by hash), without writing anything |
 
 `build` and `typecheck` fan out to every package under `packages/*`; `test`/`format`/`lint` already run across the whole workspace from the root.
 
@@ -84,7 +86,7 @@ Keep each change focused and add tests for any new behaviour. There's no changes
 
 ## Releasing (maintainers)
 
-Every npm package (`kiritan`, `@kiritan/runtime`, `@kiritan/deepl`, `@kiritan/google-translate`, `@kiritan/middleware`) has its own `workflow_dispatch` GitHub Actions workflow — `release.yml`, `release-runtime.yml`, `release-deepl.yml`, `release-google-translate.yml`, `release-middleware.yml` — so releasing one package can never accidentally touch another. Each is a thin wrapper around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
+Every npm package (`kiritan`, `@kiritan/runtime`, `@kiritan/deepl`, `@kiritan/google-translate`, `@kiritan/middleware`, `@kiritan/free-translate`) has its own `workflow_dispatch` GitHub Actions workflow — `release.yml`, `release-runtime.yml`, `release-deepl.yml`, `release-google-translate.yml`, `release-middleware.yml`, `release-free-translate.yml` — so releasing one package can never accidentally touch another. Each is a thin wrapper around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
 
 From the Actions tab, run the package's workflow (e.g. `release-runtime`) with two inputs:
 

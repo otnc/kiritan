@@ -102,18 +102,28 @@ function insertAfterFrontMatter(source: string, marker: string): string {
   );
 }
 
-/** `kiritan build` (docs/DESIGN.md chapter 2): discover -> parse -> resolve -> interpolate -> reassemble -> write. */
-export async function build(
+/** One document `build` would write: where, what, and which base file it derives from. */
+export interface RenderedOutput {
+  /** The base file this was rendered from, relative to `cwd`. */
+  source: string;
+  locale: string;
+  /** Output path, relative to `cwd`. */
+  path: string;
+  content: string;
+}
+
+/** Everything up to (not including) the write: discover -> parse -> resolve -> interpolate -> reassemble. `build` writes the result; `verify` compares it against what's on disk. */
+export async function renderOutputs(
   config: KiritanConfig,
   options: BuildOptions = {}
-): Promise<BuildResult> {
+): Promise<RenderedOutput[]> {
   const cwd = options.cwd ?? process.cwd();
   const targetLocales = resolveTargetLocales(config, options.locale);
   const files = await discoverSourceFiles(config.sources, {
     cwd,
     baseSuffix: config.naming?.baseSuffix,
   });
-  const written: string[] = [];
+  const outputs: RenderedOutput[] = [];
 
   for (const file of files) {
     const naming = resolveNamingOptions(file.source.naming ?? config.naming);
@@ -173,12 +183,12 @@ export async function build(
         }
         const tree = prepareTree(text);
         const rendered = renderForLocale(tree, renderOptions(locale, outPath));
-        await writeOutput(
-          cwd,
-          outPath,
-          finalizeTree(rendered, renderer, config, locale)
-        );
-        written.push(outPath);
+        outputs.push({
+          source: file.path,
+          locale,
+          path: outPath,
+          content: finalizeTree(rendered, renderer, config, locale),
+        });
       }
       continue;
     }
@@ -191,12 +201,12 @@ export async function build(
           baseTree,
           renderOptions(locale, outPath)
         );
-        await writeOutput(
-          cwd,
-          outPath,
-          finalizeTree(rendered, renderer, config, locale)
-        );
-        written.push(outPath);
+        outputs.push({
+          source: file.path,
+          locale,
+          path: outPath,
+          content: finalizeTree(rendered, renderer, config, locale),
+        });
       }
       continue;
     }
@@ -217,12 +227,12 @@ export async function build(
             ? (id) => catalogData[id]?.text
             : undefined,
         });
-        await writeOutput(
-          cwd,
-          outPath,
-          finalizeTree(rendered, renderer, config, locale)
-        );
-        written.push(outPath);
+        outputs.push({
+          source: file.path,
+          locale,
+          path: outPath,
+          content: finalizeTree(rendered, renderer, config, locale),
+        });
       }
       continue;
     }
@@ -240,12 +250,12 @@ export async function build(
             baseTree,
             renderOptions(locale, outPath)
           );
-          await writeOutput(
-            cwd,
-            outPath,
-            finalizeTree(rendered, renderer, config, locale)
-          );
-          written.push(outPath);
+          outputs.push({
+            source: file.path,
+            locale,
+            path: outPath,
+            content: finalizeTree(rendered, renderer, config, locale),
+          });
           continue;
         }
 
@@ -258,12 +268,12 @@ export async function build(
             tree,
             renderOptions(locale, outPath)
           );
-          await writeOutput(
-            cwd,
-            outPath,
-            finalizeTree(rendered, renderer, config, locale)
-          );
-          written.push(outPath);
+          outputs.push({
+            source: file.path,
+            locale,
+            path: outPath,
+            content: finalizeTree(rendered, renderer, config, locale),
+          });
           continue;
         }
 
@@ -274,12 +284,12 @@ export async function build(
           ...renderOptions(locale, outPath),
           resolveCatalogText: segments ? (id) => segments[id]?.text : undefined,
         });
-        await writeOutput(
-          cwd,
-          outPath,
-          finalizeTree(rendered, renderer, config, locale)
-        );
-        written.push(outPath);
+        outputs.push({
+          source: file.path,
+          locale,
+          path: outPath,
+          content: finalizeTree(rendered, renderer, config, locale),
+        });
       }
       continue;
     }
@@ -289,5 +299,19 @@ export async function build(
     );
   }
 
+  return outputs;
+}
+
+/** `kiritan build` (docs/DESIGN.md chapter 2): render every output, then write it. */
+export async function build(
+  config: KiritanConfig,
+  options: BuildOptions = {}
+): Promise<BuildResult> {
+  const cwd = options.cwd ?? process.cwd();
+  const written: string[] = [];
+  for (const output of await renderOutputs(config, options)) {
+    await writeOutput(cwd, output.path, output.content);
+    written.push(output.path);
+  }
   return { written };
 }

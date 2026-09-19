@@ -28,6 +28,7 @@ npm install
 | `@kiritan/deepl` | `packages/deepl` | `translate.middlewares` 用のDeepL翻訳ミドルウェア |
 | `@kiritan/google-translate` | `packages/google-translate` | `translate.middlewares` 用のGoogle Cloud Translationミドルウェア |
 | `@kiritan/middleware` | `packages/middleware` | 任意の翻訳関数を翻訳ミドルウェアにする層 |
+| `@kiritan/free-translate` | `packages/free-translate` | APIキー不要の翻訳ミドルウェア |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト)。npm workspaceのメンバーではない — 詳細は後述の「リリース」を参照。 |
 | — | `extensions/vim` | Vim/Neovimプラグイン(同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定)。どこにも公開せず、プラグインマネージャーの`rtp`オプションでこのリポジトリから直接インストールする。 |
 
@@ -59,6 +60,7 @@ npm run docs:build
 | `npm run ci` | 書き込みなしで同じチェックを実行(CI が実行するもの) |
 | `npm run docs:build` | `base/*.base.md` から生成される全ドキュメントを再生成する(上記「生成ドキュメント」参照) |
 | `npm run docs:check` | 何も書き込まずに、未翻訳・staleな生成ドキュメントを報告する |
+| `npm run docs:verify` | 生成済みの全ドキュメントが`docs:build`の出力と(ハッシュで)一致するか、何も書き込まずに確認する |
 
 `build` と `typecheck` は `packages/*` 配下の全パッケージに展開されます。`test` / `format` / `lint` はルートから既にワークスペース全体に対して実行されます。
 
@@ -81,7 +83,7 @@ npm run ci && npm run typecheck && npm run test && npm run build
 
 ## リリース(メンテナー向け)
 
-npmパッケージ(`kiritan`・`@kiritan/runtime`・`@kiritan/deepl`・`@kiritan/google-translate`・`@kiritan/middleware`)はそれぞれ専用の `workflow_dispatch` ワークフロー(`release.yml` / `release-runtime.yml` / `release-deepl.yml` / `release-google-translate.yml` / `release-middleware.yml`)を持っており、1つをリリースしても他のパッケージに誤って影響することはありません。いずれも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`。単体では実行不可)への薄いラッパーです。
+npmパッケージ(`kiritan`・`@kiritan/runtime`・`@kiritan/deepl`・`@kiritan/google-translate`・`@kiritan/middleware`・`@kiritan/free-translate`)はそれぞれ専用の `workflow_dispatch` ワークフロー(`release.yml` / `release-runtime.yml` / `release-deepl.yml` / `release-google-translate.yml` / `release-middleware.yml` / `release-free-translate.yml`)を持っており、1つをリリースしても他のパッケージに誤って影響することはありません。いずれも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`。単体では実行不可)への薄いラッパーです。
 
 Actions タブから対象パッケージのワークフロー(例: `release-runtime`)を、2つの入力で実行してください:
 

@@ -7,6 +7,7 @@ import { extract } from "../pipeline/extract.js";
 import { init } from "../pipeline/init.js";
 import { translate } from "../pipeline/translate.js";
 import { typegen } from "../pipeline/typegen.js";
+import { verify } from "../pipeline/verify.js";
 import messages from "./messages.i18n.js";
 import { SUPPORTED_LANGUAGES, type CliLanguage } from "./locale.js";
 
@@ -135,6 +136,47 @@ export function createCli(
         }
         if (result.failed) {
           process.exitCode = 1;
+        }
+      }
+    )
+    .command(
+      "verify",
+      t("command.verify.describe"),
+      (y) =>
+        y.options({
+          ...configOptions(t),
+          ...localeOption(t),
+          json: { type: "boolean", describe: t("option.json") },
+        }),
+      async (args) => {
+        const config = await resolveConfigFromArgs(args);
+        const result = await verify(config, { locale: args.locale });
+
+        if (args.json) {
+          console.log(JSON.stringify(result));
+          if (result.failed) process.exitCode = 1;
+          return;
+        }
+
+        for (const entry of result.entries) {
+          if (entry.status === "ok") continue;
+          console.log(
+            t("output.verify.entry", {
+              status: entry.status,
+              path: entry.path,
+              locale: entry.locale,
+              source: entry.source,
+              expected: entry.expectedHash,
+              actual: entry.actualHash ?? "-",
+            })
+          );
+        }
+        if (result.failed) {
+          process.exitCode = 1;
+        } else {
+          console.log(
+            t("output.verify.allOk", { count: result.entries.length })
+          );
         }
       }
     )

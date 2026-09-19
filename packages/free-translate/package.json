@@ -1,0 +1,57 @@
+{
+  "name": "@kiritan/free-translate",
+  "version": "0.1.0",
+  "description": "Translate middlewares that need no API key (MyMemory, Google keyless, Apertium, LibreTranslate) / APIキー不要の翻訳ミドルウェア(MyMemory、GoogleキーレスAPI、Apertium、LibreTranslate)",
+  "keywords": [
+    "translate",
+    "translation",
+    "free",
+    "no-api-key",
+    "mymemory",
+    "apertium",
+    "libretranslate",
+    "middleware",
+    "i18n",
+    "kiritan"
+  ],
+  "homepage": "https://github.com/otnc/kiritan#readme",
+  "bugs": {
+    "url": "https://github.com/otnc/kiritan/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otnc/kiritan.git",
+    "directory": "packages/free-translate"
+  },
+  "license": "WTFPL",
+  "author": "otoneko.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.ja.md"
+  ],
+  "engines": {
+    "node": ">=22.7.0"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kiritan/middleware": "^0.1.0",
+    "ofetch": "^1.5.1"
+  }
+}

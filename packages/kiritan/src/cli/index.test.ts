@@ -122,3 +122,73 @@ describe("createCli (build/check)", () => {
     expect(parsed.failed).toBe(true);
   });
 });
+
+describe("createCli (verify)", () => {
+  async function scaffold() {
+    await writeFile(
+      join(cwd, ".kiritanconfig"),
+      [
+        "export default {",
+        '  locales: { default: "en", list: ["en", "ja"] },',
+        '  sources: [{ glob: "README.base.md", strategy: "inline" }],',
+        '  naming: { template: "{base}.{locale}.{ext}" },',
+        "};",
+      ].join("\n"),
+      "utf8"
+    );
+    await writeFile(
+      join(cwd, "README.base.md"),
+      [
+        ":::kiritan{locale=en}",
+        "English.",
+        ":::",
+        ":::kiritan{locale=ja}",
+        "日本語。",
+        ":::",
+      ].join("\n"),
+      "utf8"
+    );
+  }
+
+  beforeEach(() => {
+    process.exitCode = undefined;
+  });
+
+  afterEach(() => {
+    process.exitCode = undefined;
+  });
+
+  it("passes after a build, and fails with a translated line once a document is edited", async () => {
+    await scaffold();
+    await createCli("en", { exitProcess: false }).parseAsync(["build"]);
+
+    logSpy.mockClear();
+    await createCli("en", { exitProcess: false }).parseAsync(["verify"]);
+    expect(logged()).toEqual([
+      "kiritan verify: 2 generated document(s) up to date",
+    ]);
+    expect(process.exitCode).toBeUndefined();
+
+    await writeFile(join(cwd, "README.md"), "Tampered.\n", "utf8");
+    logSpy.mockClear();
+    await createCli("ja", { exitProcess: false }).parseAsync(["verify"]);
+    expect(logged()).toHaveLength(1);
+    expect(logged()[0]).toMatch(
+      /^\[mismatch\] README\.md \(en、元: README\.base\.md\): 期待 [0-9a-f]+、実際 [0-9a-f]+$/
+    );
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("prints machine-readable JSON with --json", async () => {
+    await scaffold();
+    await createCli("en", { exitProcess: false }).parseAsync(["build"]);
+    logSpy.mockClear();
+    await createCli("ja", { exitProcess: false }).parseAsync([
+      "verify",
+      "--json",
+    ]);
+    const parsed = JSON.parse(logged()[0]);
+    expect(parsed.failed).toBe(false);
+    expect(parsed.entries).toHaveLength(2);
+  });
+});

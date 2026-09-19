@@ -44,6 +44,10 @@ export default {
     en: "Check for missing/stale/machine-translated content (CI-friendly)",
     ja: "missing/stale/機械翻訳のコンテンツを確認する(CI向け)",
   },
+  "command.verify.describe": {
+    en: "Check that generated documents match what build would write (CI-friendly, writes nothing)",
+    ja: "生成済みドキュメントがbuildの出力と一致するか確認する(CI向け、何も書き込まない)",
+  },
   "command.translate.describe": {
     en: "Fill in missing/stale translations via translate.middlewares",
     ja: "translate.middlewares でmissing/staleな訳文を埋める",
@@ -76,6 +80,14 @@ export default {
   "output.check.noIssues": {
     en: "kiritan check: no issues found",
     ja: "kiritan check: 問題は見つかりませんでした",
+  },
+  "output.verify.entry": {
+    en: "[%{status}] %{path} (%{locale}, from %{source}): expected %{expected}, found %{actual}",
+    ja: "[%{status}] %{path} (%{locale}、元: %{source}): 期待 %{expected}、実際 %{actual}",
+  },
+  "output.verify.allOk": {
+    en: "kiritan verify: %{count} generated document(s) up to date",
+    ja: "kiritan verify: 生成済みの %{count} 件のドキュメントは最新です",
   },
   "output.translate.entry": {
     en: "[%{locale}] %{source}: %{detail}",

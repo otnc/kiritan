@@ -55,6 +55,7 @@ This is an npm workspaces monorepo (see [docs/DESIGN.md](./docs/DESIGN.md) chapt
 | `@kiritan/deepl` | `packages/deepl` | A DeepL translate middleware for `translate.middlewares` |
 | `@kiritan/google-translate` | `packages/google-translate` | A Google Cloud Translation middleware for `translate.middlewares` |
 | `@kiritan/middleware` | `packages/middleware` | A layer that turns any translate function into a translate middleware |
+| `@kiritan/free-translate` | `packages/free-translate` | Translate middlewares that need no API key |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code extension (syntax highlighting for `:::kiritan{...}` blocks). Not an npm workspace member — see "Releasing" below. |
 | — | `extensions/vim` | Vim/Neovim plugin (the same directive highlighting, plus `*.kiritanconfig` filetype detection). Not published anywhere — installed directly from this repo via a plugin manager's `rtp` option. |
 
@@ -70,6 +71,7 @@ The design and rationale for everything above live in [docs/DESIGN.md](./docs/DE
 | `@kiritan/deepl` | `packages/deepl` | `translate.middlewares` 用のDeepL翻訳ミドルウェア |
 | `@kiritan/google-translate` | `packages/google-translate` | `translate.middlewares` 用のGoogle Cloud Translationミドルウェア |
 | `@kiritan/middleware` | `packages/middleware` | 任意の翻訳関数を翻訳ミドルウェアにする層 |
+| `@kiritan/free-translate` | `packages/free-translate` | APIキー不要の翻訳ミドルウェア |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト)。npm workspaceのメンバーではない — 詳細は後述の「リリース」を参照。 |
 | — | `extensions/vim` | Vim/Neovimプラグイン(同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定)。どこにも公開せず、プラグインマネージャーの`rtp`オプションでこのリポジトリから直接インストールする。 |
 
@@ -123,6 +125,7 @@ npm run docs:build
 | `npm run ci` | The same checks without writing — what CI runs |
 | `npm run docs:build` | Regenerate every `base/*.base.md`-derived doc (see Generated docs above) |
 | `npm run docs:check` | Report missing/stale generated docs without writing anything |
+| `npm run docs:verify` | Check that every generated doc matches what `docs:build` would write (by hash), without writing anything |
 
 `build` and `typecheck` fan out to every package under `packages/*`; `test`/`format`/`lint` already run across the whole workspace from the root.
 
@@ -143,6 +146,7 @@ Before opening a pull request, make sure the full set passes:
 | `npm run ci` | 書き込みなしで同じチェックを実行(CI が実行するもの) |
 | `npm run docs:build` | `base/*.base.md` から生成される全ドキュメントを再生成する(上記「生成ドキュメント」参照) |
 | `npm run docs:check` | 何も書き込まずに、未翻訳・staleな生成ドキュメントを報告する |
+| `npm run docs:verify` | 生成済みの全ドキュメントが`docs:build`の出力と(ハッシュで)一致するか、何も書き込まずに確認する |
 
 `build` と `typecheck` は `packages/*` 配下の全パッケージに展開されます。`test` / `format` / `lint` はルートから既にワークスペース全体に対して実行されます。
 
@@ -187,7 +191,7 @@ Keep each change focused and add tests for any new behaviour. There's no changes
 :::kiritan{locale=en}
 ## Releasing (maintainers)
 
-Every npm package (`kiritan`, `@kiritan/runtime`, `@kiritan/deepl`, `@kiritan/google-translate`, `@kiritan/middleware`) has its own `workflow_dispatch` GitHub Actions workflow — `release.yml`, `release-runtime.yml`, `release-deepl.yml`, `release-google-translate.yml`, `release-middleware.yml` — so releasing one package can never accidentally touch another. Each is a thin wrapper around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
+Every npm package (`kiritan`, `@kiritan/runtime`, `@kiritan/deepl`, `@kiritan/google-translate`, `@kiritan/middleware`, `@kiritan/free-translate`) has its own `workflow_dispatch` GitHub Actions workflow — `release.yml`, `release-runtime.yml`, `release-deepl.yml`, `release-google-translate.yml`, `release-middleware.yml`, `release-free-translate.yml` — so releasing one package can never accidentally touch another. Each is a thin wrapper around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
 
 From the Actions tab, run the package's workflow (e.g. `release-runtime`) with two inputs:
 - `version`: a semver bump (`patch` / `minor` / `major` / `prerelease`) or an explicit version (e.g. `0.2.0`), passed straight to `npm version`.
@@ -209,7 +213,7 @@ The Vim/Neovim plugin (`extensions/vim`) has nothing to build or publish — use
 :::kiritan{locale=ja}
 ## リリース(メンテナー向け)
 
-npmパッケージ(`kiritan`・`@kiritan/runtime`・`@kiritan/deepl`・`@kiritan/google-translate`・`@kiritan/middleware`)はそれぞれ専用の `workflow_dispatch` ワークフロー(`release.yml` / `release-runtime.yml` / `release-deepl.yml` / `release-google-translate.yml` / `release-middleware.yml`)を持っており、1つをリリースしても他のパッケージに誤って影響することはありません。いずれも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`。単体では実行不可)への薄いラッパーです。
+npmパッケージ(`kiritan`・`@kiritan/runtime`・`@kiritan/deepl`・`@kiritan/google-translate`・`@kiritan/middleware`・`@kiritan/free-translate`)はそれぞれ専用の `workflow_dispatch` ワークフロー(`release.yml` / `release-runtime.yml` / `release-deepl.yml` / `release-google-translate.yml` / `release-middleware.yml` / `release-free-translate.yml`)を持っており、1つをリリースしても他のパッケージに誤って影響することはありません。いずれも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`。単体では実行不可)への薄いラッパーです。
 
 Actions タブから対象パッケージのワークフロー(例: `release-runtime`)を、2つの入力で実行してください:
 - `version`: semverのbump種別(`patch` / `minor` / `major` / `prerelease`)、または明示的なバージョン(例: `0.2.0`)。そのまま `npm version` に渡されます。
