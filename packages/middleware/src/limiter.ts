@@ -1,41 +1,24 @@
-/** Runs at most `concurrency` tasks at once, and starts no two tasks less than `minInterval` ms apart. */
+import { retry, Semaphore } from "es-toolkit";
+import { RateLimiter } from "limiter";
+
+/** Runs at most `concurrency` tasks at once, and starts no more than one task per `minInterval` ms. */
 export function createLimiter(options: {
   concurrency: number;
   minInterval: number;
 }): <T>(task: () => Promise<T>) => Promise<T> {
-  let active = 0;
-  // Starts are serialised through one chain, and each waits until `minInterval` has passed since the previous one *actually* began — so timer jitter can't bunch two starts together.
-  let gate: Promise<void> = Promise.resolve();
-  let lastStart = 0;
-  const waiting: Array<() => void> = [];
-
-  const release = () => {
-    active -= 1;
-    waiting.shift()?.();
-  };
-
-  const waitForTurn = (): Promise<void> => {
-    gate = gate.then(async () => {
-      for (;;) {
-        const wait = lastStart + options.minInterval - Date.now();
-        if (wait <= 0) break;
-        await new Promise((resolve) => setTimeout(resolve, wait));
-      }
-      lastStart = Date.now();
-    });
-    return gate;
-  };
+  const slots = new Semaphore(options.concurrency);
+  const spacing =
+    options.minInterval > 0
+      ? new RateLimiter({ tokensPerInterval: 1, interval: options.minInterval })
+      : undefined;
 
   return async <T>(task: () => Promise<T>): Promise<T> => {
-    if (active >= options.concurrency) {
-      await new Promise<void>((resolve) => waiting.push(resolve));
-    }
-    active += 1;
+    await slots.acquire();
     try {
-      if (options.minInterval > 0) await waitForTurn();
+      await spacing?.removeTokens(1);
       return await task();
     } finally {
-      release();
+      slots.release();
     }
   };
 }
@@ -65,20 +48,37 @@ export function isRetryableError(error: unknown): boolean {
   return [408, 409, 425, 429].includes(status) || status >= 500;
 }
 
-export async function withRetry<T>(
+/**
+ * A `Retry-After` header value (delay in seconds, or an HTTP date) as milliseconds from now, or `undefined` if it's absent or unreadable. Put the result on the thrown error as `retryAfter` and `withRetry` waits at least that long.
+ */
+export function parseRetryAfter(
+  value: string | null | undefined
+): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
+}
+
+/** The longest a `Retry-After` is honored, so one bad header can't hang a run. */
+const MAX_RETRY_AFTER = 60_000;
+
+/** Retries `task` with exponential backoff, waiting at least as long as a server's `Retry-After` when the error carries it as `retryAfter` in ms. */
+export function withRetry<T>(
   task: () => Promise<T>,
   options: RetryOptions
 ): Promise<T> {
-  const retries = options.retries ?? 2;
   const shouldRetry = options.shouldRetry ?? isRetryableError;
-  let delay = options.delay ?? 500;
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await task();
-    } catch (error) {
-      if (attempt >= retries || !shouldRetry(error)) throw error;
-      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
-      delay *= 2;
-    }
-  }
+  const base = options.delay ?? 500;
+  return retry(task, {
+    retries: options.retries ?? 2,
+    shouldRetry: (error) => shouldRetry(error),
+    delay: (attempts, error) => {
+      const asked = (error as { retryAfter?: unknown } | null)?.retryAfter;
+      const requested =
+        typeof asked === "number" ? Math.min(asked, MAX_RETRY_AFTER) : 0;
+      return Math.max(base * 2 ** attempts, requested);
+    },
+  });
 }

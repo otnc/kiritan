@@ -57,7 +57,7 @@ export interface TranslatorOptions {
   /** Retries for a failed request (default 2, exponential backoff). `false` turns them off. */
   retry?: RetryOptions | false;
   /**
-   * What to keep out of the engine's hands: code, URLs, HTML, front matter, Kiritan directives and `%{name}` by default. `false` sends everything as-is; an array replaces the default patterns.
+   * What to keep out of the engine's hands. By default the text is parsed as Markdown and only its prose is translated: code, URLs, HTML, front matter, Kiritan directives, list/heading/quote markers, table pipes and emphasis markers are found by the parser and shielded, and `%{name}`, backslash escapes and entities inside prose by patterns. `false` sends the text as-is. An array replaces those prose patterns (start from `defaultProtectPatterns` to add to them); the Markdown structure is protected either way.
    */
   protect?: false | RegExp[];
   /** Remembers finished translations. Default: in memory for this run. `false` disables it. */
@@ -101,10 +101,8 @@ export function createTranslator(
       "@kiritan/middleware: createTranslator needs `translate` or `translateBatch`"
     );
   }
-  const patterns =
-    options.protect === false
-      ? []
-      : (options.protect ?? defaultProtectPatterns);
+  const patterns = options.protect || defaultProtectPatterns;
+  const shield = options.protect !== false;
   const cache =
     options.cache === false
       ? undefined
@@ -208,7 +206,9 @@ export function createTranslator(
         ctxs.map(async (ctx): Promise<Plan> => {
           const cacheId = cacheKey([options.name, ctx.from, ctx.to, ctx.text]);
           const cached = cache ? await cache.get(cacheId) : undefined;
-          const { text: masked, spans } = mask(ctx.text, patterns);
+          const { text: masked, spans } = shield
+            ? mask(ctx.text, patterns)
+            : { text: ctx.text, spans: [] as string[] };
           const chunks = isOnlyTokens(masked)
             ? []
             : splitText(masked, maxChars, measure);

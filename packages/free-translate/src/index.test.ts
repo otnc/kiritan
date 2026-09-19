@@ -1,6 +1,8 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
 import { tuning } from "./http.js";
-import { apertium, googleFree, libreTranslate, myMemory } from "./index.js";
+import { appsScript, googleFree, libreTranslate, myMemory } from "./index.js";
 
 interface Call {
   url: URL;
@@ -288,47 +290,6 @@ describe("googleFree", () => {
   });
 });
 
-describe("apertium", () => {
-  it("posts a 3-letter langpair", async () => {
-    const { calls, fetch } = fakeFetch(() => ({
-      responseData: { translatedText: "Hola" },
-      responseStatus: 200,
-    }));
-    const [out] = await apertium({ fetch, ...fast }).handle(
-      [ctx("Hello", "en", "es")],
-      next
-    );
-    expect(out).toBe("Hola");
-    expect(calls[0].method).toBe("POST");
-    expect((calls[0].body as URLSearchParams).get("langpair")).toBe("eng|spa");
-    expect((calls[0].body as URLSearchParams).get("q")).toBe("Hello");
-    expect((calls[0].body as URLSearchParams).get("markUnknown")).toBe("no");
-  });
-
-  it("explains a pair the public server doesn't have, and doesn't retry it", async () => {
-    const { calls, fetch } = fakeFetch(() => ({
-      __status: 400,
-      body: {
-        status: "error",
-        code: 400,
-        explanation: "That pair is not installed",
-      },
-    }));
-    await expect(
-      apertium({ fetch, ...fast }).handle([ctx("Hello", "en", "es")], next)
-    ).rejects.toThrow(/no "eng\|spa" language pair/);
-    expect(calls).toHaveLength(1);
-  });
-
-  it("rejects an unmapped 2-letter code before any request", async () => {
-    const { calls, fetch } = fakeFetch(() => ({}));
-    await expect(
-      apertium({ fetch, ...fast }).handle([ctx("Hi", "en", "ja")], next)
-    ).rejects.toThrow(/no Apertium language code known for "ja"/);
-    expect(calls).toHaveLength(0);
-  });
-});
-
 describe("libreTranslate", () => {
   it("needs a baseUrl", () => {
     expect(() => libreTranslate({} as never)).toThrow(/baseUrl/);
@@ -366,5 +327,139 @@ describe("libreTranslate", () => {
       next
     );
     expect(calls[0].body).not.toHaveProperty("api_key");
+  });
+});
+
+describe("appsScript", () => {
+  const url = "https://script.google.com/macros/s/AKfyc123/exec";
+
+  it("needs a url", () => {
+    expect(() => appsScript({} as never)).toThrow(/url/);
+  });
+
+  it("posts texts, languages and the secret as JSON, and reads translations back", async () => {
+    const { calls, fetch } = fakeFetch((call) => ({
+      translations: ((call.body as Record<string, unknown>).q as string[]).map(
+        (t) => `T:${t}`
+      ),
+    }));
+    const out = await appsScript({
+      url,
+      secret: "s3cret",
+      fetch,
+      ...fast,
+    }).handle([ctx("one"), ctx("two", "en-US", "zh-Hant")], next);
+
+    expect(out).toEqual(["T:one", "T:two"]);
+    expect(calls).toHaveLength(2);
+    expect(calls[0].method).toBe("POST");
+    expect(calls[0].url.href).toBe(url);
+    expect(calls[0].body).toEqual({
+      secret: "s3cret",
+      source: "en",
+      target: "ja",
+      q: ["one"],
+    });
+    // Google's own codes, mapped from the Kiritan locale.
+    expect(calls[1].body).toMatchObject({ source: "en", target: "zh-TW" });
+  });
+
+  it("omits the secret when none is given, and batches per language pair", async () => {
+    const { calls, fetch } = fakeFetch((call) => ({
+      translations: (call.body as { q: string[] }).q,
+    }));
+    await appsScript({ url, fetch, ...fast }).handle(
+      [ctx("a"), ctx("b"), ctx("c")],
+      next
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0].body).not.toHaveProperty("secret");
+    expect((calls[0].body as { q: string[] }).q).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps code and placeholders out of the request", async () => {
+    const { calls, fetch } = fakeFetch((call) => ({
+      translations: (call.body as { q: string[] }).q.map((t) =>
+        t.toUpperCase()
+      ),
+    }));
+    const [out] = await appsScript({ url, fetch, ...fast }).handle(
+      [ctx("Run `npm i` for %{name}")],
+      next
+    );
+    expect(JSON.stringify(calls[0].body)).not.toMatch(/npm|name/);
+    expect(out).toBe("RUN `npm i` FOR %{name}");
+  });
+
+  it("reports an error the script returned, without retrying", async () => {
+    const { calls, fetch } = fakeFetch(() => ({ error: "unauthorized" }));
+    await expect(
+      appsScript({ url, fetch, ...fast }).handle([ctx("Hi")], next)
+    ).rejects.toThrow("the Apps Script reported: unauthorized");
+    expect(calls).toHaveLength(1);
+  });
+
+  it("explains a sign-in page (a deployment that isn't public) instead of a JSON error", async () => {
+    const { fetch } = fakeFetch(() => "<html><title>Sign in</title></html>");
+    await expect(
+      appsScript({ url, fetch, ...fast }).handle([ctx("Hi")], next)
+    ).rejects.toThrow(/didn't return JSON.*Anyone/s);
+  });
+
+  it("rejects a response with the wrong number of translations", async () => {
+    const { fetch } = fakeFetch(() => ({ translations: [] }));
+    await expect(
+      appsScript({ url, fetch, ...fast }).handle([ctx("Hi")], next)
+    ).rejects.toThrow(/unexpected response/);
+  });
+
+  it("rejects an unknown language before any request", async () => {
+    const { calls, fetch } = fakeFetch(() => ({ translations: [] }));
+    await expect(
+      appsScript({ url, fetch, ...fast }).handle([ctx("Hi", "en", "zz")], next)
+    ).rejects.toThrow(/isn't a language code Google Translate accepts/);
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("appsScript against a real server that answers like Apps Script does", () => {
+  it("follows the 302 an Apps Script web app replies with to a POST", async () => {
+    // Apps Script answers `POST /exec` with a redirect to a one-off result URL, which is then fetched with GET.
+    const received: string[] = [];
+    const server = createServer((req, res) => {
+      if (req.method === "POST" && req.url === "/exec") {
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+          received.push(body);
+          res.writeHead(302, { Location: "/echo/result" });
+          res.end();
+        });
+      } else if (req.method === "GET" && req.url === "/echo/result") {
+        const { q } = JSON.parse(received.at(-1) ?? "{}") as { q: string[] };
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ translations: q.map((t) => `T:${t}`) }));
+      } else {
+        res.writeHead(404).end();
+      }
+    });
+    await new Promise<void>((resolve) =>
+      server.listen(0, "127.0.0.1", resolve)
+    );
+    try {
+      const { port } = server.address() as AddressInfo;
+      const [out] = await appsScript({
+        url: `http://127.0.0.1:${port}/exec`,
+        secret: "s",
+        ...fast,
+      }).handle([ctx("Hello")], next);
+      expect(out).toBe("T:Hello");
+      expect(JSON.parse(received[0])).toMatchObject({
+        secret: "s",
+        q: ["Hello"],
+      });
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
 });

@@ -56,9 +56,34 @@ describe("language codes", () => {
     expect(toDeepLTarget("en", { en: "EN-GB" })).toBe("EN-GB");
   });
 
+  it("maps any BCP 47 spelling Kiritan might use to what DeepL accepts", () => {
+    const cases: Record<string, string> = {
+      "en-US": "EN-US",
+      "en-GB": "EN-GB",
+      "en-AU": "EN-US",
+      "pt-PT": "PT-PT",
+      pt_BR: "PT-BR",
+      "zh-Hant": "ZH-HANT",
+      "zh-TW": "ZH-HANT",
+      "zh-CN": "ZH-HANS",
+      zh: "ZH-HANS",
+      no: "NB",
+      nb: "NB",
+      nn: "NB",
+      "de-AT": "DE",
+      "es-MX": "ES",
+      ja: "JA",
+    };
+    for (const [locale, expected] of Object.entries(cases)) {
+      expect(toDeepLTarget(locale), locale).toBe(expected);
+    }
+  });
+
   it("strips the region from a source", () => {
     expect(toDeepLSource("en-GB")).toBe("EN");
     expect(toDeepLSource("ja")).toBe("JA");
+    expect(toDeepLSource("zh-Hant")).toBe("ZH");
+    expect(toDeepLSource("no")).toBe("NB");
   });
 });
 

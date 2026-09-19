@@ -18,28 +18,53 @@ function fitLength(
     if (measure(text.slice(0, mid)) <= limit) low = mid;
     else high = mid - 1;
   }
-  // Never end in the middle of a surrogate pair.
-  const code = text.charCodeAt(low - 1);
-  return low > 1 && code >= 0xd800 && code <= 0xdbff ? low - 1 : low;
+  return low;
 }
 
-/** Splits `text` at the last boundary within `limit`: blank line, then newline, then sentence end, then space, then a hard cut. */
+/** How far past the limit to look, so a segment that ends just before it isn't mistaken for one cut off by it. */
+const LOOKAHEAD = 64;
+
+/**
+ * The largest segment end that is at or before `limit`, or -1. `Intl.Segmenter` knows the rules for every language (a Japanese `。`, a surrogate pair, a combining mark), so none of that is hand-written here.
+ */
+function lastBoundary(
+  text: string,
+  limit: number,
+  granularity: "sentence" | "word" | "grapheme"
+): number {
+  const segmenter = new Intl.Segmenter(undefined, { granularity });
+  let best = -1;
+  for (const { index, segment } of segmenter.segment(
+    text.slice(0, limit + LOOKAHEAD)
+  )) {
+    const end = index + segment.length;
+    if (end > limit) break;
+    best = end;
+  }
+  return best;
+}
+
+/** Splits `text` at the last boundary within `limit`: blank line, then newline, then sentence, then word, then grapheme, then (only if a single grapheme won't fit) a hard cut. */
 function cutPoint(text: string, limit: number): number {
   const window = text.slice(0, limit);
-  for (const boundary of [/\n{2,}/g, /\n/g, /(?<=[.!?。！？])\s*/g, / /g]) {
+  for (const newlines of [/\n{2,}/g, /\n/g]) {
     let best = -1;
-    for (const match of window.matchAll(boundary)) {
+    for (const match of window.matchAll(newlines)) {
       if (match.index > 0 && match.index + match[0].length <= limit) {
         best = match.index + match[0].length;
       }
     }
     if (best > 0) return best;
   }
+  for (const granularity of ["sentence", "word", "grapheme"] as const) {
+    const boundary = lastBoundary(text, limit, granularity);
+    if (boundary > 0) return boundary;
+  }
   return limit;
 }
 
 /**
- * Splits a text longer than `maxChars` into chunks that each fit, breaking at paragraph boundaries where it can and only at sentence/space/hard cuts where it can't. Whitespace between chunks is preserved in `before`, so `join(chunks translated)` reassembles the original layout exactly.
+ * Splits a text longer than `maxChars` into chunks that each fit, breaking at paragraph boundaries where it can and only at sentence/word/grapheme cuts where it can't. Whitespace between chunks is preserved in `before`, so `join(chunks translated)` reassembles the original layout exactly.
  * Length is counted with `measure` (UTF-16 code units by default) on the already-masked text, so a provider that limits bytes can pass a byte counter. Text at or under the limit comes back as one chunk.
  */
 export function splitText(
@@ -69,8 +94,6 @@ export function splitText(
     before = "";
   }
 
-  // Only whitespace, or nothing at all: keep it so the join is still exact.
-  if (chunks.length === 0) return [];
   return chunks;
 }
 

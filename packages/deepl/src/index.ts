@@ -1,8 +1,16 @@
 import {
+  chineseScript,
   createTranslator,
+  parseLocale,
+  parseRetryAfter,
   type TranslatorMiddleware,
   type TranslatorOptions,
 } from "@kiritan/middleware";
+import { createHash } from "node:crypto";
+import {
+  decode as decodeEntities,
+  encode as encodeEntities,
+} from "html-entities";
 import { createFetch, FetchError } from "ofetch";
 
 export type DeepLMiddleware = TranslatorMiddleware;
@@ -40,47 +48,46 @@ const MAX_TEXTS_PER_REQUEST = 50;
 const MAX_TEXT_BYTES = 100 * 1024;
 const MAX_BATCH_BYTES = 120 * 1024;
 
-// DeepL's `target_lang` has no bare EN/PT — it wants the regional variant. Everything else is just the uppercased Kiritan locale.
-const DEFAULT_TARGET_OVERRIDES: Record<string, string> = {
-  EN: "EN-US",
-  PT: "PT-BR",
-};
-
-/** `ja` -> `JA`, `zh-Hans` -> `ZH-HANS`; `en`/`pt` get the regional variant DeepL requires for a target. */
+/**
+ * The DeepL `target_lang` for a Kiritan locale, parsed with `Intl.Locale` so any BCP 47 tag works (`ja`, `en-US`, `zh-Hant-TW`, `pt_BR`).
+ * DeepL has no bare `EN`/`PT` as a target, only a regional variant (British English if the locale says GB, else American; European Portuguese if PT, else Brazilian); Chinese is `ZH-HANS`/`ZH-HANT` by script; Norwegian is always `NB`; anything else is the upper-cased language. `overrides` (matched on the exact locale) win.
+ */
 export function toDeepLTarget(
   locale: string,
   overrides: Record<string, string> = {}
 ): string {
   if (Object.hasOwn(overrides, locale)) return overrides[locale];
-  const upper = locale.toUpperCase();
-  return DEFAULT_TARGET_OVERRIDES[upper] ?? upper;
+  const { language, region } = parseLocale(locale);
+  switch (language) {
+    case "en":
+      return region === "GB" ? "EN-GB" : "EN-US";
+    case "pt":
+      return region === "PT" ? "PT-PT" : "PT-BR";
+    case "zh":
+      return chineseScript(locale) === "Hant" ? "ZH-HANT" : "ZH-HANS";
+    case "no":
+    case "nb":
+    case "nn":
+      return "NB";
+    default:
+      return language.toUpperCase();
+  }
 }
 
-/** DeepL's `source_lang` doesn't take a regional variant: `en-GB` -> `EN`. */
+/** DeepL's `source_lang` takes no regional variant or script: `en-GB` -> `EN`, `zh-Hant` -> `ZH`, `no` -> `NB`. */
 export function toDeepLSource(locale: string): string {
-  return locale.split("-")[0].toUpperCase();
+  const { language } = parseLocale(locale);
+  return (
+    language === "no" || language === "nn" ? "nb" : language
+  ).toUpperCase();
 }
 
 // `@kiritan/middleware` swaps everything that must stay verbatim (code, URLs, front matter, `%{name}`, ...) for `[[N]]` tokens before this sees the text. DeepL is told to leave an XML tag alone (`tag_handling: xml` + `ignore_tags`), so each token is wrapped in one; the rest of the text has to be valid XML going in, and is un-escaped coming out.
 const KEEP_TAG = "x";
 
-function escapeXml(text: string): string {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-function unescapeXml(text: string): string {
-  return text
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&amp;", "&");
-}
-
 /** Escapes the text as XML and wraps every `[[N]]` token in the ignored tag. */
 export function encode(text: string): string {
-  return escapeXml(text).replace(
+  return encodeEntities(text, { mode: "specialChars" }).replace(
     /\[\[(\d+)\]\]/g,
     `<${KEEP_TAG}>[[$1]]</${KEEP_TAG}>`
   );
@@ -88,7 +95,9 @@ export function encode(text: string): string {
 
 /** The inverse of `encode`. */
 export function decode(text: string): string {
-  return unescapeXml(text.replace(new RegExp(`</?${KEEP_TAG}>`, "gi"), ""));
+  return decodeEntities(text.replace(new RegExp(`</?${KEEP_TAG}>`, "gi"), ""), {
+    level: "xml",
+  });
 }
 
 interface DeepLResponse {
@@ -100,6 +109,8 @@ class DeepLError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    /** How long DeepL asked us to wait, in ms; the layer's retry honors it. */
+    readonly retryAfter?: number,
     options?: { cause?: unknown }
   ) {
     super(message, options);
@@ -115,11 +126,13 @@ function describeError(error: unknown): Error {
     return new DeepLError(
       `@kiritan/deepl: DeepL responded ${error.status}${detail ? `: ${detail}` : ""}`,
       error.status,
+      parseRetryAfter(error.response?.headers.get("retry-after")),
       { cause: error }
     );
   }
   return new DeepLError(
     `@kiritan/deepl: request to DeepL failed: ${error instanceof Error ? error.message : String(error)}`,
+    undefined,
     undefined,
     { cause: error }
   );
@@ -169,7 +182,16 @@ const wireBytes = (text: string) =>
 
 function create(options: DeepLOptions, batched: boolean): TranslatorMiddleware {
   const common: TranslatorOptions = {
-    name: "deepl",
+    // Everything that changes what DeepL returns is part of the cache key, so editing `formality` or a target mapping never serves a stale translation from a persistent cache.
+    name: `deepl:${createHash("sha1")
+      .update(
+        JSON.stringify([
+          options.extraParams ?? {},
+          options.targetLanguages ?? {},
+        ])
+      )
+      .digest("hex")
+      .slice(0, 12)}`,
     wire: { encode, decode },
     measure: wireBytes,
     maxChars: MAX_TEXT_BYTES,

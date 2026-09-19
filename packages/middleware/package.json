@@ -45,5 +45,11 @@
   "scripts": {
     "build": "tsdown",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lezer/common": "^1.5.2",
+    "@lezer/markdown": "^1.7.2",
+    "es-toolkit": "^1.52.0",
+    "limiter": "^4.1.0"
   }
 }

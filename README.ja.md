@@ -23,7 +23,7 @@
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | `translate.middlewares` 用の [DeepL](https://www.deepl.com/) 翻訳ミドルウェア |
 | [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | `translate.middlewares` 用の [Google Cloud Translation](https://cloud.google.com/translate) ミドルウェア |
 | [`@kiritan/middleware`](./packages/middleware) | `packages/middleware` | 任意の翻訳関数をミドルウェアにする層: コード/URL/`%{name}` の保護、分割、まとめ送信、再試行、キャッシュ |
-| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | APIキー不要の翻訳ミドルウェア: MyMemory、Googleのキーレスエンドポイント、Apertium、自前ホストのLibreTranslate |
+| [`@kiritan/free-translate`](./packages/free-translate) | `packages/free-translate` | APIキー不要の翻訳ミドルウェア: MyMemory、Googleのキーレスエンドポイント、自前ホストのLibreTranslateとGoogle Apps Script |
 
 ## 関連ツール
 

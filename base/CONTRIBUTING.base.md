@@ -55,7 +55,7 @@ This is an npm workspaces monorepo (see [docs/DESIGN.md](./docs/DESIGN.md) chapt
 | `@kiritan/deepl` | `packages/deepl` | A DeepL translate middleware for `translate.middlewares` |
 | `@kiritan/google-translate` | `packages/google-translate` | A Google Cloud Translation middleware for `translate.middlewares` |
 | `@kiritan/middleware` | `packages/middleware` | A layer that turns any translate function into a translate middleware |
-| `@kiritan/free-translate` | `packages/free-translate` | Translate middlewares that need no API key |
+| `@kiritan/free-translate` | `packages/free-translate` | Translate middlewares that need no API key, including self-hosted ones (LibreTranslate, Google Apps Script) |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code extension (syntax highlighting for `:::kiritan{...}` blocks). Not an npm workspace member — see "Releasing" below. |
 | — | `extensions/vim` | Vim/Neovim plugin (the same directive highlighting, plus `*.kiritanconfig` filetype detection). Not published anywhere — installed directly from this repo via a plugin manager's `rtp` option. |
 
@@ -71,7 +71,7 @@ The design and rationale for everything above live in [docs/DESIGN.md](./docs/DE
 | `@kiritan/deepl` | `packages/deepl` | `translate.middlewares` 用のDeepL翻訳ミドルウェア |
 | `@kiritan/google-translate` | `packages/google-translate` | `translate.middlewares` 用のGoogle Cloud Translationミドルウェア |
 | `@kiritan/middleware` | `packages/middleware` | 任意の翻訳関数を翻訳ミドルウェアにする層 |
-| `@kiritan/free-translate` | `packages/free-translate` | APIキー不要の翻訳ミドルウェア |
+| `@kiritan/free-translate` | `packages/free-translate` | APIキー不要の翻訳ミドルウェア(セルフホストのLibreTranslateとGoogle Apps Scriptを含む) |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code拡張機能(`:::kiritan{...}` ブロックのシンタックスハイライト)。npm workspaceのメンバーではない — 詳細は後述の「リリース」を参照。 |
 | — | `extensions/vim` | Vim/Neovimプラグイン(同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定)。どこにも公開せず、プラグインマネージャーの`rtp`オプションでこのリポジトリから直接インストールする。 |
 

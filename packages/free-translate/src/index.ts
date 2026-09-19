@@ -1,6 +1,11 @@
-export { apertium, googleFree, libreTranslate, myMemory } from "./providers.js";
+export {
+  appsScript,
+  googleFree,
+  libreTranslate,
+  myMemory,
+} from "./providers.js";
 export type {
-  ApertiumOptions,
+  AppsScriptOptions,
   GoogleFreeOptions,
   LibreTranslateOptions,
   MyMemoryOptions,

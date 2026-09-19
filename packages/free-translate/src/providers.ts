@@ -1,6 +1,7 @@
 import {
+  chineseScript,
   createTranslator,
-  defaultProtectPatterns,
+  parseLocale,
   type TranslatorMiddleware,
 } from "@kiritan/middleware";
 import {
@@ -14,12 +15,16 @@ import {
 
 const bytes = (text: string) => Buffer.byteLength(text, "utf8");
 
-/** The generic "pick a Kiritan locale, get the service's code" step: strip the region, keep Chinese script/region. */
-function chineseOr(locale: string, fallback: (base: string) => string): string {
-  const lower = locale.toLowerCase();
-  if (/^zh(-hant|-tw|-hk|-mo)$/.test(lower)) return "zh-TW";
-  if (lower === "zh" || /^zh-(hans|cn|sg)$/.test(lower)) return "zh-CN";
-  return fallback(lower.split(/[-_]/)[0]);
+/**
+ * The service's code for a Kiritan locale, parsed with `Intl.Locale` so any BCP 47 tag works (`en-US` -> `en`): the bare language, except Chinese, which the service names by script (`chinese.hans` for Simplified, `chinese.hant` for Traditional; `zh-Hant`, `zh-TW`, `zh-HK` are all Traditional).
+ */
+function toCode(
+  locale: string,
+  chinese: { hans: string; hant: string } = { hans: "zh-CN", hant: "zh-TW" }
+): string {
+  const { language } = parseLocale(locale);
+  if (language !== "zh") return language;
+  return chineseScript(locale) === "Hant" ? chinese.hant : chinese.hans;
 }
 
 // ───────────────────────────── MyMemory ─────────────────────────────
@@ -51,9 +56,7 @@ const MYMEMORY_MAX_BYTES = 480;
 export function myMemory(options: MyMemoryOptions = {}): TranslatorMiddleware {
   const baseUrl = options.baseUrl ?? "https://api.mymemory.translated.net";
   const code = (locale: string) =>
-    resolveCode(locale, options.languageCodes, (l) =>
-      chineseOr(l, (base) => base)
-    );
+    resolveCode(locale, options.languageCodes, (l) => toCode(l));
 
   return createTranslator({
     name: "mymemory",
@@ -61,8 +64,6 @@ export function myMemory(options: MyMemoryOptions = {}): TranslatorMiddleware {
     maxChars: MYMEMORY_MAX_BYTES,
     concurrency: 1,
     minInterval: 300,
-    // MyMemory HTML-escapes `&` in its output, so a literal entity in the source is shielded to survive the decoding below.
-    protect: [...defaultProtectPatterns, /&(?:#x?[0-9a-f]+|[a-z]+);/i],
     ...tuning(options),
     async translate(text, { from, to }) {
       const body = await send<MyMemoryResponse>(
@@ -124,11 +125,9 @@ const GOOGLE_LANGUAGES = new Set(
 );
 
 function toGoogleCode(locale: string): string {
-  const mapped = chineseOr(locale, (base) => {
-    if (base === "nb" || base === "nn") return "no";
-    if (base === "fil") return "tl";
-    return base;
-  });
+  const code = toCode(locale);
+  const mapped =
+    code === "nb" || code === "nn" ? "no" : code === "fil" ? "tl" : code;
   if (!GOOGLE_LANGUAGES.has(mapped)) {
     // Google's endpoint answers an unknown language with the original text and no error, which would look like a successful (untranslated) run.
     throw new ProviderError(
@@ -192,126 +191,6 @@ export function googleFree(
   });
 }
 
-// ───────────────────────────── Apertium ─────────────────────────────
-
-export interface ApertiumOptions extends CommonOptions {
-  /** Default: `https://apertium.org/apy`. */
-  baseUrl?: string;
-}
-
-const APERTIUM_CODES: Record<string, string> = {
-  af: "afr",
-  ar: "ara",
-  an: "arg",
-  ast: "ast",
-  be: "bel",
-  bg: "bul",
-  ca: "cat",
-  cs: "ces",
-  cy: "cym",
-  da: "dan",
-  de: "deu",
-  el: "ell",
-  en: "eng",
-  eo: "epo",
-  es: "spa",
-  et: "est",
-  eu: "eus",
-  fi: "fin",
-  fr: "fra",
-  ga: "gle",
-  gl: "glg",
-  hi: "hin",
-  hr: "hrv",
-  hu: "hun",
-  id: "ind",
-  is: "isl",
-  it: "ita",
-  kk: "kaz",
-  mk: "mkd",
-  ms: "zlm",
-  mt: "mlt",
-  nb: "nob",
-  nl: "nld",
-  nn: "nno",
-  no: "nob",
-  oc: "oci",
-  pl: "pol",
-  pt: "por",
-  ro: "ron",
-  ru: "rus",
-  sk: "slk",
-  sl: "slv",
-  sr: "srp",
-  sv: "swe",
-  tr: "tur",
-  uk: "ukr",
-  ur: "urd",
-};
-
-function toApertiumCode(locale: string): string {
-  const base = locale.toLowerCase().split(/[-_]/)[0];
-  if (APERTIUM_CODES[base]) return APERTIUM_CODES[base];
-  if (/^[a-z]{3}$/.test(base)) return base;
-  throw new ProviderError(
-    `@kiritan/free-translate: no Apertium language code known for "${locale}"; pass \`languageCodes: { ${JSON.stringify(locale)}: "<3-letter code>" }\``,
-    undefined,
-    false
-  );
-}
-
-/**
- * [Apertium](https://apertium.org/)'s public APy server: open-source rule-based translation, no key, no tracking. The catch is coverage: it mostly covers European and related languages (Spanish, Catalan, French, Portuguese, ...) and has **no Japanese, Chinese or Korean**. A pair the server doesn't have fails with a clear error naming it. Language codes are Apertium's 3-letter ones; common 2-letter codes are mapped.
- * Rule-based output is literal, so it suits related languages best.
- */
-export function apertium(options: ApertiumOptions = {}): TranslatorMiddleware {
-  const baseUrl = options.baseUrl ?? "https://apertium.org/apy";
-  const code = (locale: string) =>
-    resolveCode(locale, options.languageCodes, toApertiumCode);
-
-  return createTranslator({
-    name: "apertium",
-    maxChars: 3000,
-    concurrency: 2,
-    minInterval: 300,
-    ...tuning(options),
-    async translate(text, { from, to }) {
-      const langpair = `${code(from)}|${code(to)}`;
-      let body: { responseData?: { translatedText?: string } };
-      try {
-        body = await send(
-          "Apertium",
-          `${baseUrl}/translate`,
-          {
-            method: "POST",
-            body: new URLSearchParams({ langpair, q: text, markUnknown: "no" }),
-          },
-          options
-        );
-      } catch (error) {
-        if (error instanceof ProviderError && error.status === 400) {
-          throw new ProviderError(
-            `@kiritan/free-translate: Apertium's public server has no "${langpair}" language pair (${error.message})`,
-            400,
-            false,
-            { cause: error }
-          );
-        }
-        throw error;
-      }
-      const translated = body.responseData?.translatedText;
-      if (typeof translated !== "string") {
-        throw new ProviderError(
-          "@kiritan/free-translate: Apertium returned no translation",
-          undefined,
-          false
-        );
-      }
-      return translated;
-    },
-  });
-}
-
 // ───────────────────────── LibreTranslate ─────────────────────────
 
 export interface LibreTranslateOptions extends CommonOptions {
@@ -336,11 +215,7 @@ export function libreTranslate(
   const base = options.baseUrl.replace(/\/+$/, "");
   const code = (locale: string) =>
     resolveCode(locale, options.languageCodes, (l) =>
-      chineseOr(l, (b) => b) === "zh-CN"
-        ? "zh"
-        : chineseOr(l, (b) => b) === "zh-TW"
-          ? "zt"
-          : chineseOr(l, (b) => b)
+      toCode(l, { hans: "zh", hant: "zt" })
     );
 
   return createTranslator({
@@ -381,6 +256,88 @@ export function libreTranslate(
         );
       }
       return list;
+    },
+  });
+}
+
+// ───────────────────── Google Apps Script (self-hosted) ─────────────────────
+
+export interface AppsScriptOptions extends CommonOptions {
+  /** The deployed web app's URL: `https://script.google.com/macros/s/<id>/exec`. */
+  url: string;
+  /**
+   * A shared secret, sent as `secret` and checked by the script. A web app deployed for "Anyone" answers whoever finds its URL, so this is what keeps it from being a free translation service for the world (and from spending your quota).
+   */
+  secret?: string;
+}
+
+/**
+ * Translates through a small Google Apps Script web app that *you* deploy from your own Google account, using Apps Script's built-in `LanguageApp.translate` (Google Translate). No API key or billing is involved, and the quota is your own account's. The README has the script to paste in.
+ * The request is a JSON POST `{ secret, source, target, q: [texts] }` and the script answers `{ translations: [texts] }` (or `{ error }`). Apps Script replies through a redirect, which `fetch` follows. Language codes are Google's, mapped the same way as `googleFree`.
+ * If the response isn't JSON, the deployment is usually not set to "Anyone" (Google answers with a sign-in page), and that is what the error says.
+ */
+export function appsScript(options: AppsScriptOptions): TranslatorMiddleware {
+  if (!options.url) {
+    throw new Error("@kiritan/free-translate: appsScript needs a `url`");
+  }
+  const code = (locale: string) =>
+    resolveCode(locale, options.languageCodes, toGoogleCode);
+
+  return createTranslator({
+    name: "apps-script",
+    // Each text is one `LanguageApp.translate` call inside a script that has a runtime limit per request, so batches stay modest.
+    maxChars: 5000,
+    maxBatchChars: 20_000,
+    maxBatchSize: 20,
+    concurrency: 2,
+    minInterval: 200,
+    ...tuning(options),
+    async translateBatch(texts, { from, to }) {
+      const body = await send<{
+        translations?: unknown;
+        error?: unknown;
+      }>(
+        "Google Apps Script",
+        options.url,
+        {
+          method: "POST",
+          body: {
+            ...(options.secret !== undefined ? { secret: options.secret } : {}),
+            source: code(from),
+            target: code(to),
+            q: texts,
+          },
+        },
+        options
+      );
+
+      if (typeof body !== "object" || body === null) {
+        throw new ProviderError(
+          '@kiritan/free-translate: the Apps Script URL didn\'t return JSON. Check the deployment: "Execute as" should be you and "Who has access" should be "Anyone" (otherwise Google answers with a sign-in page), and re-deploy after editing the script',
+          undefined,
+          false
+        );
+      }
+      if (body.error !== undefined) {
+        throw new ProviderError(
+          `@kiritan/free-translate: the Apps Script reported: ${String(body.error)}`,
+          undefined,
+          false
+        );
+      }
+      const list = body.translations;
+      if (
+        !Array.isArray(list) ||
+        list.length !== texts.length ||
+        list.some((entry) => typeof entry !== "string")
+      ) {
+        throw new ProviderError(
+          `@kiritan/free-translate: the Apps Script returned an unexpected response (${texts.length} text(s) sent); expected { "translations": [strings] }`,
+          undefined,
+          false
+        );
+      }
+      return list as string[];
     },
   });
 }

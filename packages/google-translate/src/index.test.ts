@@ -51,6 +51,51 @@ describe("language codes", () => {
     expect(toGoogleLanguage("zh-TW")).toBe("zh-TW");
     expect(toGoogleLanguage("zh", { zh: "zh-CN" })).toBe("zh-CN");
   });
+
+  it("maps any BCP 47 spelling Kiritan might use to what Cloud Translation v2 accepts", () => {
+    const cases: Record<string, string> = {
+      "en-US": "en",
+      pt_BR: "pt",
+      "zh-Hans": "zh-CN",
+      "zh-Hant": "zh-TW",
+      "zh-HK": "zh-TW",
+      zh: "zh-CN",
+      nb: "no",
+      nn: "no",
+      fil: "tl",
+      iw: "he",
+    };
+    for (const [locale, expected] of Object.entries(cases)) {
+      expect(toGoogleLanguage(locale), locale).toBe(expected);
+    }
+  });
+
+  it("puts everything that changes the output into the cache key", async () => {
+    const stored = new Map<string, string>();
+    const cache = {
+      get: (key: string) => stored.get(key),
+      set: (key: string, value: string) => void stored.set(key, value),
+    };
+    const { calls, fetch } = fakeFetch();
+    const text = [{ text: "Hi", from: "en", to: "ja" }];
+    await googleTranslate({ apiKey: "k", fetch, cache }).handle(
+      text,
+      async () => []
+    );
+    await googleTranslate({ apiKey: "k", fetch, cache }).handle(
+      text,
+      async () => []
+    );
+    expect(calls).toHaveLength(1);
+    // A different `model` is a different translation, not a cache hit.
+    await googleTranslate({
+      apiKey: "k",
+      fetch,
+      cache,
+      extraParams: { model: "nmt" },
+    }).handle(text, async () => []);
+    expect(calls).toHaveLength(2);
+  });
 });
 
 describe("wire encoding", () => {
@@ -174,7 +219,10 @@ describe("googleTranslate()", () => {
       [ctx(source)],
       next
     );
-    expect(calls[0].body.q).toEqual(["Type &amp;#39; or &amp;amp; literally"]);
+    // The parser reads both as entities, so they never reach Google as text at all.
+    expect(calls[0].body.q).toEqual([
+      'Type <span translate="no">[[0]]</span> or <span translate="no">[[1]]</span> literally',
+    ]);
     expect(result).toBe(source);
   });
 

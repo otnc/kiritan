@@ -47,7 +47,7 @@ If the provider can translate several texts in one request, give `translateBatch
 
 ### What the layer does for you
 
-- **Protects what mustn't be translated.** Documents reach a middleware as raw Markdown, so code blocks, inline code, URLs, link destinations, HTML, front matter, `:::kiritan{...}` lines and `%{name}` are swapped for `[[0]]`-style tokens before the provider sees the text, and swapped back afterwards. If the provider drops a token, the layer throws instead of writing a translation that lost code or a link. (That token shape was chosen by testing it against real engines: some rewrote `<span translate="no">` or split `XPH0X` apart.)
+- **Protects what mustn't be translated.** Documents reach a middleware as raw Markdown, so the layer parses it (with [`@lezer/markdown`](https://github.com/lezer-parser/markdown), GFM included) and translates only the prose: code blocks and spans, URLs and link destinations, HTML, front matter, `:::kiritan{...}` lines, headings/list/quote markers, table pipes, emphasis markers, escapes, entities and `%{name}` are swapped for `[[0]]`-style tokens before the provider sees the text, and swapped back afterwards. Rather than a list of patterns that would have to be kept in step with Markdown, the parser decides what is markup. If the provider drops a token, the layer throws instead of writing a translation that lost code or a link. (The token shape was chosen by testing it against real engines: some rewrote `<span translate="no">` or split `XPH0X` apart. Tokens an engine re-typesets, such as full-width `［［0］］`, are still recognised.)
 - **Splits long texts, groups short ones.** `maxChars` is the most the provider takes in one text; a longer text (say a whole README sent for a `sidecar` translation) is cut at paragraph boundaries and joined back with the original spacing. `maxBatchSize`/`maxBatchChars` cap how many go into one `translateBatch` call. You only declare the provider's limits.
 - **Concurrency, spacing and retries.** `concurrency` (default 4), `minInterval` (ms between request starts), and `retry` (default 2, exponential backoff, only for network errors and 408/409/425/429/5xx).
 - **Caching.** The same text is never translated twice: in memory for the run by default, or persisted with `cache: createFileCache("node_modules/.cache/kiritan-translate.json")` so a re-run in CI costs no quota.
@@ -63,7 +63,7 @@ If the provider can translate several texts in one request, give `translateBatch
 | `maxBatchSize` / `maxBatchChars` | Limits per `translateBatch` call. Default 50 texts. |
 | `concurrency` / `minInterval` | Requests in flight (default 4) and the least ms between starts (default 0). |
 | `retry` | `{ retries, delay, shouldRetry }`, or `false`. Default: 2 retries from 500 ms. |
-| `protect` | `false` to send text as-is, or an array of `RegExp` replacing the default patterns (exported as `defaultProtectPatterns`). |
+| `protect` | `false` to send text as-is, or an array of `RegExp` for extra syntax *inside prose* the parser can't recognise (default: `[defaultProtectPatterns]`, i.e. `%{name}`). Markup is protected either way. |
 | `cache` | `false`, or a `{ get, set }` store. Default: in memory. `createFileCache(path)` persists to JSON. |
 | `onError` / `onSkip` | `"throw"` (default) or `"skip"`, and a callback for skipped texts. |
 

@@ -49,6 +49,7 @@
   },
   "dependencies": {
     "@kiritan/middleware": "^0.1.0",
+    "html-entities": "^2.6.0",
     "ofetch": "^1.5.1"
   }
 }
