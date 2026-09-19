@@ -31,14 +31,26 @@ export default {
 };
 ```
 
-## Which one?
+## Support status
 
-| Provider | Official? | Languages | Notes |
-| --- | --- | --- | --- |
-| `myMemory()` | Yes, documented free API | Most | About 5,000 characters a day anonymously, about 50,000 with `email`. Mixes human translation memory with MT, so quality varies. Limited to 500 bytes per request, handled for you. |
-| `googleFree()` | **No.** The endpoint Google's own Chrome dictionary extension uses | About 130 | Google quality, no stated quota. Unofficial: it can be throttled, blocked (a CAPTCHA page comes back as HTTP 429) or change without notice, and may be against Google's terms. For occasional documentation runs, not for anything you depend on. Use `@kiritan/google-translate` with a key for a supported service. |
-| `libreTranslate({ baseUrl })` | Yes, open-source engine | Many | Self-hosted: the public libretranslate.com needs a paid key now. No key for your own server unless you enable `--api-keys`. |
-| `appsScript({ url })` | Your own Apps Script | About 130 (Google's) | Self-hosted on your Google account: Google Translate quality, your own quota, a script you paste in (see below). |
+| Provider | Kind | Official? | Key | Languages | Batching | Limits (handled for you) | Verified | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `myMemory()` | Hosted | Yes, documented free API | None (optional `email`) | Most | One text per request | 500 bytes per request, so longer texts are split by bytes; about 5,000 characters a day anonymously, about 50,000 with `email` | Live | Mixes human translation memory with MT, so quality varies. It reports errors as HTTP 200, which is checked. |
+| `googleFree()` | Hosted | **No.** The endpoint Google's own Chrome dictionary extension uses | None | About 130 | Up to 20 texts / 4,000 characters | No stated quota | Live | Google quality. Unofficial: it can be throttled, blocked (a CAPTCHA page comes back as HTTP 429) or change without notice, and may be against Google's terms. For occasional documentation runs, not for anything you depend on; use `@kiritan/google-translate` with a key for a supported service. An unknown language code is an error, not silence. |
+| `libreTranslate({ baseUrl })` | Self-hosted | Yes, open-source engine | None unless you enable `--api-keys` | Many | Up to 50 texts | Whatever your server allows | Unit tests only (no server available) | The public libretranslate.com needs a paid key now, so this is for a server you run. |
+| `appsScript({ url })` | Self-hosted | Your own Apps Script | Shared secret you choose | About 130 (Google's) | Up to 20 texts / 20,000 characters | Your account's `LanguageApp` daily quota; a runtime limit per request | Against a local server that answers like Apps Script (302 redirect); not against a real deployment | Google Translate quality on your own quota. The script to paste in is below. |
+
+Tried and **not** supported:
+
+| Service | Why not |
+| --- | --- |
+| Google's plain `client=gtx` endpoint | Answered with a CAPTCHA page from the machine it was tried on. |
+| Lingva (public instances) | Behind Cloudflare's bot challenge. |
+| Microsoft Edge's translate endpoint | Its auth endpoint returned nothing. |
+| libretranslate.com | Requires a paid API key. Run your own server and use `libreTranslate()`. |
+| Apertium's public server | Built, then removed: European languages only, no Japanese, Chinese or Korean. |
+
+"Live" means it was run end to end against the real service on a Markdown sample (front matter, heading, bold, list, quote, table, code fence, an entity and `%{name}`), and all of it came back intact.
 
 Every provider takes the same tuning options as [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) — `concurrency`, `minInterval`, `retry`, `cache`, `protect`, `onError` — plus `timeout`, `fetch` (a custom transport) and `languageCodes` (per-locale overrides of the code sent to the service). Each provider ships sensible limits, so you rarely need them.
 

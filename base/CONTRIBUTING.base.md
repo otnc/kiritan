@@ -167,6 +167,7 @@ npm run ci && npm run typecheck && npm run test && npm run build
 - **Tests live next to the code** as `*.test.ts` and run with vitest.
 - **Comments and docs are in English** and kept brief.
 - **Type-only imports use `import type`** (`verbatimModuleSyntax` is on).
+- **Prefer a maintained library to hand-written logic, and keep the dependency ESM/CJS-dual.** Anything a consumer loads through the package's API (`kiritan`'s API, `@kiritan/runtime`, `@kiritan/middleware` and the provider packages) must be a library whose *latest* release ships both ESM and CJS, so `require()` and `import` both work without bundling tricks; check the latest version's `exports` before adding one. The CLI is the exception, and may use ESM-only libraries such as `yargs`. The one standing exception in the API is the `unified`/`remark-*` stack in `kiritan`: it is ESM-only with no dual-format equivalent that can also stringify Markdown, so it is bundled into `dist/` (see `tsdown.config.ts`) and CJS consumers are unaffected. It stays until such an equivalent exists.
 :::
 :::kiritan{locale=ja}
 ## 規約
@@ -175,6 +176,7 @@ npm run ci && npm run typecheck && npm run test && npm run build
 - **テストはコードの隣に** `*.test.ts` として置き、vitest で実行します。
 - **コメントとドキュメントは英語**で、簡潔に保ちます。
 - **型のみの import には `import type` を使用**します(`verbatimModuleSyntax` が有効です)。
+- **手書きのロジックよりメンテナンスされているライブラリを優先し、依存はESM/CJS両対応のものにする。** パッケージのAPI(`kiritan` のAPI、`@kiritan/runtime`、`@kiritan/middleware`、各プロバイダーのパッケージ)を通じて利用者が読み込むものは、*最新版*がESMとCJSの両方を提供しているライブラリにする。そうすればbundleの小細工なしに `require()` も `import` も使える。追加する前に、最新版の `exports` を確認すること。CLIは例外で、`yargs` のようなESM専用のライブラリを使ってよい。APIにおける唯一の恒常的な例外が、`kiritan` の `unified`/`remark-*` 群: ESM専用で、Markdownを文字列に戻せる両対応の代替が無いため、`dist/` にbundleしており(`tsdown.config.ts` を参照)、CJSの利用者には影響しない。そのような代替が現れるまで、これは残す。
 :::
 
 :::kiritan{locale=en}
