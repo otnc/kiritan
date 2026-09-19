@@ -1,3 +1,5 @@
+import { createFetch, FetchError } from "ofetch";
+
 /**
  * The slice of Kiritan's `TranslateContext` this package reads. Declared here instead of imported from `kiritan` so the package has no dependency on it at all — a middleware is just a function, and these shapes are structurally compatible with `translate.middlewares`.
  */
@@ -29,6 +31,12 @@ export interface DeepLOptions {
   targetLanguages?: Record<string, string>;
   /** Extra fields merged into the request body, e.g. `{ formality: "prefer_less" }`. */
   extraParams?: Record<string, unknown>;
+  /** How many times to retry a failed request (network errors, 408/409/425/429/5xx) before giving up. Default: 2. */
+  retry?: number;
+  /** Delay between retries, in ms. Default: 500. */
+  retryDelay?: number;
+  /** Per-request timeout, in ms. Default: 30000. */
+  timeout?: number;
   /** For testing or a custom transport. Default: the global `fetch`. */
   fetch?: typeof fetch;
 }
@@ -102,6 +110,23 @@ interface DeepLResponse {
   translations?: Array<{ text: string }>;
 }
 
+/** Turns an ofetch failure into a readable error carrying the HTTP status and the service's own message. */
+function describeError(service: string, error: unknown): Error {
+  if (error instanceof FetchError && error.status !== undefined) {
+    const data: unknown = error.data;
+    const detail =
+      typeof data === "string" ? data : data ? JSON.stringify(data) : "";
+    return new Error(
+      `@kiritan/deepl: ${service} responded ${error.status}${detail ? `: ${detail}` : ""}`,
+      { cause: error }
+    );
+  }
+  return new Error(
+    `@kiritan/deepl: request to ${service} failed: ${error instanceof Error ? error.message : String(error)}`,
+    { cause: error }
+  );
+}
+
 async function requestTranslations(
   options: DeepLOptions,
   texts: string[],
@@ -110,31 +135,28 @@ async function requestTranslations(
 ): Promise<string[]> {
   const baseUrl =
     options.baseUrl ?? (options.apiKey.endsWith(":fx") ? FREE_URL : PRO_URL);
-  const doFetch = options.fetch ?? fetch;
-  const response = await doFetch(`${baseUrl}/v2/translate`, {
-    method: "POST",
-    headers: {
-      Authorization: `DeepL-Auth-Key ${options.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
-    body: JSON.stringify({
-      ...options.extraParams,
-      text: texts.map(protect),
-      source_lang: toDeepLSource(from),
-      target_lang: toDeepLTarget(to, options.targetLanguages),
-      tag_handling: "xml",
-      ignore_tags: [KEEP_TAG],
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `@kiritan/deepl: DeepL responded ${response.status}${detail ? `: ${detail}` : ""}`
-    );
+  const request = createFetch({ fetch: options.fetch ?? globalThis.fetch });
+  let body: DeepLResponse;
+  try {
+    body = await request<DeepLResponse>(`${baseUrl}/v2/translate`, {
+      method: "POST",
+      headers: { Authorization: `DeepL-Auth-Key ${options.apiKey}` },
+      retry: options.retry ?? 2,
+      retryDelay: options.retryDelay ?? 500,
+      timeout: options.timeout ?? 30_000,
+      // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
+      body: {
+        ...options.extraParams,
+        text: texts.map(protect),
+        source_lang: toDeepLSource(from),
+        target_lang: toDeepLTarget(to, options.targetLanguages),
+        tag_handling: "xml",
+        ignore_tags: [KEEP_TAG],
+      },
+    });
+  } catch (error) {
+    throw describeError("DeepL", error);
   }
-  const body = (await response.json()) as DeepLResponse;
   if (body.translations?.length !== texts.length) {
     throw new Error(
       `@kiritan/deepl: expected ${texts.length} translation(s), got ${body.translations?.length ?? 0}`

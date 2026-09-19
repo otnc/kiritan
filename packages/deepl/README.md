@@ -56,17 +56,20 @@ export default {
 | `baseUrl`         | Overrides the endpoint.                                                                                           |
 | `targetLanguages` | Per-locale overrides of the DeepL `target_lang`, e.g. `{ en: "EN-GB" }`. `en` defaults to `EN-US`, `pt` to `PT-BR`. |
 | `extraParams`     | Extra fields merged into the request body, e.g. `{ formality: "prefer_less" }`.                                   |
+| `retry` | How many times to retry a failed request (network errors, 408/409/425/429/5xx). Default: 2. |
+| `retryDelay` | Delay between retries, in ms. Default: 500. |
+| `timeout` | Per-request timeout, in ms. Default: 30000. |
 | `fetch`           | A custom `fetch`, for testing or a proxy.                                                                         |
 
 ### Behavior
 
 - `%{name}` placeholders come back unchanged: they're wrapped in a tag DeepL is told to ignore (`tag_handling: xml`), and the rest of the text is XML-escaped on the way in and un-escaped on the way out.
 - Text is sent as-is otherwise, so Markdown syntax in a segment (links, emphasis, code) is left to DeepL's own handling. Review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
-- A non-OK response throws, and `kiritan translate` stops with DeepL's own message (an invalid key, an exhausted quota, ...).
+- A failed request is retried (see `retry`) and then throws, and `kiritan translate` stops with DeepL's own message (an invalid key, an exhausted quota, ...).
 
 ## Requirements
 
-- Node.js >= 22.7 (uses the global `fetch`)
+- Node.js >= 22.7 (HTTP goes through [ofetch](https://github.com/unjs/ofetch), its only dependency of note)
 
 ## Contributing
 

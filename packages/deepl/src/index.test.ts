@@ -85,10 +85,9 @@ describe("deepl()", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://api.deepl.com/v2/translate");
     expect(calls[0].init.method).toBe("POST");
-    expect(calls[0].init.headers).toMatchObject({
-      Authorization: "DeepL-Auth-Key secret",
-      "Content-Type": "application/json",
-    });
+    const headers = new Headers(calls[0].init.headers);
+    expect(headers.get("Authorization")).toBe("DeepL-Auth-Key secret");
+    expect(headers.get("Content-Type")).toBe("application/json");
     expect(calls[0].body).toEqual({
       text: ["Hello <x>%{name}</x>"],
       source_lang: "EN",
@@ -148,6 +147,64 @@ describe("deepl()", () => {
     await expect(
       deepl({ apiKey: "k", fetch })(ctx("Hi"), next)
     ).rejects.toThrow("DeepL responded 456: quota exceeded");
+  });
+
+  it("retries a 429 and then succeeds", async () => {
+    let attempts = 0;
+    const flaky = (async () => {
+      attempts += 1;
+      return attempts === 1
+        ? new Response("slow down", { status: 429 })
+        : Response.json({ translations: [{ text: "ok" }] });
+    }) as unknown as typeof fetch;
+
+    const result = await deepl({
+      apiKey: "k",
+      fetch: flaky,
+      retryDelay: 0,
+    })(ctx("Hi"), next);
+
+    expect(result).toBe("ok");
+    expect(attempts).toBe(2);
+  });
+
+  it("gives up after `retry` attempts and reports the last status", async () => {
+    let attempts = 0;
+    const down = (async () => {
+      attempts += 1;
+      return new Response("unavailable", { status: 503 });
+    }) as unknown as typeof fetch;
+
+    await expect(
+      deepl({ apiKey: "k", fetch: down, retry: 1, retryDelay: 0 })(
+        ctx("Hi"),
+        next
+      )
+    ).rejects.toThrow("DeepL responded 503: unavailable");
+    expect(attempts).toBe(2);
+  });
+
+  it("does not retry a non-retryable status", async () => {
+    let attempts = 0;
+    const denied = (async () => {
+      attempts += 1;
+      return new Response("bad key", { status: 403 });
+    }) as unknown as typeof fetch;
+
+    await expect(
+      deepl({ apiKey: "k", fetch: denied, retryDelay: 0 })(ctx("Hi"), next)
+    ).rejects.toThrow("DeepL responded 403: bad key");
+    expect(attempts).toBe(1);
+  });
+
+  it("wraps a network failure with a readable message", async () => {
+    const offline = (async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+
+    await expect(
+      deepl({ apiKey: "k", fetch: offline, retry: 0 })(ctx("Hi"), next)
+    ).rejects.toThrow("request to DeepL failed");
   });
 
   it("throws if the number of translations doesn't match", async () => {
