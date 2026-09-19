@@ -28,6 +28,7 @@ This is an npm workspaces monorepo (see [docs/DESIGN.md](./docs/DESIGN.md) chapt
 | `@kiritan/deepl` | `packages/deepl` | A DeepL translate middleware for `translate.middlewares` |
 | `@kiritan/google-translate` | `packages/google-translate` | A Google Cloud Translation middleware for `translate.middlewares` |
 | `@kiritan/middleware` | `packages/middleware` | A layer that turns any translate function into a translate middleware |
+| `@kiritan/free-translate` | `packages/free-translate` | Translate middlewares that need no API key |
 | `otoneko1102.kiritan` | `extensions/vscode` | VS Code extension (syntax highlighting for `:::kiritan{...}` blocks). Not an npm workspace member — see "Releasing" below. |
 | — | `extensions/vim` | Vim/Neovim plugin (the same directive highlighting, plus `*.kiritanconfig` filetype detection). Not published anywhere — installed directly from this repo via a plugin manager's `rtp` option. |
 
@@ -84,7 +85,7 @@ Keep each change focused and add tests for any new behaviour. There's no changes
 
 ## Releasing (maintainers)
 
-Every npm package (`kiritan`, `@kiritan/runtime`, `@kiritan/deepl`, `@kiritan/google-translate`, `@kiritan/middleware`) has its own `workflow_dispatch` GitHub Actions workflow — `release.yml`, `release-runtime.yml`, `release-deepl.yml`, `release-google-translate.yml`, `release-middleware.yml` — so releasing one package can never accidentally touch another. Each is a thin wrapper around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
+Every npm package (`kiritan`, `@kiritan/runtime`, `@kiritan/deepl`, `@kiritan/google-translate`, `@kiritan/middleware`, `@kiritan/free-translate`) has its own `workflow_dispatch` GitHub Actions workflow — `release.yml`, `release-runtime.yml`, `release-deepl.yml`, `release-google-translate.yml`, `release-middleware.yml`, `release-free-translate.yml` — so releasing one package can never accidentally touch another. Each is a thin wrapper around a shared reusable workflow (`_release-package.yml`, not runnable on its own) that does the actual work.
 
 From the Actions tab, run the package's workflow (e.g. `release-runtime`) with two inputs:
 

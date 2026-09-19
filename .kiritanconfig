@@ -36,6 +36,11 @@ export default {
       naming: { template: "packages/middleware/{base}.{locale}.{ext}" },
     },
     {
+      glob: "packages/free-translate/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "packages/free-translate/{base}.{locale}.{ext}" },
+    },
+    {
       glob: "extensions/vscode/base/README.base.md",
       strategy: "inline",
       naming: { template: "extensions/vscode/{base}.{locale}.{ext}" },
