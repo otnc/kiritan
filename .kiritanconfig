@@ -21,6 +21,11 @@ export default {
       naming: { template: "packages/runtime/{base}.{locale}.{ext}" },
     },
     {
+      glob: "packages/deepl/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "packages/deepl/{base}.{locale}.{ext}" },
+    },
+    {
       glob: "extensions/vscode/base/README.base.md",
       strategy: "inline",
       naming: { template: "extensions/vscode/{base}.{locale}.{ext}" },
