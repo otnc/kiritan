@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  decode,
+  encode,
   googleTranslate,
   googleTranslateBatch,
-  protect,
-  restore,
   toGoogleLanguage,
 } from "./index.js";
 
@@ -13,9 +13,9 @@ interface Captured {
   body: Record<string, unknown>;
 }
 
-/** A fake `fetch` that records each request and answers with `respond(texts)`. */
+/** A fake `fetch` that records each request and answers with `respond(texts, callNumber)`. */
 function fakeFetch(
-  respond: (texts: string[]) => string[] = (texts) =>
+  respond: (texts: string[], n: number) => string[] = (texts) =>
     texts.map((text) => `T(${text})`),
   status = 200
 ) {
@@ -29,9 +29,9 @@ function fakeFetch(
       }
       return Response.json({
         data: {
-          translations: respond(body.q as string[]).map((translatedText) => ({
-            translatedText,
-          })),
+          translations: respond(body.q as string[], calls.length).map(
+            (translatedText) => ({ translatedText })
+          ),
         },
       });
     }
@@ -40,7 +40,10 @@ function fakeFetch(
 }
 
 const ctx = (text: string, from = "en", to = "ja") => ({ text, from, to });
-const next = async () => null;
+const next = async () => [];
+const fast = { retryDelay: 0 } as const;
+const codePoints = (call: Captured) =>
+  (call.body.q as string[]).reduce((sum, q) => sum + [...q].length, 0);
 
 describe("language codes", () => {
   it("sends a locale unchanged unless overridden", () => {
@@ -50,21 +53,28 @@ describe("language codes", () => {
   });
 });
 
-describe("placeholder protection", () => {
-  it("wraps %{...} in translate=no and escapes everything else", () => {
-    expect(protect("a < b & c: %{name} > 1")).toBe(
-      'a &lt; b &amp; c: <span translate="no">%{name}</span> &gt; 1'
+describe("wire encoding", () => {
+  it("escapes HTML and wraps each protected token in a translate=no span", () => {
+    expect(encode("a < b & c [[0]] > 1")).toBe(
+      'a &lt; b &amp; c <span translate="no">[[0]]</span> &gt; 1'
     );
   });
 
-  it("round-trips through restore", () => {
-    const text = "Hi %{name}, 1 < 2 & 3 > 2 %{a}%{b}";
-    expect(restore(protect(text))).toBe(text);
+  it("round-trips", () => {
+    const text = "Hi, 1 < 2 & 3 > 2 [[0]][[1]]";
+    expect(decode(encode(text))).toBe(text);
   });
 
   it("decodes the extra entities Google escapes on its own", () => {
-    expect(restore("it&#39;s &quot;fine&quot; &#x3053;")).toBe(
+    expect(decode("it&#39;s &quot;fine&quot; &#x3053;")).toBe(
       'it\'s "fine" こ'
+    );
+  });
+
+  it("decodes in a single pass, so a literal entity in the source survives", () => {
+    // Source `&#39;` is sent as `&amp;#39;` and must come back as `&#39;`, not an apostrophe.
+    expect(decode(encode("Type &#39; or &amp; literally"))).toBe(
+      "Type &#39; or &amp; literally"
     );
   });
 });
@@ -72,12 +82,12 @@ describe("placeholder protection", () => {
 describe("googleTranslate()", () => {
   it("posts one authenticated request in Cloud Translation v2's documented shape", async () => {
     const { calls, fetch } = fakeFetch();
-    const result = await googleTranslate({ apiKey: "secret", fetch })(
-      ctx("Hello %{name}"),
+    const [result] = await googleTranslate({ apiKey: "secret", fetch }).handle(
+      [ctx("Hello %{name}")],
       next
     );
 
-    expect(result).toBe("T(Hello %{name})");
+    expect(result).toBe("T(Hello [[0]])".replace("[[0]]", "%{name}"));
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe(
       "https://translation.googleapis.com/language/translate/v2"
@@ -87,11 +97,45 @@ describe("googleTranslate()", () => {
     expect(headers.get("X-goog-api-key")).toBe("secret");
     expect(headers.get("Content-Type")).toBe("application/json");
     expect(calls[0].body).toEqual({
-      q: ['Hello <span translate="no">%{name}</span>'],
+      q: ['Hello <span translate="no">[[0]]</span>'],
       source: "en",
       target: "ja",
       format: "html",
     });
+  });
+
+  it("keeps code, URLs, links, front matter and directives out of the request", async () => {
+    const { calls, fetch } = fakeFetch((texts) => texts);
+    const doc = [
+      "---",
+      "title: Hi",
+      "---",
+      "",
+      ":::kiritan{locale=en}",
+      "Run `npm i` and see [docs](https://example.com/a).",
+      ":::",
+      "",
+      "```sh",
+      "npm run build",
+      "```",
+      "",
+    ].join("\n");
+    const [out] = await googleTranslate({ apiKey: "k", fetch }).handle(
+      [ctx(doc)],
+      next
+    );
+
+    const sent = (calls[0].body.q as string[]).join("\n");
+    for (const secret of [
+      "title: Hi",
+      "npm i",
+      "example.com",
+      "npm run build",
+      "kiritan{",
+    ]) {
+      expect(sent).not.toContain(secret);
+    }
+    expect(out).toBe(doc);
   });
 
   it("honors baseUrl, languageCodes, and extraParams", async () => {
@@ -102,13 +146,10 @@ describe("googleTranslate()", () => {
       languageCodes: { zh: "zh-CN" },
       extraParams: { model: "nmt" },
       fetch,
-    })(ctx("Hello", "en", "zh"), next);
+    }).handle([ctx("Hello", "en", "zh")], next);
 
     expect(calls[0].url).toBe("https://proxy.example/language/translate/v2");
-    expect(calls[0].body).toMatchObject({
-      target: "zh-CN",
-      model: "nmt",
-    });
+    expect(calls[0].body).toMatchObject({ target: "zh-CN", model: "nmt" });
   });
 
   it("never lets extraParams override the fields the middleware depends on", async () => {
@@ -117,21 +158,20 @@ describe("googleTranslate()", () => {
       apiKey: "k",
       extraParams: { format: "text", q: ["x"], model: "nmt" },
       fetch,
-    })(ctx("Hi %{a}"), next);
+    }).handle([ctx("Hi `a`")], next);
 
     expect(calls[0].body).toMatchObject({
-      q: ['Hi <span translate="no">%{a}</span>'],
+      q: ['Hi <span translate="no">[[0]]</span>'],
       format: "html",
       model: "nmt",
     });
   });
 
   it("round-trips source text that itself contains entity-like sequences", async () => {
-    // The source has the literal characters &#39; and &amp;; they go out escaped and must come back as the same literal characters, not be decoded a second time.
     const { calls, fetch } = fakeFetch((texts) => texts);
     const source = "Type &#39; or &amp; literally";
-    const result = await googleTranslate({ apiKey: "k", fetch })(
-      ctx(source),
+    const [result] = await googleTranslate({ apiKey: "k", fetch }).handle(
+      [ctx(source)],
       next
     );
     expect(calls[0].body.q).toEqual(["Type &amp;#39; or &amp;amp; literally"]);
@@ -140,20 +180,44 @@ describe("googleTranslate()", () => {
 
   it("un-escapes and un-wraps what Google returns", async () => {
     const { fetch } = fakeFetch(() => [
-      '<span translate="no">%{name}</span> &lt;3 it&#39;s &amp; more',
+      '<span translate="no">[[0]]</span> &lt;3 it&#39;s &amp; more',
     ]);
-    const result = await googleTranslate({ apiKey: "k", fetch })(
-      ctx("x"),
+    const [result] = await googleTranslate({ apiKey: "k", fetch }).handle(
+      [ctx("`code` x")],
       next
     );
-    expect(result).toBe("%{name} <3 it's & more");
+    expect(result).toBe("`code` <3 it's & more");
   });
 
-  it("throws a readable error on a non-OK response", async () => {
-    const { fetch } = fakeFetch(undefined, 400);
+  it("refuses a result where Google dropped a protected span", async () => {
+    const { fetch } = fakeFetch(() => ["translated without it"]);
     await expect(
-      googleTranslate({ apiKey: "k", fetch })(ctx("Hi"), next)
+      googleTranslate({ apiKey: "k", fetch }).handle([ctx("see `code`")], next)
+    ).rejects.toThrow(/dropped 1 protected span/);
+  });
+
+  it("splits a text over the 30k code-point limit and rejoins it", async () => {
+    const { calls, fetch } = fakeFetch((texts) => texts);
+    const paragraph = "word ".repeat(7_000).trim();
+    const text = [paragraph, paragraph.replace("word", "term")].join("\n\n");
+    const [out] = await googleTranslate({ apiKey: "k", fetch }).handle(
+      [ctx(text)],
+      next
+    );
+
+    expect(calls.length).toBeGreaterThan(1);
+    for (const call of calls) {
+      expect(codePoints(call)).toBeLessThanOrEqual(30_000);
+    }
+    expect(out).toBe(text);
+  });
+
+  it("throws a readable error on a non-OK response, without retrying a permanent one", async () => {
+    const { calls, fetch } = fakeFetch(undefined, 400);
+    await expect(
+      googleTranslate({ apiKey: "k", fetch, ...fast }).handle([ctx("Hi")], next)
     ).rejects.toThrow("Google responded 400: API key not valid");
+    expect(calls).toHaveLength(1);
   });
 
   it("retries a 429 and then succeeds", async () => {
@@ -165,12 +229,11 @@ describe("googleTranslate()", () => {
         : Response.json({ data: { translations: [{ translatedText: "ok" }] } });
     }) as unknown as typeof fetch;
 
-    const result = await googleTranslate({
+    const [result] = await googleTranslate({
       apiKey: "k",
       fetch: flaky,
-      retryDelay: 0,
-    })(ctx("Hi"), next);
-
+      ...fast,
+    }).handle([ctx("Hi")], next);
     expect(result).toBe("ok");
     expect(attempts).toBe(2);
   });
@@ -183,28 +246,12 @@ describe("googleTranslate()", () => {
     }) as unknown as typeof fetch;
 
     await expect(
-      googleTranslate({ apiKey: "k", fetch: down, retry: 1, retryDelay: 0 })(
-        ctx("Hi"),
+      googleTranslate({ apiKey: "k", fetch: down, retry: 1, ...fast }).handle(
+        [ctx("Hi")],
         next
       )
     ).rejects.toThrow("Google responded 503: unavailable");
     expect(attempts).toBe(2);
-  });
-
-  it("does not retry a non-retryable status", async () => {
-    let attempts = 0;
-    const denied = (async () => {
-      attempts += 1;
-      return new Response("bad key", { status: 403 });
-    }) as unknown as typeof fetch;
-
-    await expect(
-      googleTranslate({ apiKey: "k", fetch: denied, retryDelay: 0 })(
-        ctx("Hi"),
-        next
-      )
-    ).rejects.toThrow("Google responded 403: bad key");
-    expect(attempts).toBe(1);
   });
 
   it("wraps a network failure with a readable message", async () => {
@@ -213,8 +260,8 @@ describe("googleTranslate()", () => {
     }) as unknown as typeof fetch;
 
     await expect(
-      googleTranslate({ apiKey: "k", fetch: offline, retry: 0 })(
-        ctx("Hi"),
+      googleTranslate({ apiKey: "k", fetch: offline, retry: 0 }).handle(
+        [ctx("Hi")],
         next
       )
     ).rejects.toThrow("request to Google failed");
@@ -223,31 +270,21 @@ describe("googleTranslate()", () => {
   it("throws if the number of translations doesn't match", async () => {
     const { fetch } = fakeFetch(() => []);
     await expect(
-      googleTranslate({ apiKey: "k", fetch })(ctx("Hi"), next)
+      googleTranslate({ apiKey: "k", fetch, retry: 0 }).handle(
+        [ctx("Hi")],
+        next
+      )
     ).rejects.toThrow("expected 1 translation(s), got 0");
   });
 });
 
 describe("googleTranslateBatch()", () => {
-  const run = (
-    options: Parameters<typeof googleTranslateBatch>[0],
-    ctxs: ReturnType<typeof ctx>[]
-  ) =>
-    googleTranslateBatch(options).handle(ctxs, async () =>
-      ctxs.map(() => null)
-    );
-
-  it("is a batch-form middleware", () => {
-    expect(googleTranslateBatch({ apiKey: "k" }).batch).toBe(true);
-  });
-
   it("sends contexts sharing a language pair in one request, keeping order", async () => {
     const { calls, fetch } = fakeFetch();
-    const results = await run({ apiKey: "k", fetch }, [
-      ctx("one"),
-      ctx("two"),
-      ctx("three"),
-    ]);
+    const results = await googleTranslateBatch({ apiKey: "k", fetch }).handle(
+      [ctx("one"), ctx("two"), ctx("three")],
+      next
+    );
     expect(calls).toHaveLength(1);
     expect(calls[0].body.q).toEqual(["one", "two", "three"]);
     expect(results).toEqual(["T(one)", "T(two)", "T(three)"]);
@@ -255,46 +292,58 @@ describe("googleTranslateBatch()", () => {
 
   it("splits different language pairs into separate requests, keeping each result in place", async () => {
     const { calls, fetch } = fakeFetch();
-    const results = await run({ apiKey: "k", fetch }, [
-      ctx("a", "en", "ja"),
-      ctx("b", "en", "fr"),
-      ctx("c", "en", "ja"),
+    const results = await googleTranslateBatch({ apiKey: "k", fetch }).handle(
+      [ctx("a", "en", "ja"), ctx("b", "en", "fr"), ctx("c", "en", "ja")],
+      next
+    );
+    expect(calls.map((call) => call.body.target).sort()).toEqual(["fr", "ja"]);
+    expect(calls.find((c) => c.body.target === "ja")!.body.q).toEqual([
+      "a",
+      "c",
     ]);
-    expect(calls.map((call) => call.body.target)).toEqual(["ja", "fr"]);
-    expect(calls[0].body.q).toEqual(["a", "c"]);
     expect(results).toEqual(["T(a)", "T(b)", "T(c)"]);
   });
 
   it("chunks at 128 strings per request", async () => {
     const { calls, fetch } = fakeFetch();
     const many = Array.from({ length: 300 }, (_, i) => ctx(`t${i}`));
-    const results = await run({ apiKey: "k", fetch }, many);
+    const results = await googleTranslateBatch({ apiKey: "k", fetch }).handle(
+      many,
+      next
+    );
 
-    expect(calls.map((call) => (call.body.q as string[]).length)).toEqual([
-      128, 128, 44,
-    ]);
+    expect(
+      calls
+        .map((call) => (call.body.q as string[]).length)
+        .sort((a, b) => b - a)
+    ).toEqual([128, 128, 44]);
     expect(results[0]).toBe("T(t0)");
     expect(results[299]).toBe("T(t299)");
   });
 
-  it("chunks at 30k code points per request", async () => {
-    const { calls, fetch } = fakeFetch();
-    const big = "x".repeat(20_000);
-    const results = await run({ apiKey: "k", fetch }, [
-      ctx(big),
-      ctx(big),
-      ctx("small"),
-    ]);
+  it("chunks at 30k code points per request, counting the wrapped and escaped form", async () => {
+    const { calls, fetch } = fakeFetch((texts) => texts);
+    await googleTranslateBatch({ apiKey: "k", fetch }).handle(
+      [
+        ctx("x".repeat(20_000)),
+        ctx("y".repeat(20_000)),
+        ctx("&".repeat(6_000)),
+        ctx("small"),
+      ],
+      next
+    );
 
-    expect(calls.map((call) => (call.body.q as string[]).length)).toEqual([
-      1, 2,
-    ]);
-    expect(results).toEqual([`T(${big})`, `T(${big})`, "T(small)"]);
+    expect(calls.length).toBeGreaterThan(1);
+    for (const call of calls) {
+      expect(codePoints(call)).toBeLessThanOrEqual(30_000);
+    }
   });
 
   it("makes no request for no contexts", async () => {
     const { calls, fetch } = fakeFetch();
-    expect(await run({ apiKey: "k", fetch }, [])).toEqual([]);
+    expect(
+      await googleTranslateBatch({ apiKey: "k", fetch }).handle([], next)
+    ).toEqual([]);
     expect(calls).toHaveLength(0);
   });
 });

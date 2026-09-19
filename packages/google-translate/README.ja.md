@@ -63,8 +63,8 @@ export default {
 
 ### 挙動
 
-- Basic(v2)APIを使う。`%{name}` のプレースホルダーは変更されずに戻る: `<span translate="no">` で包み、テキストを `format: "html"` で送るため、残りのテキストは送信時にHTMLエスケープ、受信時にアンエスケープする(Google自身が `'` のような文字も勝手にエスケープして返すが、それもデコードする)。
-- それ以外のテキストはそのまま送られるため、セグメント内のMarkdown構文(リンク・強調・コード)の扱いはGoogle自身に任される。公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
+- Basic(v2)APIを使う。そのまま保つべきものはすべて変更されずに戻る: コードブロック、インラインコード、URL、リンク先、HTML、front matter、`:::kiritan{...}` の行、`%{name}`。これらはテキストが手元を離れる前にトークンに置き換えられ、Googleが触らないよう`<span translate="no">`(テキストは `format: "html"` で送る)で包まれ、後で元に戻される。Googleがそのどれかを落とした場合は、リンクやコードが欠けた翻訳を書き込むのではなく実行が失敗する。([`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) の上に作られているため、`concurrency`・`minInterval`・`cache`・`protect`・`onError`・`onSkip` の各オプションも受け付ける。)
+- Googleの3万コードポイントを超えるテキスト(たとえば `sidecar` 翻訳で送るREADME全体)は、段落の境界で分割し、元の間隔のまま結合し直す。保護した部分の周りの文言はGoogle任せなので、公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
 - 失敗したリクエストは再試行(`retry` 参照)され、それでも失敗すれば例外を投げ、`kiritan translate` はGoogle自身のメッセージ(無効なキー、使い切ったクォータ等)とともに停止する。
 
 ## 動作環境

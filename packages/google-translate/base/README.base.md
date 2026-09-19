@@ -87,8 +87,8 @@ export default {
 
 ### Behavior
 
-- This uses the Basic (v2) API. `%{name}` placeholders come back unchanged: they're wrapped in `<span translate="no">` and the text is sent as `format: "html"`, so the rest of the text is HTML-escaped on the way in and un-escaped on the way out (Google also escapes characters like `'` on its own, which is decoded too).
-- Otherwise the text is sent as-is, so Markdown syntax in a segment (links, emphasis, code) is left to Google's own handling. Review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
+- This uses the Basic (v2) API. Everything that must stay verbatim comes back untouched: code blocks, inline code, URLs, link destinations, HTML, front matter, `:::kiritan{...}` lines and `%{name}`. They are swapped for tokens before the text leaves your machine, wrapped in a `<span translate="no">` (the text is sent as `format: "html"`) so Google leaves them alone, and put back afterwards — and if Google drops one, the run fails instead of writing a translation that lost a link or a code span. (Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so it also accepts its `concurrency`, `minInterval`, `cache`, `protect`, `onError` and `onSkip` options.)
+- A text over Google's 30k code points (say a whole README for a `sidecar` translation) is split at paragraph boundaries and joined back with the original spacing. The wording around protected spans is up to Google, so review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
 - A failed request is retried (see `retry`) and then throws, and `kiritan translate` stops with Google's own message (an invalid key, an exhausted quota, ...).
 :::
 :::kiritan{locale=ja}
@@ -107,8 +107,8 @@ export default {
 
 ### 挙動
 
-- Basic(v2)APIを使う。`%{name}` のプレースホルダーは変更されずに戻る: `<span translate="no">` で包み、テキストを `format: "html"` で送るため、残りのテキストは送信時にHTMLエスケープ、受信時にアンエスケープする(Google自身が `'` のような文字も勝手にエスケープして返すが、それもデコードする)。
-- それ以外のテキストはそのまま送られるため、セグメント内のMarkdown構文(リンク・強調・コード)の扱いはGoogle自身に任される。公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
+- Basic(v2)APIを使う。そのまま保つべきものはすべて変更されずに戻る: コードブロック、インラインコード、URL、リンク先、HTML、front matter、`:::kiritan{...}` の行、`%{name}`。これらはテキストが手元を離れる前にトークンに置き換えられ、Googleが触らないよう`<span translate="no">`(テキストは `format: "html"` で送る)で包まれ、後で元に戻される。Googleがそのどれかを落とした場合は、リンクやコードが欠けた翻訳を書き込むのではなく実行が失敗する。([`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) の上に作られているため、`concurrency`・`minInterval`・`cache`・`protect`・`onError`・`onSkip` の各オプションも受け付ける。)
+- Googleの3万コードポイントを超えるテキスト(たとえば `sidecar` 翻訳で送るREADME全体)は、段落の境界で分割し、元の間隔のまま結合し直す。保護した部分の周りの文言はGoogle任せなので、公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
 - 失敗したリクエストは再試行(`retry` 参照)され、それでも失敗すれば例外を投げ、`kiritan translate` はGoogle自身のメッセージ(無効なキー、使い切ったクォータ等)とともに停止する。
 :::
 

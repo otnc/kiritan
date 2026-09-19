@@ -1,39 +1,30 @@
+import {
+  createTranslator,
+  type TranslatorMiddleware,
+  type TranslatorOptions,
+} from "@kiritan/middleware";
 import { createFetch, FetchError } from "ofetch";
 
-/**
- * The slice of Kiritan's `TranslateContext` this package reads. Declared here instead of imported from `kiritan` so the package has no dependency on it at all — a middleware is just a function, and these shapes are structurally compatible with `translate.middlewares`.
- */
-export interface TranslateContextLike {
-  text: string;
-  from: string;
-  to: string;
-}
+export type DeepLMiddleware = TranslatorMiddleware;
 
-export type DeepLMiddleware = (
-  ctx: TranslateContextLike,
-  next: () => Promise<string | null>
-) => Promise<string | null>;
+/** Tuning shared with every `@kiritan/middleware`-based provider. */
+type Tuning = Pick<
+  TranslatorOptions,
+  "concurrency" | "minInterval" | "cache" | "protect" | "onError" | "onSkip"
+>;
 
-export interface DeepLBatchMiddleware {
-  batch: true;
-  handle: (
-    ctxs: TranslateContextLike[],
-    next: () => Promise<(string | null)[]>
-  ) => Promise<(string | null)[]>;
-}
-
-export interface DeepLOptions {
+export interface DeepLOptions extends Tuning {
   /** Your DeepL API authentication key. */
   apiKey: string;
   /** Overrides the endpoint. Default: the free API for a key ending in `:fx`, otherwise the Pro API. */
   baseUrl?: string;
   /** Per-locale overrides of the DeepL language code sent as `target_lang`, e.g. `{ en: "EN-GB" }`. */
   targetLanguages?: Record<string, string>;
-  /** Extra fields merged into the request body, e.g. `{ formality: "prefer_less" }`. */
+  /** Extra fields merged into the request body, e.g. `{ formality: "prefer_less" }`. They can add fields but never override the ones this middleware depends on. */
   extraParams?: Record<string, unknown>;
   /** How many times to retry a failed request (network errors, 408/409/425/429/5xx) before giving up. Default: 2. */
   retry?: number;
-  /** Delay between retries, in ms. Default: 500. */
+  /** Delay before the first retry, in ms (doubled each time). Default: 500. */
   retryDelay?: number;
   /** Per-request timeout, in ms. Default: 30000. */
   timeout?: number;
@@ -43,10 +34,11 @@ export interface DeepLOptions {
 
 const FREE_URL = "https://api-free.deepl.com";
 const PRO_URL = "https://api.deepl.com";
-/** DeepL accepts at most 50 texts per request. */
+/** DeepL accepts at most 50 texts per request, in a body of at most 128 KiB. */
 const MAX_TEXTS_PER_REQUEST = 50;
-/** ...and a request body of at most 128 KiB; this leaves headroom for the other fields. */
-const MAX_BODY_BYTES = 120 * 1024;
+/** One text and one request's texts, in bytes of the JSON that is actually sent; headroom under 128 KiB for the other fields. */
+const MAX_TEXT_BYTES = 100 * 1024;
+const MAX_BATCH_BYTES = 120 * 1024;
 
 // DeepL's `target_lang` has no bare EN/PT — it wants the regional variant. Everything else is just the uppercased Kiritan locale.
 const DEFAULT_TARGET_OVERRIDES: Record<string, string> = {
@@ -69,8 +61,7 @@ export function toDeepLSource(locale: string): string {
   return locale.split("-")[0].toUpperCase();
 }
 
-// `%{name}` placeholders must come back untouched, so each is wrapped in a tag DeepL is told to leave alone (`tag_handling: xml` + `ignore_tags`). That means the rest of the text has to be valid XML going in, and be un-escaped coming out.
-const PLACEHOLDER = /%\{[^}]*\}/g;
+// `@kiritan/middleware` swaps everything that must stay verbatim (code, URLs, front matter, `%{name}`, ...) for `[[N]]` tokens before this sees the text. DeepL is told to leave an XML tag alone (`tag_handling: xml` + `ignore_tags`), so each token is wrapped in one; the rest of the text has to be valid XML going in, and is un-escaped coming out.
 const KEEP_TAG = "x";
 
 function escapeXml(text: string): string {
@@ -87,42 +78,49 @@ function unescapeXml(text: string): string {
     .replaceAll("&amp;", "&");
 }
 
-/** Wraps every `%{...}` in `<x>...</x>` and XML-escapes everything else. */
-export function protect(text: string): string {
-  let result = "";
-  let last = 0;
-  for (const match of text.matchAll(PLACEHOLDER)) {
-    result += escapeXml(text.slice(last, match.index));
-    result += `<${KEEP_TAG}>${escapeXml(match[0])}</${KEEP_TAG}>`;
-    last = match.index + match[0].length;
-  }
-  return result + escapeXml(text.slice(last));
+/** Escapes the text as XML and wraps every `[[N]]` token in the ignored tag. */
+export function encode(text: string): string {
+  return escapeXml(text).replace(
+    /\[\[(\d+)\]\]/g,
+    `<${KEEP_TAG}>[[$1]]</${KEEP_TAG}>`
+  );
 }
 
-/** The inverse of `protect`. */
-export function restore(text: string): string {
-  return unescapeXml(
-    text.replaceAll(`<${KEEP_TAG}>`, "").replaceAll(`</${KEEP_TAG}>`, "")
-  );
+/** The inverse of `encode`. */
+export function decode(text: string): string {
+  return unescapeXml(text.replace(new RegExp(`</?${KEEP_TAG}>`, "gi"), ""));
 }
 
 interface DeepLResponse {
   translations?: Array<{ text: string }>;
 }
 
-/** Turns an ofetch failure into a readable error carrying the HTTP status and the service's own message. */
-function describeError(service: string, error: unknown): Error {
+/** A failure the layer's retry logic can read, and that says what DeepL said. */
+class DeepLError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
+    this.name = "DeepLError";
+  }
+}
+
+function describeError(error: unknown): Error {
   if (error instanceof FetchError && error.status !== undefined) {
     const data: unknown = error.data;
     const detail =
       typeof data === "string" ? data : data ? JSON.stringify(data) : "";
-    return new Error(
-      `@kiritan/deepl: ${service} responded ${error.status}${detail ? `: ${detail}` : ""}`,
+    return new DeepLError(
+      `@kiritan/deepl: DeepL responded ${error.status}${detail ? `: ${detail}` : ""}`,
+      error.status,
       { cause: error }
     );
   }
-  return new Error(
-    `@kiritan/deepl: request to ${service} failed: ${error instanceof Error ? error.message : String(error)}`,
+  return new DeepLError(
+    `@kiritan/deepl: request to DeepL failed: ${error instanceof Error ? error.message : String(error)}`,
+    undefined,
     { cause: error }
   );
 }
@@ -141,13 +139,13 @@ async function requestTranslations(
     body = await request<DeepLResponse>(`${baseUrl}/v2/translate`, {
       method: "POST",
       headers: { Authorization: `DeepL-Auth-Key ${options.apiKey}` },
-      retry: options.retry ?? 2,
-      retryDelay: options.retryDelay ?? 500,
+      // The layer retries; ofetch must not retry underneath it.
+      retry: 0,
       timeout: options.timeout ?? 30_000,
       // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
       body: {
         ...options.extraParams,
-        text: texts.map(protect),
+        text: texts,
         source_lang: toDeepLSource(from),
         target_lang: toDeepLTarget(to, options.targetLanguages),
         tag_handling: "xml",
@@ -155,86 +153,57 @@ async function requestTranslations(
       },
     });
   } catch (error) {
-    throw describeError("DeepL", error);
+    throw describeError(error);
   }
   if (body.translations?.length !== texts.length) {
-    throw new Error(
+    throw new DeepLError(
       `@kiritan/deepl: expected ${texts.length} translation(s), got ${body.translations?.length ?? 0}`
     );
   }
-  return body.translations.map((entry) => restore(entry.text));
+  return body.translations.map((entry) => entry.text);
 }
 
-/**
- * A single-form `translate.middlewares` entry that translates every context it sees through DeepL, one request each.
- * `%{name}` placeholders come back unchanged.
- */
-export function deepl(options: DeepLOptions): DeepLMiddleware {
-  return async (ctx) => {
-    const [translated] = await requestTranslations(
-      options,
-      [ctx.text],
-      ctx.from,
-      ctx.to
-    );
-    return translated;
-  };
-}
+/** The size of a text as it will actually be sent: XML-wrapped and JSON-encoded, in UTF-8 bytes. */
+const wireBytes = (text: string) =>
+  Buffer.byteLength(JSON.stringify(encode(text)), "utf8");
 
-/** Splits `indexes` into runs within DeepL's per-request text count and body size (measured on the escaped, JSON-encoded text, which is what actually goes out). A single text over the size limit still goes out alone, for DeepL to reject with its own error. */
-function chunkIndexes(
-  indexes: number[],
-  ctxs: TranslateContextLike[]
-): number[][] {
-  const chunks: number[][] = [];
-  let current: number[] = [];
-  let bytes = 0;
-  for (const index of indexes) {
-    const size = Buffer.byteLength(JSON.stringify(protect(ctxs[index].text)));
-    if (
-      current.length > 0 &&
-      (current.length >= MAX_TEXTS_PER_REQUEST || bytes + size > MAX_BODY_BYTES)
-    ) {
-      chunks.push(current);
-      current = [];
-      bytes = 0;
-    }
-    current.push(index);
-    bytes += size;
-  }
-  if (current.length > 0) chunks.push(current);
-  return chunks;
-}
-
-/**
- * A batch-form `translate.middlewares` entry: contexts sharing a language pair go out together, up to DeepL's 50 texts / 128 KiB per request, instead of one request each. Prefer this for a catalog with many segments.
- */
-export function deeplBatch(options: DeepLOptions): DeepLBatchMiddleware {
-  return {
-    batch: true,
-    handle: async (ctxs) => {
-      const results: (string | null)[] = new Array(ctxs.length).fill(null);
-      const groups = new Map<string, number[]>();
-      ctxs.forEach((ctx, index) => {
-        const key = `${ctx.from}\u0000${ctx.to}`;
-        groups.set(key, [...(groups.get(key) ?? []), index]);
-      });
-
-      for (const indexes of groups.values()) {
-        for (const chunk of chunkIndexes(indexes, ctxs)) {
-          const { from, to } = ctxs[chunk[0]];
-          const translated = await requestTranslations(
-            options,
-            chunk.map((index) => ctxs[index].text),
-            from,
-            to
-          );
-          chunk.forEach((index, position) => {
-            results[index] = translated[position];
-          });
-        }
-      }
-      return results;
+function create(options: DeepLOptions, batched: boolean): TranslatorMiddleware {
+  const common: TranslatorOptions = {
+    name: "deepl",
+    wire: { encode, decode },
+    measure: wireBytes,
+    maxChars: MAX_TEXT_BYTES,
+    maxBatchChars: MAX_BATCH_BYTES,
+    maxBatchSize: batched ? MAX_TEXTS_PER_REQUEST : 1,
+    retry: { retries: options.retry ?? 2, delay: options.retryDelay ?? 500 },
+    concurrency: options.concurrency,
+    minInterval: options.minInterval,
+    cache: options.cache,
+    protect: options.protect,
+    onError: options.onError,
+    onSkip: options.onSkip,
+    async translateBatch(texts, { from, to }) {
+      return requestTranslations(options, texts, from, to);
     },
   };
+  // Unset tuning must not overwrite the layer's own defaults.
+  for (const key of Object.keys(common) as Array<keyof TranslatorOptions>) {
+    if (common[key] === undefined) delete common[key];
+  }
+  return createTranslator(common);
+}
+
+/**
+ * A `translate.middlewares` entry that translates through DeepL, one request per text.
+ * Built on `@kiritan/middleware`, so code blocks, inline code, URLs, link destinations, HTML, front matter, `:::kiritan` lines and `%{name}` come back untouched (and a result that lost one is refused), a text over DeepL's size limit is split at paragraph boundaries and rejoined, and requests are retried on 429/5xx.
+ */
+export function deepl(options: DeepLOptions): DeepLMiddleware {
+  return create(options, false);
+}
+
+/**
+ * The same, but texts sharing a language pair go out together — up to DeepL's 50 texts / 128 KiB per request. Prefer this for a catalog with many segments.
+ */
+export function deeplBatch(options: DeepLOptions): DeepLMiddleware {
+  return create(options, true);
 }

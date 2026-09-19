@@ -1,6 +1,6 @@
 {
   "name": "@kiritan/deepl",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A DeepL translate middleware for Kiritan / KiritanのDeepL翻訳ミドルウェア",
   "keywords": [
     "deepl",
@@ -48,6 +48,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@kiritan/middleware": "^0.1.0",
     "ofetch": "^1.5.1"
   }
 }

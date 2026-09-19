@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  decode,
   deepl,
   deeplBatch,
-  protect,
-  restore,
+  encode,
   toDeepLSource,
   toDeepLTarget,
 } from "./index.js";
@@ -14,9 +14,9 @@ interface Captured {
   body: Record<string, unknown>;
 }
 
-/** A fake `fetch` that records each request and answers with `respond(texts)`. */
+/** A fake `fetch` that records each request and answers with `respond(texts, callNumber)`. */
 function fakeFetch(
-  respond: (texts: string[]) => string[] = (texts) =>
+  respond: (texts: string[], n: number) => string[] = (texts) =>
     texts.map((text) => `T(${text})`),
   status = 200
 ) {
@@ -29,7 +29,9 @@ function fakeFetch(
         return new Response("quota exceeded", { status });
       }
       return Response.json({
-        translations: respond(body.text as string[]).map((text) => ({ text })),
+        translations: respond(body.text as string[], calls.length).map(
+          (text) => ({ text })
+        ),
       });
     }
   );
@@ -37,7 +39,10 @@ function fakeFetch(
 }
 
 const ctx = (text: string, from = "en", to = "ja") => ({ text, from, to });
-const next = async () => null;
+const next = async () => [];
+const fast = { retryDelay: 0 } as const;
+const bodyBytes = (call: Captured) =>
+  Buffer.byteLength(JSON.stringify(call.body));
 
 describe("language codes", () => {
   it("uppercases a target and gives EN/PT their required regional variant", () => {
@@ -57,31 +62,29 @@ describe("language codes", () => {
   });
 });
 
-describe("placeholder protection", () => {
-  it("wraps %{...} in an ignored tag and escapes everything else", () => {
-    expect(protect("a < b & c: %{name} > 1")).toBe(
-      "a &lt; b &amp; c: <x>%{name}</x> &gt; 1"
+describe("wire encoding", () => {
+  it("escapes XML and wraps each protected token in the ignored tag", () => {
+    expect(encode("a < b & c [[0]] > 1 [[12]]")).toBe(
+      "a &lt; b &amp; c <x>[[0]]</x> &gt; 1 <x>[[12]]</x>"
     );
   });
 
-  it("round-trips through restore", () => {
-    const text = "Hi %{name}, 1 < 2 & 3 > 2 %{a}%{b}";
-    expect(restore(protect(text))).toBe(text);
-  });
-
-  it("leaves text without placeholders as plain escaped text", () => {
-    expect(protect("plain")).toBe("plain");
+  it("round-trips, tolerating the tag's case", () => {
+    const text = "1 < 2 & 3 > 2 [[0]][[1]]";
+    expect(decode(encode(text))).toBe(text);
+    expect(decode("<X>[[0]]</X> &amp;")).toBe("[[0]] &");
   });
 });
 
 describe("deepl()", () => {
   it("posts one authenticated request in DeepL's documented shape", async () => {
     const { calls, fetch } = fakeFetch();
-    const middleware = deepl({ apiKey: "secret", fetch });
+    const [result] = await deepl({ apiKey: "secret", fetch }).handle(
+      [ctx("Hello %{name}")],
+      next
+    );
 
-    const result = await middleware(ctx("Hello %{name}"), next);
-
-    expect(result).toBe("T(Hello %{name})");
+    expect(result).toBe("T(Hello [[0]])".replace("[[0]]", "%{name}"));
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe("https://api.deepl.com/v2/translate");
     expect(calls[0].init.method).toBe("POST");
@@ -89,7 +92,7 @@ describe("deepl()", () => {
     expect(headers.get("Authorization")).toBe("DeepL-Auth-Key secret");
     expect(headers.get("Content-Type")).toBe("application/json");
     expect(calls[0].body).toEqual({
-      text: ["Hello <x>%{name}</x>"],
+      text: ["Hello <x>[[0]]</x>"],
       source_lang: "EN",
       target_lang: "JA",
       tag_handling: "xml",
@@ -97,9 +100,40 @@ describe("deepl()", () => {
     });
   });
 
+  it("keeps code, URLs, links, front matter and directives out of the request", async () => {
+    const { calls, fetch } = fakeFetch((texts) => texts);
+    const doc = [
+      "---",
+      "title: Hi",
+      "---",
+      "",
+      ":::kiritan{locale=en}",
+      "Run `npm i` and see [docs](https://example.com/a).",
+      ":::",
+      "",
+      "```sh",
+      "npm run build",
+      "```",
+      "",
+    ].join("\n");
+    const [out] = await deepl({ apiKey: "k", fetch }).handle([ctx(doc)], next);
+
+    const sent = (calls[0].body.text as string[]).join("\n");
+    for (const secret of [
+      "title: Hi",
+      "npm i",
+      "example.com",
+      "npm run build",
+      "kiritan{",
+    ]) {
+      expect(sent).not.toContain(secret);
+    }
+    expect(out).toBe(doc);
+  });
+
   it("uses the free endpoint for a key ending in :fx", async () => {
     const { calls, fetch } = fakeFetch();
-    await deepl({ apiKey: "abc:fx", fetch })(ctx("Hi"), next);
+    await deepl({ apiKey: "abc:fx", fetch }).handle([ctx("Hi")], next);
     expect(calls[0].url).toBe("https://api-free.deepl.com/v2/translate");
   });
 
@@ -111,7 +145,7 @@ describe("deepl()", () => {
       targetLanguages: { en: "EN-GB" },
       extraParams: { formality: "prefer_less" },
       fetch,
-    })(ctx("Bonjour", "fr", "en"), next);
+    }).handle([ctx("Bonjour", "fr", "en")], next);
 
     expect(calls[0].url).toBe("https://proxy.example/v2/translate");
     expect(calls[0].body).toMatchObject({
@@ -127,26 +161,50 @@ describe("deepl()", () => {
       apiKey: "k",
       extraParams: { tag_handling: "html", ignore_tags: [], text: ["x"] },
       fetch,
-    })(ctx("Hi %{a}"), next);
+    }).handle([ctx("Hi `a`")], next);
 
     expect(calls[0].body).toMatchObject({
-      text: ["Hi <x>%{a}</x>"],
+      text: ["Hi <x>[[0]]</x>"],
       tag_handling: "xml",
       ignore_tags: ["x"],
     });
   });
 
   it("un-escapes and un-wraps what DeepL returns", async () => {
-    const { fetch } = fakeFetch(() => ["<x>%{name}</x> &lt;3 &amp; more"]);
-    const result = await deepl({ apiKey: "k", fetch })(ctx("x"), next);
-    expect(result).toBe("%{name} <3 & more");
+    const { fetch } = fakeFetch(() => ["<x>[[0]]</x> &lt;3 &amp; more"]);
+    const [result] = await deepl({ apiKey: "k", fetch }).handle(
+      [ctx("`code` x")],
+      next
+    );
+    expect(result).toBe("`code` <3 & more");
   });
 
-  it("throws a readable error on a non-OK response", async () => {
-    const { fetch } = fakeFetch(undefined, 456);
+  it("refuses a result where DeepL dropped a protected span", async () => {
+    const { fetch } = fakeFetch(() => ["translated without it"]);
     await expect(
-      deepl({ apiKey: "k", fetch })(ctx("Hi"), next)
+      deepl({ apiKey: "k", fetch }).handle([ctx("see `code`")], next)
+    ).rejects.toThrow(/dropped 1 protected span/);
+  });
+
+  it("splits a text over the request-size limit and rejoins it", async () => {
+    const { calls, fetch } = fakeFetch((texts) => texts);
+    const paragraph = "word ".repeat(20_000).trim();
+    const text = [paragraph, paragraph.replace("word", "term")].join("\n\n");
+    const [out] = await deepl({ apiKey: "k", fetch }).handle([ctx(text)], next);
+
+    expect(calls.length).toBeGreaterThan(1);
+    for (const call of calls) {
+      expect(bodyBytes(call)).toBeLessThan(128 * 1024);
+    }
+    expect(out).toBe(text);
+  });
+
+  it("throws a readable error on a non-OK response, without retrying a permanent one", async () => {
+    const { calls, fetch } = fakeFetch(undefined, 456);
+    await expect(
+      deepl({ apiKey: "k", fetch, ...fast }).handle([ctx("Hi")], next)
     ).rejects.toThrow("DeepL responded 456: quota exceeded");
+    expect(calls).toHaveLength(1);
   });
 
   it("retries a 429 and then succeeds", async () => {
@@ -158,12 +216,11 @@ describe("deepl()", () => {
         : Response.json({ translations: [{ text: "ok" }] });
     }) as unknown as typeof fetch;
 
-    const result = await deepl({
+    const [result] = await deepl({
       apiKey: "k",
       fetch: flaky,
-      retryDelay: 0,
-    })(ctx("Hi"), next);
-
+      ...fast,
+    }).handle([ctx("Hi")], next);
     expect(result).toBe("ok");
     expect(attempts).toBe(2);
   });
@@ -176,25 +233,12 @@ describe("deepl()", () => {
     }) as unknown as typeof fetch;
 
     await expect(
-      deepl({ apiKey: "k", fetch: down, retry: 1, retryDelay: 0 })(
-        ctx("Hi"),
+      deepl({ apiKey: "k", fetch: down, retry: 1, ...fast }).handle(
+        [ctx("Hi")],
         next
       )
     ).rejects.toThrow("DeepL responded 503: unavailable");
     expect(attempts).toBe(2);
-  });
-
-  it("does not retry a non-retryable status", async () => {
-    let attempts = 0;
-    const denied = (async () => {
-      attempts += 1;
-      return new Response("bad key", { status: 403 });
-    }) as unknown as typeof fetch;
-
-    await expect(
-      deepl({ apiKey: "k", fetch: denied, retryDelay: 0 })(ctx("Hi"), next)
-    ).rejects.toThrow("DeepL responded 403: bad key");
-    expect(attempts).toBe(1);
   });
 
   it("wraps a network failure with a readable message", async () => {
@@ -203,35 +247,31 @@ describe("deepl()", () => {
     }) as unknown as typeof fetch;
 
     await expect(
-      deepl({ apiKey: "k", fetch: offline, retry: 0 })(ctx("Hi"), next)
+      deepl({ apiKey: "k", fetch: offline, retry: 0 }).handle([ctx("Hi")], next)
     ).rejects.toThrow("request to DeepL failed");
   });
 
   it("throws if the number of translations doesn't match", async () => {
     const { fetch } = fakeFetch(() => []);
     await expect(
-      deepl({ apiKey: "k", fetch })(ctx("Hi"), next)
+      deepl({ apiKey: "k", fetch, retry: 0 }).handle([ctx("Hi")], next)
     ).rejects.toThrow("expected 1 translation(s), got 0");
+  });
+
+  it("sends each text in its own request", async () => {
+    const { calls, fetch } = fakeFetch();
+    await deepl({ apiKey: "k", fetch }).handle([ctx("a"), ctx("b")], next);
+    expect(calls.map((c) => (c.body.text as string[]).length)).toEqual([1, 1]);
   });
 });
 
 describe("deeplBatch()", () => {
-  const run = (
-    options: Parameters<typeof deeplBatch>[0],
-    ctxs: ReturnType<typeof ctx>[]
-  ) => deeplBatch(options).handle(ctxs, async () => ctxs.map(() => null));
-
-  it("is a batch-form middleware", () => {
-    expect(deeplBatch({ apiKey: "k" }).batch).toBe(true);
-  });
-
   it("sends contexts sharing a language pair in one request, keeping order", async () => {
     const { calls, fetch } = fakeFetch();
-    const results = await run({ apiKey: "k", fetch }, [
-      ctx("one"),
-      ctx("two"),
-      ctx("three"),
-    ]);
+    const results = await deeplBatch({ apiKey: "k", fetch }).handle(
+      [ctx("one"), ctx("two"), ctx("three")],
+      next
+    );
     expect(calls).toHaveLength(1);
     expect(calls[0].body.text).toEqual(["one", "two", "three"]);
     expect(results).toEqual(["T(one)", "T(two)", "T(three)"]);
@@ -239,56 +279,68 @@ describe("deeplBatch()", () => {
 
   it("splits different language pairs into separate requests, keeping each result in place", async () => {
     const { calls, fetch } = fakeFetch();
-    const results = await run({ apiKey: "k", fetch }, [
-      ctx("a", "en", "ja"),
-      ctx("b", "en", "fr"),
-      ctx("c", "en", "ja"),
+    const results = await deeplBatch({ apiKey: "k", fetch }).handle(
+      [ctx("a", "en", "ja"), ctx("b", "en", "fr"), ctx("c", "en", "ja")],
+      next
+    );
+    expect(calls.map((call) => call.body.target_lang).sort()).toEqual([
+      "FR",
+      "JA",
     ]);
-    expect(calls.map((call) => call.body.target_lang)).toEqual(["JA", "FR"]);
-    expect(calls[0].body.text).toEqual(["a", "c"]);
+    const ja = calls.find((c) => c.body.target_lang === "JA")!;
+    expect(ja.body.text).toEqual(["a", "c"]);
     expect(results).toEqual(["T(a)", "T(b)", "T(c)"]);
   });
 
   it("chunks at DeepL's 50 texts per request", async () => {
     const { calls, fetch } = fakeFetch();
     const many = Array.from({ length: 120 }, (_, i) => ctx(`t${i}`));
-    const results = await run({ apiKey: "k", fetch }, many);
+    const results = await deeplBatch({ apiKey: "k", fetch }).handle(many, next);
 
-    expect(calls.map((call) => (call.body.text as string[]).length)).toEqual([
-      50, 50, 20,
-    ]);
+    expect(
+      calls
+        .map((call) => (call.body.text as string[]).length)
+        .sort((a, b) => b - a)
+    ).toEqual([50, 50, 20]);
     expect(results[0]).toBe("T(t0)");
     expect(results[119]).toBe("T(t119)");
   });
 
-  it("chunks at 120 KiB of request body as well as at 50 texts", async () => {
+  it("also chunks by the size of the request body", async () => {
     const { calls, fetch } = fakeFetch();
     const big = "x".repeat(70 * 1024);
-    const results = await run({ apiKey: "k", fetch }, [
-      ctx(big),
-      ctx(big),
-      ctx("small"),
-    ]);
+    const results = await deeplBatch({ apiKey: "k", fetch }).handle(
+      [ctx(big), ctx(big + "y"), ctx("small")],
+      next
+    );
 
-    expect(calls.map((call) => (call.body.text as string[]).length)).toEqual([
-      1, 2,
+    for (const call of calls) {
+      expect(bodyBytes(call)).toBeLessThan(128 * 1024);
+    }
+    expect(calls.length).toBeGreaterThan(1);
+    expect(results.map((r) => r?.length)).toEqual([
+      big.length + 3,
+      big.length + 4,
+      "T(small)".length,
     ]);
-    expect(results).toEqual([`T(${big})`, `T(${big})`, "T(small)"]);
   });
 
-  it("counts bytes, not characters, and the XML escaping", async () => {
-    const { calls, fetch } = fakeFetch();
-    // 30k "&" -> 150k bytes once escaped to "&amp;"; 30k CJK characters -> 90k bytes.
-    await run({ apiKey: "k", fetch }, [
-      ctx("&".repeat(30_000)),
-      ctx("あ".repeat(30_000)),
-    ]);
-    expect(calls).toHaveLength(2);
+  it("counts bytes and the wrapped, escaped form, not characters", async () => {
+    const { calls, fetch } = fakeFetch((texts) => texts);
+    await deeplBatch({ apiKey: "k", fetch }).handle(
+      [ctx("&".repeat(15_000)), ctx("あ".repeat(15_000)), ctx("a")],
+      next
+    );
+    for (const call of calls) {
+      expect(bodyBytes(call)).toBeLessThan(128 * 1024);
+    }
   });
 
   it("makes no request for no contexts", async () => {
     const { calls, fetch } = fakeFetch();
-    expect(await run({ apiKey: "k", fetch }, [])).toEqual([]);
+    expect(await deeplBatch({ apiKey: "k", fetch }).handle([], next)).toEqual(
+      []
+    );
     expect(calls).toHaveLength(0);
   });
 });
