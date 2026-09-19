@@ -91,7 +91,13 @@ await build(config);
 
 ## 関連パッケージ
 
-- [`@kiritan/runtime`](https://www.npmjs.com/package/@kiritan/runtime) — ビルド時依存を持たず単体でも使える、最小限の `t(key, params)` ランタイム。
+| パッケージ(npm) | GitHub | 内容 |
+| --- | --- | --- |
+| [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) | [packages/middleware](https://github.com/otnc/kiritan/tree/main/packages/middleware) | 任意の翻訳関数を `translate.middlewares` の要素にする: コード/URL/`%{name}` の保護、分割、まとめ送信、再試行、キャッシュ |
+| [`@kiritan/free-translate`](https://www.npmjs.com/package/@kiritan/free-translate) | [packages/free-translate](https://github.com/otnc/kiritan/tree/main/packages/free-translate) | APIキー不要のミドルウェア(MyMemory、Googleのキーレスエンドポイント、自前ホストのLibreTranslateとGoogle Apps Script) |
+| [`@kiritan/deepl`](https://www.npmjs.com/package/@kiritan/deepl) | [packages/deepl](https://github.com/otnc/kiritan/tree/main/packages/deepl) | DeepLのミドルウェア |
+| [`@kiritan/google-translate`](https://www.npmjs.com/package/@kiritan/google-translate) | [packages/google-translate](https://github.com/otnc/kiritan/tree/main/packages/google-translate) | Google Cloud Translationのミドルウェア |
+| [`@kiritan/runtime`](https://www.npmjs.com/package/@kiritan/runtime) | [packages/runtime](https://github.com/otnc/kiritan/tree/main/packages/runtime) | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
 
 ## コントリビュート
 
