@@ -27,3 +27,12 @@ export type { InitOptions, InitResult } from "./pipeline/init.js";
 export { aggregateResources } from "./i18n/aggregate.js";
 export type { AggregatedResource } from "./i18n/aggregate.js";
 export { markdownRenderer, resolveRenderer } from "./renderers/index.js";
+export { verify } from "./pipeline/verify.js";
+export type {
+  VerifyEntry,
+  VerifyOptions,
+  VerifyResult,
+  VerifyStatus,
+} from "./pipeline/verify.js";
+export { renderOutputs } from "./pipeline/build.js";
+export type { RenderedOutput } from "./pipeline/build.js";
