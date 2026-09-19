@@ -1,6 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { parseMarkdown, stringifyMarkdown } from "./parse.js";
 
+describe("front matter", () => {
+  const source = "---\ntitle: Hello %{name}\ntags: [a, b]\n---\n\n# Body\n";
+
+  it("keeps a leading YAML block as one opaque node", () => {
+    const tree = parseMarkdown(source);
+    expect(tree.children[0]).toMatchObject({
+      type: "yaml",
+      value: "title: Hello %{name}\ntags: [a, b]",
+    });
+  });
+
+  it("round-trips the block verbatim", () => {
+    const result = stringifyMarkdown(parseMarkdown(source));
+    expect(result).toBe(source);
+  });
+});
+
 describe("stringifyMarkdown", () => {
   it("round-trips a GitHub alert block without escaping its marker", () => {
     const source = "> [!WARNING]\n>\n> Be careful.\n";

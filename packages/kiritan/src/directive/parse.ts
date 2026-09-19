@@ -1,14 +1,20 @@
 import remarkDirective from "remark-directive";
+import remarkFrontmatter from "remark-frontmatter";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
 import { unified } from "unified";
 import type { Root } from "mdast";
 
-const parser = unified().use(remarkParse).use(remarkDirective);
+// remark-frontmatter keeps a leading `---` YAML block as one opaque `yaml` node, so it survives a parse/stringify round trip verbatim (interpolation only touches text nodes, so it never reaches it either).
+const parser = unified()
+  .use(remarkParse)
+  .use(remarkFrontmatter)
+  .use(remarkDirective);
 // bullet: "-" matches the convention used throughout kiritan's own docs
 // (remark-stringify otherwise defaults to "*").
 const stringifier = unified()
   .use(remarkStringify, { bullet: "-" })
+  .use(remarkFrontmatter)
   .use(remarkDirective);
 
 /** Parses Markdown source into an mdast tree, recognizing `:::kiritan{...}` / `::kiritan{...}` directives. */
