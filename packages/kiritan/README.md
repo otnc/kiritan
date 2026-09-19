@@ -91,7 +91,13 @@ Every command also accepts `--lang <en|ja>`, picking the CLI's own display langu
 
 ## Related packages
 
-- [`@kiritan/runtime`](https://www.npmjs.com/package/@kiritan/runtime) — the minimal `t(key, params)` runtime, usable on its own with no build-time dependencies.
+| Package (npm) | GitHub | What it is |
+| --- | --- | --- |
+| [`@kiritan/runtime`](https://www.npmjs.com/package/@kiritan/runtime) | [packages/runtime](https://github.com/otnc/kiritan/tree/main/packages/runtime) | The minimal `t(key, params)` runtime, with no build-time dependencies |
+| [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) | [packages/middleware](https://github.com/otnc/kiritan/tree/main/packages/middleware) | Turns any translate function into a `translate.middlewares` entry: protects code/URLs/`%{name}`, splits, batches, retries, caches |
+| [`@kiritan/free-translate`](https://www.npmjs.com/package/@kiritan/free-translate) | [packages/free-translate](https://github.com/otnc/kiritan/tree/main/packages/free-translate) | Middlewares that need no API key (MyMemory, Google's keyless endpoint, self-hosted LibreTranslate and Google Apps Script) |
+| [`@kiritan/deepl`](https://www.npmjs.com/package/@kiritan/deepl) | [packages/deepl](https://github.com/otnc/kiritan/tree/main/packages/deepl) | A DeepL middleware |
+| [`@kiritan/google-translate`](https://www.npmjs.com/package/@kiritan/google-translate) | [packages/google-translate](https://github.com/otnc/kiritan/tree/main/packages/google-translate) | A Google Cloud Translation middleware |
 
 ## Contributing
 
