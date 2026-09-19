@@ -63,8 +63,8 @@ export default {
 
 ### Behavior
 
-- `%{name}` placeholders come back unchanged: they're wrapped in a tag DeepL is told to ignore (`tag_handling: xml`), and the rest of the text is XML-escaped on the way in and un-escaped on the way out.
-- Text is sent as-is otherwise, so Markdown syntax in a segment (links, emphasis, code) is left to DeepL's own handling. Review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
+- Everything that must stay verbatim comes back untouched: code blocks, inline code, URLs, link destinations, HTML, front matter, `:::kiritan{...}` lines and `%{name}`. They are swapped for tokens before the text leaves your machine, wrapped in a tag DeepL is told to ignore (`tag_handling: xml`) so DeepL leaves them alone, and put back afterwards — and if DeepL drops one, the run fails instead of writing a translation that lost a link or a code span. (Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so it also accepts its `concurrency`, `minInterval`, `cache`, `protect`, `onError` and `onSkip` options.)
+- A text over DeepL's 128 KiB (say a whole README for a `sidecar` translation) is split at paragraph boundaries and joined back with the original spacing. The wording around protected spans is up to DeepL, so review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
 - A failed request is retried (see `retry`) and then throws, and `kiritan translate` stops with DeepL's own message (an invalid key, an exhausted quota, ...).
 
 ## Requirements

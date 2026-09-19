@@ -1,6 +1,6 @@
 {
   "name": "@kiritan/google-translate",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A Google Cloud Translation middleware for Kiritan / KiritanのGoogle Cloud Translation翻訳ミドルウェア",
   "keywords": [
     "google-translate",
@@ -48,6 +48,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@kiritan/middleware": "^0.1.0",
     "ofetch": "^1.5.1"
   }
 }

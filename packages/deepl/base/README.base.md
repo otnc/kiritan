@@ -87,8 +87,8 @@ export default {
 
 ### Behavior
 
-- `%{name}` placeholders come back unchanged: they're wrapped in a tag DeepL is told to ignore (`tag_handling: xml`), and the rest of the text is XML-escaped on the way in and un-escaped on the way out.
-- Text is sent as-is otherwise, so Markdown syntax in a segment (links, emphasis, code) is left to DeepL's own handling. Review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
+- Everything that must stay verbatim comes back untouched: code blocks, inline code, URLs, link destinations, HTML, front matter, `:::kiritan{...}` lines and `%{name}`. They are swapped for tokens before the text leaves your machine, wrapped in a tag DeepL is told to ignore (`tag_handling: xml`) so DeepL leaves them alone, and put back afterwards — and if DeepL drops one, the run fails instead of writing a translation that lost a link or a code span. (Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so it also accepts its `concurrency`, `minInterval`, `cache`, `protect`, `onError` and `onSkip` options.)
+- A text over DeepL's 128 KiB (say a whole README for a `sidecar` translation) is split at paragraph boundaries and joined back with the original spacing. The wording around protected spans is up to DeepL, so review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
 - A failed request is retried (see `retry`) and then throws, and `kiritan translate` stops with DeepL's own message (an invalid key, an exhausted quota, ...).
 :::
 :::kiritan{locale=ja}
@@ -107,8 +107,8 @@ export default {
 
 ### 挙動
 
-- `%{name}` のプレースホルダーは変更されずに戻る: DeepLが無視するよう指示したタグ(`tag_handling: xml`)で包み、残りのテキストは送信時にXMLエスケープ、受信時にアンエスケープする。
-- それ以外のテキストはそのまま送られるため、セグメント内のMarkdown構文(リンク・強調・コード)の扱いはDeepL自身に任される。公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
+- そのまま保つべきものはすべて変更されずに戻る: コードブロック、インラインコード、URL、リンク先、HTML、front matter、`:::kiritan{...}` の行、`%{name}`。これらはテキストが手元を離れる前にトークンに置き換えられ、DeepLが触らないよう無視するよう指示したタグ(`tag_handling: xml`)で包まれ、後で元に戻される。DeepLがそのどれかを落とした場合は、リンクやコードが欠けた翻訳を書き込むのではなく実行が失敗する。([`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware) の上に作られているため、`concurrency`・`minInterval`・`cache`・`protect`・`onError`・`onSkip` の各オプションも受け付ける。)
+- DeepLの128 KiBを超えるテキスト(たとえば `sidecar` 翻訳で送るREADME全体)は、段落の境界で分割し、元の間隔のまま結合し直す。保護した部分の周りの文言はDeepL任せなので、公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
 - 失敗したリクエストは再試行(`retry` 参照)され、それでも失敗すれば例外を投げ、`kiritan translate` はDeepL自身のメッセージ(無効なキー、使い切ったクォータ等)とともに停止する。
 :::
 

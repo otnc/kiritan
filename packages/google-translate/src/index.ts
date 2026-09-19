@@ -1,39 +1,30 @@
+import {
+  createTranslator,
+  type TranslatorMiddleware,
+  type TranslatorOptions,
+} from "@kiritan/middleware";
 import { createFetch, FetchError } from "ofetch";
 
-/**
- * The slice of Kiritan's `TranslateContext` this package reads. Declared here instead of imported from `kiritan` so the package has no dependency on it at all — a middleware is just a function, and these shapes are structurally compatible with `translate.middlewares`.
- */
-export interface TranslateContextLike {
-  text: string;
-  from: string;
-  to: string;
-}
+export type GoogleTranslateMiddleware = TranslatorMiddleware;
 
-export type GoogleTranslateMiddleware = (
-  ctx: TranslateContextLike,
-  next: () => Promise<string | null>
-) => Promise<string | null>;
+/** Tuning shared with every `@kiritan/middleware`-based provider. */
+type Tuning = Pick<
+  TranslatorOptions,
+  "concurrency" | "minInterval" | "cache" | "protect" | "onError" | "onSkip"
+>;
 
-export interface GoogleTranslateBatchMiddleware {
-  batch: true;
-  handle: (
-    ctxs: TranslateContextLike[],
-    next: () => Promise<(string | null)[]>
-  ) => Promise<(string | null)[]>;
-}
-
-export interface GoogleTranslateOptions {
+export interface GoogleTranslateOptions extends Tuning {
   /** A Google Cloud API key with the Cloud Translation API enabled. */
   apiKey: string;
   /** Overrides the endpoint. Default: `https://translation.googleapis.com`. */
   baseUrl?: string;
   /** Per-locale overrides of the language code sent as `source`/`target`, e.g. `{ zh: "zh-CN" }`. A locale not listed is sent as-is. */
   languageCodes?: Record<string, string>;
-  /** Extra fields merged into the request body, e.g. `{ model: "nmt" }`. */
+  /** Extra fields merged into the request body, e.g. `{ model: "nmt" }`. They can add fields but never override the ones this middleware depends on. */
   extraParams?: Record<string, unknown>;
   /** How many times to retry a failed request (network errors, 408/409/425/429/5xx) before giving up. Default: 2. */
   retry?: number;
-  /** Delay between retries, in ms. Default: 500. */
+  /** Delay before the first retry, in ms (doubled each time). Default: 500. */
   retryDelay?: number;
   /** Per-request timeout, in ms. Default: 30000. */
   timeout?: number;
@@ -42,9 +33,11 @@ export interface GoogleTranslateOptions {
 }
 
 const DEFAULT_BASE_URL = "https://translation.googleapis.com";
-/** The Basic (v2) API takes at most 128 strings, and roughly 30k code points, per request. */
+/** The Basic (v2) API takes at most 128 strings, and about 30k code points in total, per request. */
 const MAX_TEXTS_PER_REQUEST = 128;
-const MAX_CODE_POINTS_PER_REQUEST = 30_000;
+/** One text and one request's texts, in code points of what is actually sent; headroom under 30k. */
+const MAX_TEXT_CODE_POINTS = 25_000;
+const MAX_BATCH_CODE_POINTS = 28_000;
 
 /** A locale's language code as Google expects it: the override if one is given, otherwise the locale unchanged. */
 export function toGoogleLanguage(
@@ -54,8 +47,7 @@ export function toGoogleLanguage(
   return Object.hasOwn(overrides, locale) ? overrides[locale] : locale;
 }
 
-// `%{name}` placeholders must come back untouched, so each is wrapped in `<span translate="no">` (which Google honors when `format` is `html`). That means the rest of the text has to be valid HTML going in, and be un-escaped coming out.
-const PLACEHOLDER = /%\{[^}]*\}/g;
+// `@kiritan/middleware` swaps everything that must stay verbatim (code, URLs, front matter, `%{name}`, ...) for `[[N]]` tokens before this sees the text. Google leaves `translate="no"` elements alone when `format` is `html`, so each token is wrapped in one; the rest of the text has to be valid HTML going in, and is un-escaped coming out.
 const KEEP_OPEN = '<span translate="no">';
 const KEEP_CLOSE = "</span>";
 
@@ -68,37 +60,37 @@ function escapeHtml(text: string): string {
 
 // Entities are decoded in a single pass. Decoding again after `&amp;` would corrupt literal text: a source containing `&#39;` is sent as `&amp;#39;`, and has to come back as `&#39;`, not as an apostrophe.
 // Google's responses HTML-escape more than what was sent in (an apostrophe comes back as `&#39;`, for instance), so this decodes the named entities that can appear plus any numeric one.
+const ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&apos;": "'",
+};
+
 function unescapeHtml(text: string): string {
-  return text
-    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) =>
-      String.fromCodePoint(Number.parseInt(hex, 16))
-    )
-    .replace(/&#(\d+);/g, (_match, decimal: string) =>
-      String.fromCodePoint(Number.parseInt(decimal, 10))
-    )
-    .replaceAll("&quot;", '"')
-    .replaceAll("&apos;", "'")
-    .replaceAll("&lt;", "<")
-    .replaceAll("&gt;", ">")
-    .replaceAll("&amp;", "&");
+  return text.replace(
+    /&(?:#x([0-9a-f]+)|#(\d+)|[a-z]+);/gi,
+    (whole, hex: string | undefined, dec: string | undefined) => {
+      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
+      if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
+      return ENTITIES[whole.toLowerCase()] ?? whole;
+    }
+  );
 }
 
-/** Wraps every `%{...}` in `<span translate="no">` and HTML-escapes everything else. */
-export function protect(text: string): string {
-  let result = "";
-  let last = 0;
-  for (const match of text.matchAll(PLACEHOLDER)) {
-    result += escapeHtml(text.slice(last, match.index));
-    result += `${KEEP_OPEN}${escapeHtml(match[0])}${KEEP_CLOSE}`;
-    last = match.index + match[0].length;
-  }
-  return result + escapeHtml(text.slice(last));
+/** Escapes the text as HTML and wraps every `[[N]]` token in a `translate="no"` span. */
+export function encode(text: string): string {
+  return escapeHtml(text).replace(
+    /\[\[(\d+)\]\]/g,
+    `${KEEP_OPEN}[[$1]]${KEEP_CLOSE}`
+  );
 }
 
-/** The inverse of `protect`. */
-export function restore(text: string): string {
+/** The inverse of `encode`. */
+export function decode(text: string): string {
   return unescapeHtml(
-    text.replaceAll(KEEP_OPEN, "").replaceAll(KEEP_CLOSE, "")
+    text.replace(/<span\s+translate="no">/gi, "").replace(/<\/span>/gi, "")
   );
 }
 
@@ -106,19 +98,32 @@ interface GoogleResponse {
   data?: { translations?: Array<{ translatedText: string }> };
 }
 
-/** Turns an ofetch failure into a readable error carrying the HTTP status and the service's own message. */
+/** A failure the layer's retry logic can read, and that says what Google said. */
+class GoogleError extends Error {
+  constructor(
+    message: string,
+    readonly status?: number,
+    options?: { cause?: unknown }
+  ) {
+    super(message, options);
+    this.name = "GoogleError";
+  }
+}
+
 function describeError(error: unknown): Error {
   if (error instanceof FetchError && error.status !== undefined) {
     const data: unknown = error.data;
     const detail =
       typeof data === "string" ? data : data ? JSON.stringify(data) : "";
-    return new Error(
+    return new GoogleError(
       `@kiritan/google-translate: Google responded ${error.status}${detail ? `: ${detail}` : ""}`,
+      error.status,
       { cause: error }
     );
   }
-  return new Error(
+  return new GoogleError(
     `@kiritan/google-translate: request to Google failed: ${error instanceof Error ? error.message : String(error)}`,
+    undefined,
     { cause: error }
   );
 }
@@ -138,13 +143,13 @@ async function requestTranslations(
       {
         method: "POST",
         headers: { "X-goog-api-key": options.apiKey },
-        retry: options.retry ?? 2,
-        retryDelay: options.retryDelay ?? 500,
+        // The layer retries; ofetch must not retry underneath it.
+        retry: 0,
         timeout: options.timeout ?? 30_000,
         // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
         body: {
           ...options.extraParams,
-          q: texts.map(protect),
+          q: texts,
           source: toGoogleLanguage(from, options.languageCodes),
           target: toGoogleLanguage(to, options.languageCodes),
           format: "html",
@@ -156,86 +161,60 @@ async function requestTranslations(
   }
   const translations = response.data?.translations;
   if (translations?.length !== texts.length) {
-    throw new Error(
+    throw new GoogleError(
       `@kiritan/google-translate: expected ${texts.length} translation(s), got ${translations?.length ?? 0}`
     );
   }
-  return translations.map((entry) => restore(entry.translatedText));
+  return translations.map((entry) => entry.translatedText);
+}
+
+/** The size of a text as it will actually be sent: HTML-wrapped and escaped, in code points. */
+const wireCodePoints = (text: string) => [...encode(text)].length;
+
+function create(
+  options: GoogleTranslateOptions,
+  batched: boolean
+): TranslatorMiddleware {
+  const common: TranslatorOptions = {
+    name: "google-translate",
+    wire: { encode, decode },
+    measure: wireCodePoints,
+    maxChars: MAX_TEXT_CODE_POINTS,
+    maxBatchChars: MAX_BATCH_CODE_POINTS,
+    maxBatchSize: batched ? MAX_TEXTS_PER_REQUEST : 1,
+    retry: { retries: options.retry ?? 2, delay: options.retryDelay ?? 500 },
+    concurrency: options.concurrency,
+    minInterval: options.minInterval,
+    cache: options.cache,
+    protect: options.protect,
+    onError: options.onError,
+    onSkip: options.onSkip,
+    async translateBatch(texts, { from, to }) {
+      return requestTranslations(options, texts, from, to);
+    },
+  };
+  // Unset tuning must not overwrite the layer's own defaults.
+  for (const key of Object.keys(common) as Array<keyof TranslatorOptions>) {
+    if (common[key] === undefined) delete common[key];
+  }
+  return createTranslator(common);
 }
 
 /**
- * A single-form `translate.middlewares` entry that translates every context it sees through Google Cloud Translation (Basic, v2), one request each.
- * `%{name}` placeholders come back unchanged.
+ * A `translate.middlewares` entry that translates through Google Cloud Translation (Basic, v2), one request per text.
+ * Built on `@kiritan/middleware`, so code blocks, inline code, URLs, link destinations, HTML, front matter, `:::kiritan` lines and `%{name}` come back untouched (and a result that lost one is refused), a text over Google's size limit is split at paragraph boundaries and rejoined, and requests are retried on 429/5xx.
  */
 export function googleTranslate(
   options: GoogleTranslateOptions
 ): GoogleTranslateMiddleware {
-  return async (ctx) => {
-    const [translated] = await requestTranslations(
-      options,
-      [ctx.text],
-      ctx.from,
-      ctx.to
-    );
-    return translated;
-  };
-}
-
-/** Splits `indexes` into runs that stay within the per-request count and code-point limits. A single text over the code-point limit still goes out alone, for Google to reject with its own error. */
-function chunkIndexes(indexes: number[], texts: string[]): number[][] {
-  const chunks: number[][] = [];
-  let current: number[] = [];
-  let codePoints = 0;
-  for (const index of indexes) {
-    const size = [...protect(texts[index])].length;
-    if (
-      current.length > 0 &&
-      (current.length >= MAX_TEXTS_PER_REQUEST ||
-        codePoints + size > MAX_CODE_POINTS_PER_REQUEST)
-    ) {
-      chunks.push(current);
-      current = [];
-      codePoints = 0;
-    }
-    current.push(index);
-    codePoints += size;
-  }
-  if (current.length > 0) chunks.push(current);
-  return chunks;
+  return create(options, false);
 }
 
 /**
- * A batch-form `translate.middlewares` entry: contexts sharing a language pair go out together, up to 128 strings / 30k code points per request, instead of one request each. Prefer this for a catalog with many segments.
+ * The same, but texts sharing a language pair go out together — up to 128 strings / about 30k code points per request. Prefer this for a catalog with many segments.
  */
 export function googleTranslateBatch(
   options: GoogleTranslateOptions
-): GoogleTranslateBatchMiddleware {
-  return {
-    batch: true,
-    handle: async (ctxs) => {
-      const results: (string | null)[] = new Array(ctxs.length).fill(null);
-      const groups = new Map<string, number[]>();
-      ctxs.forEach((ctx, index) => {
-        const key = `${ctx.from}\u0000${ctx.to}`;
-        groups.set(key, [...(groups.get(key) ?? []), index]);
-      });
-      const texts = ctxs.map((ctx) => ctx.text);
-
-      for (const indexes of groups.values()) {
-        for (const chunk of chunkIndexes(indexes, texts)) {
-          const { from, to } = ctxs[chunk[0]];
-          const translated = await requestTranslations(
-            options,
-            chunk.map((index) => texts[index]),
-            from,
-            to
-          );
-          chunk.forEach((index, position) => {
-            results[index] = translated[position];
-          });
-        }
-      }
-      return results;
-    },
-  };
+): GoogleTranslateMiddleware {
+  return create(options, true);
 }

@@ -7,7 +7,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      // Same idea for @kiritan/middleware, which packages/free-translate depends on.
+      // Same idea for @kiritan/middleware, which the translate-middleware packages depend on.
       "@kiritan/middleware": fileURLToPath(
         new URL("./packages/middleware/src/index.ts", import.meta.url)
       ),
