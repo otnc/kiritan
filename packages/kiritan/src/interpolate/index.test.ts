@@ -11,6 +11,14 @@ describe("interpolateTree", () => {
     expect(result).toContain("Current version: 1.2.0");
   });
 
+  it("leaves a front matter block untouched", () => {
+    const tree = parseMarkdown("---\ntitle: v%{version}\n---\n\nv%{version}\n");
+    const result = stringifyMarkdown(
+      interpolateTree(tree, { version: "1.2.0" })
+    );
+    expect(result).toBe("---\ntitle: v%{version}\n---\n\nv1.2.0\n");
+  });
+
   it("does not expand placeholders inside code blocks by default", () => {
     const tree = parseMarkdown("```\n%{version}\n```\n");
     const result = stringifyMarkdown(
