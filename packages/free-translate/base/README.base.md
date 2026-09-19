@@ -40,7 +40,7 @@ import { myMemory } from "@kiritan/free-translate";
 export default {
   locales: { default: "en", list: ["en", "ja"] },
   sources: [{ glob: "base/README.base.md", strategy: "sidecar" }],
-  translate: { middlewares: [myMemory({ email: "you@example.com" })] },
+  translate: { auto: true, middlewares: [myMemory({ email: "you@example.com" })] },
 };
 ```
 

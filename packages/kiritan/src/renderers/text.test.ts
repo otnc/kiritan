@@ -64,7 +64,10 @@ describe("text sources through the pipeline", () => {
         glob: "notes.base.txt",
         strategy: "sidecar",
         ...(translateMiddleware && {
-          translate: { middlewares: [async (ctx) => `ja: ${ctx.text}`] },
+          translate: {
+            auto: true,
+            middlewares: [async (ctx) => `ja: ${ctx.text}`],
+          },
         }),
       },
     ],

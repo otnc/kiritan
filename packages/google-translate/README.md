@@ -28,6 +28,7 @@ export default {
   locales: { default: "en", list: ["en", "ja"] },
   sources: [{ glob: "base/README.base.md", strategy: "sidecar" }],
   translate: {
+    auto: true,
     middlewares: [googleTranslate({ apiKey: process.env.GOOGLE_API_KEY })],
   },
 };
@@ -43,6 +44,7 @@ import { googleTranslateBatch } from "@kiritan/google-translate";
 export default {
   // ...
   translate: {
+    auto: true,
     middlewares: [googleTranslateBatch({ apiKey: process.env.GOOGLE_API_KEY })],
   },
 };

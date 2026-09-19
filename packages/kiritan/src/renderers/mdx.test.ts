@@ -111,7 +111,10 @@ describe("mdx sources through the pipeline", () => {
         strategy,
         switcher: { enabled: false },
         ...(withMiddleware && {
-          translate: { middlewares: [async (ctx) => `ja: ${ctx.text}`] },
+          translate: {
+            auto: true,
+            middlewares: [async (ctx) => `ja: ${ctx.text}`],
+          },
         }),
       },
     ],

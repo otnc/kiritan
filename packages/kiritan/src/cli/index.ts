@@ -196,6 +196,11 @@ export function createCli(
             })
           );
         }
+        if (result.autoDisabled.length > 0) {
+          console.log(
+            t("output.translate.autoOff", { count: result.autoDisabled.length })
+          );
+        }
         if (result.translated.length === 0) {
           console.log(t("output.translate.none"));
         }

@@ -93,6 +93,10 @@ export default {
     en: "[%{locale}] %{source}: %{detail}",
     ja: "[%{locale}] %{source}: %{detail}",
   },
+  "output.translate.autoOff": {
+    en: "kiritan translate: translate.middlewares are configured for %{count} source(s), but translate.auto is not true, so they did not run (set translate: { auto: true } to enable them)",
+    ja: "kiritan translate: %{count} 件のソースに translate.middlewares が設定されていますが、translate.auto が true ではないため実行されませんでした(有効にするには translate: { auto: true } を設定してください)",
+  },
   "output.translate.none": {
     en: "kiritan translate: nothing to do",
     ja: "kiritan translate: 何もすることがありません",

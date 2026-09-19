@@ -77,7 +77,7 @@ describe("translate (sidecar strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "sidecar",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -107,7 +107,7 @@ describe("translate (sidecar strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "sidecar",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -124,7 +124,7 @@ describe("translate (sidecar strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "sidecar",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -145,7 +145,7 @@ describe("translate (sidecar strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "sidecar",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -171,7 +171,7 @@ describe("translate (catalog strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "catalog",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -202,7 +202,7 @@ describe("translate (catalog strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "catalog",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -231,7 +231,7 @@ describe("translate (catalog strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "catalog",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -257,7 +257,7 @@ describe("translate (locale option)", () => {
         {
           glob: "README.base.md",
           strategy: "sidecar",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -291,7 +291,7 @@ describe("translate (plugins.stores)", () => {
         {
           glob: "README.base.md",
           strategy: "memory",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
       plugins: { stores: { memory: store } },
@@ -338,7 +338,7 @@ describe("translate (plugins.stores)", () => {
         {
           glob: "README.base.md",
           strategy: "memory",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
       plugins: { stores: { memory: store } },
@@ -366,7 +366,7 @@ describe("translate (plugins.stores)", () => {
         {
           glob: "README.base.md",
           strategy: "memory",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
       plugins: { stores: { memory: store } },
@@ -384,7 +384,7 @@ describe("translate (plugins.stores)", () => {
         {
           glob: "README.base.md",
           strategy: "memory",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
       plugins: { stores: { memory: store } },
@@ -416,7 +416,7 @@ describe("translate (inline strategy)", () => {
         {
           glob: "README.base.md",
           strategy: "inline",
-          translate: { middlewares: [uppercase] },
+          translate: { auto: true, middlewares: [uppercase] },
         },
       ],
     });
@@ -434,5 +434,81 @@ describe("translate (inline strategy)", () => {
     });
     const result = await translate(config, { cwd });
     expect(result.translated).toEqual([]);
+  });
+});
+
+describe("translate (translate.auto)", () => {
+  it("runs no middleware unless translate.auto is true, and says so", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    let calls = 0;
+    const counting: TranslateMiddleware = async (ctx) => {
+      calls += 1;
+      return ctx.text.toUpperCase();
+    };
+
+    for (const translateConfig of [
+      { middlewares: [counting] },
+      { auto: false, middlewares: [counting] },
+    ]) {
+      const result = await translate(
+        baseConfig({
+          sources: [
+            {
+              glob: "README.base.md",
+              strategy: "sidecar",
+              translate: translateConfig,
+            },
+          ],
+        }),
+        { cwd }
+      );
+      expect(result.translated).toEqual([]);
+      expect(result.autoDisabled).toEqual(["README.base.md"]);
+    }
+    expect(calls).toBe(0);
+    await expect(readFile(join(cwd, "README.ja.md"), "utf8")).rejects.toThrow();
+  });
+
+  it("honors a top-level translate.auto for sources without their own", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const result = await translate(
+      baseConfig({
+        translate: { auto: true, middlewares: [uppercase] },
+        sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+      }),
+      { cwd }
+    );
+    expect(result.translated).toHaveLength(1);
+    expect(result.autoDisabled).toEqual([]);
+  });
+
+  it("does not inherit auto into a source that overrides translate", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const result = await translate(
+      baseConfig({
+        translate: { auto: true, middlewares: [uppercase] },
+        sources: [
+          {
+            glob: "README.base.md",
+            strategy: "sidecar",
+            translate: { middlewares: [uppercase] },
+          },
+        ],
+      }),
+      { cwd }
+    );
+    expect(result.translated).toEqual([]);
+    expect(result.autoDisabled).toEqual(["README.base.md"]);
+  });
+
+  it("stays silent when no middleware is configured at all", async () => {
+    await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
+    const result = await translate(
+      baseConfig({
+        sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+      }),
+      { cwd }
+    );
+    expect(result.autoDisabled).toEqual([]);
   });
 });
