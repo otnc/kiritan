@@ -26,6 +26,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | [`kiritan`](./packages/kiritan) | `packages/kiritan` | The CLI + build pipeline: config, translation stores, renderers, translate middlewares |
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | The minimal `t(key, params)` runtime, with no build-time dependencies |
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | A [DeepL](https://www.deepl.com/) translate middleware for `translate.middlewares` |
+| [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | A [Google Cloud Translation](https://cloud.google.com/translate) middleware for `translate.middlewares` |
 
 ## Related tooling
 
@@ -44,6 +45,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 | [`kiritan`](./packages/kiritan) | `packages/kiritan` | CLI とビルドパイプライン(設定・翻訳ストア・レンダラー・翻訳ミドルウェア) |
 | [`@kiritan/runtime`](./packages/runtime) | `packages/runtime` | ビルド時依存を持たない、最小限の `t(key, params)` ランタイム |
 | [`@kiritan/deepl`](./packages/deepl) | `packages/deepl` | `translate.middlewares` 用の [DeepL](https://www.deepl.com/) 翻訳ミドルウェア |
+| [`@kiritan/google-translate`](./packages/google-translate) | `packages/google-translate` | `translate.middlewares` 用の [Google Cloud Translation](https://cloud.google.com/translate) ミドルウェア |
 
 ## 関連ツール
 

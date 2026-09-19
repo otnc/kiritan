@@ -79,10 +79,10 @@ packages/runtime/src/
 
 - `kiritan` から `kiritan/runtime` を re-export する形は取らず、`@kiritan/runtime` を独立パッケージにする(`kiritan` は `@kiritan/runtime` に依存しても、逆はない)。ランタイムだけを使いたいプロジェクトが `kiritan` 本体(remark 等のビルド時依存)を一切引き込まずに済む。
 - CLI(`src/cli.ts`)以外はすべて CJS/ESM 両対応を維持する。remark/unified/micromark 系の依存は ESM 専用パッケージしか無い(CJS版へ戻すことは「古いバージョンを使う」ことになるため避ける)ため、`tsdown.config.ts` の `deps.alwaysBundle` でこれらを `dist/index.{cjs,mjs}` に直接バンドルし、CJS 利用者が ESM 専用パッケージを `require` する場面自体を無くす。CLI 専用の `citty` はバンドルせず外部依存のままでよい。
-- 翻訳ミドルウェアの参考実装(`@kiritan/deepl`、13章)は同じワークスペースの `packages/*` に置く。それぞれ単体で完結し、`kiritan` には依存しない — ミドルウェアは `translate.middlewares` と構造的に互換な形の単なる関数であるため。
+- 翻訳ミドルウェアの参考実装(`@kiritan/deepl` と `@kiritan/google-translate`、13章)は同じワークスペースの `packages/*` に置く。それぞれ単体で完結し、`kiritan` には依存しない — ミドルウェアは `translate.middlewares` と構造的に互換な形の単なる関数であるため。
 - `extensions/vscode`(VS Code拡張機能、13章)は `packages/` の外に置くため、ルートの `"workspaces": ["packages/*"]` には拾われない — `package.json` の `"name"` が `"kiritan"` で、CLIパッケージ自身の名前と衝突してしまう(npm workspaceは同名パッケージを2つ持てない)ため。ビルド・テストに必要なツールはパッケージ側ではなく、ルートの `devDependency` として持たせる。
 - 既存の `tsdown` / `vitest` / `eslint` / CI(`ci.yml` およびリリース用ワークフロー)はワークスペース対応に更新が必要(各パッケージごとのビルド・テスト・公開)。これは設計確定後の実装タスクとして扱う。
-- バージョニングは **パッケージごとに独立**させる(lockstep にしない。共有のchangelog生成ツールも使わない)。パッケージごとに専用の `workflow_dispatch` ワークフロー(`release.yml` / `release-runtime.yml` / `release-deepl.yml`)を持ち、どちらも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`)への薄いラッパーにすることで、片方のリリースがもう片方に誤って影響することを防ぐ:
+- バージョニングは **パッケージごとに独立**させる(lockstep にしない。共有のchangelog生成ツールも使わない)。パッケージごとに専用の `workflow_dispatch` ワークフロー(`release.yml` / `release-runtime.yml` / `release-deepl.yml` / `release-google-translate.yml`)を持ち、どちらも実際の処理を行う共通の再利用可能ワークフロー(`_release-package.yml`)への薄いラッパーにすることで、片方のリリースがもう片方に誤って影響することを防ぐ:
 
   1. Actions タブから `release-<package>` を、`version`(semverのbump種別 `patch`/`minor`/`major`/`prerelease`、または明示的なバージョン。そのまま `npm version` に渡す)と `dist_tag`(npm dist-tag。空なら自動判定)の2つの入力で実行する。
   2. ワークフローは対象パッケージの `package.json` を更新し(changesetファイルもパッケージごとのCHANGELOG.mdも無く、代わりにマージ済みPRから生成されるGitHubの自動リリースノートを使用)、`base/*.base.md` から生成される全ドキュメントを再生成し、**trusted publishing**(OIDC。`NPM_TOKEN` 不要。パッケージごとに npmjs.com 側でそのパッケージ自身のワークフローファイルを指定して設定)で `npm publish` する。
@@ -430,11 +430,11 @@ translate: {
 - 呼び出し方(段落ごとに1回 or まとめてバッチ)はコアが決め打ちにせず、**ミドルウェア作成者が自由に実装できる**ようにする。そのため2つの形を許容する:
   - 単発形: `(ctx: TranslateContext, next) => Promise<string | null>` — 1件ずつ呼ばれる、最も単純な形。
   - バッチ形: `(ctxs: TranslateContext[]) => Promise<(string | null)[]>` — 1回の呼び出しで複数件まとめて処理したい場合用。コアはミドルウェアの形(関数のシグネチャ/フラグ)を見て、単発なら1件ずつ、バッチなら missing 分をまとめて渡す。
-  - Kiritan 自体は具体的なプロバイダのミドルウェアを内蔵しない(依存を増やさない)。代わりに別パッケージとして提供し、まず `@kiritan/deepl` から始める(13章)。
+  - Kiritan 自体は具体的なプロバイダのミドルウェアを内蔵しない(依存を増やさない)。代わりに別パッケージとして提供し、まず `@kiritan/deepl` と `@kiritan/google-translate` から始める(13章)。
 - 自動翻訳で埋まった箇所は必ず `machine: true` としてマーキングし(`catalog` はフィールド、`sidecar`/`inline` はコメントマーカー)、`kiritan check` でレビュー待ちとして検出できるようにする。
 - ソース単位(`sources[i].translate`)でチェーン自体を丸ごと上書きできる。
 
-> 公式のリファレンス実装は、`@kiritan/deepl` のように別パッケージとして切り出している(13章参照)。
+> 公式のリファレンス実装は、`@kiritan/deepl` や `@kiritan/google-translate` のように別パッケージとして切り出している(13章参照)。
 
 ### 7.1 単発形とバッチ形の混在
 
@@ -644,7 +644,7 @@ export type { CreateTOptions } from '@kiritan/runtime';
 
 ## 13. ロードマップ / 将来検討
 
-- **翻訳ミドルウェアの公式パッケージ化**: [`@kiritan/deepl`](../packages/deepl) は対応済み — `deepl()`(1件ごとに1リクエスト)と `deeplBatch()`(言語ペアごとに1リクエスト、DeepLの上限である50件まで)。`%{name}` のプレースホルダーはDeepLに無視させるタグ(`tag_handling: xml` と `ignore_tags`)で包んでおり、残りのテキストを送信時にXMLエスケープ、受信時にアンエスケープするのもそのため。リクエストの形はDeepL公式のAPI仕様に照らして偽の `fetch` でユニットテストしているが、実際のサービスに対しては実行していない。`@kiritan/google-translate` は未着手のまま。
+- **翻訳ミドルウェアの公式パッケージ化**: [`@kiritan/deepl`](../packages/deepl) は対応済み — `deepl()`(1件ごとに1リクエスト)と `deeplBatch()`(言語ペアごとに1リクエスト、DeepLの上限である50件まで)。`%{name}` のプレースホルダーはDeepLに無視させるタグ(`tag_handling: xml` と `ignore_tags`)で包んでおり、残りのテキストを送信時にXMLエスケープ、受信時にアンエスケープするのもそのため。リクエストの形はDeepL公式のAPI仕様に照らして偽の `fetch` でユニットテストしているが、実際のサービスに対しては実行していない。[`@kiritan/google-translate`](../packages/google-translate) も同じ前提で対応済み: `googleTranslate()`/`googleTranslateBatch()` がCloud Translation Basic(v2)APIを使い、1リクエストあたり128件/3万コードポイントで分割する。`%{name}` は `<span translate="no">` と `format: "html"` で守るため、残りのテキストを送信時にHTMLエスケープし、Google自身が加えるエンティティ(アポストロフィが `&#39;` で返ってくる等)を受信時にデコードする。こちらも実際のAPIに対してではなく、公式の仕様の形に対するユニットテストのみ。
 - **AI Agent Skill**: [`skills/kiritan`](../skills/kiritan) —対応済み。npmパッケージでもビルドも不要な、単一の自己完結した `SKILL.md` として、ディレクティブ記法・どのCLIコマンドを使うべきか・よくある間違いをコーディングエージェントに教える。導入方法は [skills/README.md](../skills/README.md) を参照。
 - **`kiritan init`**: 対応済み。新規プロジェクトで `.kiritanconfig`・`base/README.base.md`・`local.kiritanconfig` の `.gitignore` への追記を生成する — 生成される設定は `sources` を `base/README.base.md` に向け、`naming.template` を `{dir}` を除いた形に上書きする(このリポジトリ自身の `.kiritanconfig` と同じ規約で、`README.md`/`README.ja.md` が `base/` 内ではなくプロジェクトルートに出力されるようにするため)。あわせて `colocated` 戦略(9.1章)を推奨する `runtime.sources` エントリも含める。書き込み先のファイルが既に存在する場合は `--force` を付けない限りそのまま残すため、一部だけ既に用意されているプロジェクトで再実行しても安全。
 - **コマンド共通の `--locale` フラグ**: 対応済み。`build`/`check`/`translate`/`extract` がそれぞれ `--locale <locale>` を受け付け、実行対象を `locales.list` 全体ではなく1ロケールに絞れる。共通のヘルパー `resolveTargetLocales` を介しており、`locales.list` に無いロケールを指定した場合は分かりやすいエラーで弾く。`build` のswitcherリンクは `--locale` の指定に関わらず設定済みの全ロケールを表示し続ける — 他のロケールのファイルは既にディスク上に存在しており、switcherは今回の実行だけを説明するものではないため。`kiritan typegen` だけは対応しない — 常に全ロケールを1つのランタイムモジュールに集約するコマンドのため、1ロケールに絞る意味のある方法が無い。

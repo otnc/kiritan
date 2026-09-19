@@ -26,6 +26,11 @@ export default {
       naming: { template: "packages/deepl/{base}.{locale}.{ext}" },
     },
     {
+      glob: "packages/google-translate/base/README.base.md",
+      strategy: "inline",
+      naming: { template: "packages/google-translate/{base}.{locale}.{ext}" },
+    },
+    {
       glob: "extensions/vscode/base/README.base.md",
       strategy: "inline",
       naming: { template: "extensions/vscode/{base}.{locale}.{ext}" },
