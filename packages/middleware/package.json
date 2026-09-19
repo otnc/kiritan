@@ -46,14 +46,10 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {
-    "@types/mdast": "^4.0.4",
-    "p-queue": "^9.3.3",
-    "p-retry": "^8.0.1",
-    "remark-directive": "^4.0.0",
-    "remark-frontmatter": "^5.0.0",
-    "remark-gfm": "^4.0.1",
-    "remark-parse": "^11.0.0",
-    "unified": "^11.0.5"
+  "dependencies": {
+    "@lezer/common": "^1.5.2",
+    "@lezer/markdown": "^1.7.2",
+    "es-toolkit": "^1.52.0",
+    "limiter": "^4.1.0"
   }
 }

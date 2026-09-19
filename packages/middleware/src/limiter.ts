@@ -1,19 +1,26 @@
-import PQueue from "p-queue";
-import pRetry from "p-retry";
+import { retry, Semaphore } from "es-toolkit";
+import { RateLimiter } from "limiter";
 
 /** Runs at most `concurrency` tasks at once, and starts no more than one task per `minInterval` ms. */
 export function createLimiter(options: {
   concurrency: number;
   minInterval: number;
 }): <T>(task: () => Promise<T>) => Promise<T> {
-  const queue = new PQueue({
-    concurrency: options.concurrency,
-    // `strict` makes the interval a rolling window, so starts really are spaced apart instead of bunching at a window's edge.
-    ...(options.minInterval > 0
-      ? { interval: options.minInterval, intervalCap: 1, strict: true }
-      : {}),
-  });
-  return <T>(task: () => Promise<T>) => queue.add(task) as Promise<T>;
+  const slots = new Semaphore(options.concurrency);
+  const spacing =
+    options.minInterval > 0
+      ? new RateLimiter({ tokensPerInterval: 1, interval: options.minInterval })
+      : undefined;
+
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    await slots.acquire();
+    try {
+      await spacing?.removeTokens(1);
+      return await task();
+    } finally {
+      slots.release();
+    }
+  };
 }
 
 export interface RetryOptions {
@@ -41,29 +48,37 @@ export function isRetryableError(error: unknown): boolean {
   return [408, 409, 425, 429].includes(status) || status >= 500;
 }
 
+/**
+ * A `Retry-After` header value (delay in seconds, or an HTTP date) as milliseconds from now, or `undefined` if it's absent or unreadable. Put the result on the thrown error as `retryAfter` and `withRetry` waits at least that long.
+ */
+export function parseRetryAfter(
+  value: string | null | undefined
+): number | undefined {
+  if (!value) return undefined;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) return seconds * 1000;
+  const date = Date.parse(value);
+  return Number.isNaN(date) ? undefined : Math.max(0, date - Date.now());
+}
+
 /** The longest a `Retry-After` is honored, so one bad header can't hang a run. */
 const MAX_RETRY_AFTER = 60_000;
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/** Retries `task` with exponential backoff (p-retry), honoring a server's `Retry-After` when the error carries it as `retryAfter` in ms. */
+/** Retries `task` with exponential backoff, waiting at least as long as a server's `Retry-After` when the error carries it as `retryAfter` in ms. */
 export function withRetry<T>(
   task: () => Promise<T>,
   options: RetryOptions
 ): Promise<T> {
   const shouldRetry = options.shouldRetry ?? isRetryableError;
-  return pRetry(task, {
+  const base = options.delay ?? 500;
+  return retry(task, {
     retries: options.retries ?? 2,
-    minTimeout: options.delay ?? 500,
-    factor: 2,
-    randomize: false,
-    shouldRetry: ({ error }) => shouldRetry(error),
-    onFailedAttempt: async ({ error }) => {
-      const asked = (error as { retryAfter?: unknown }).retryAfter;
-      // Waited on top of the backoff, so the total is at least what the server asked for.
-      if (typeof asked === "number" && asked > 0) {
-        await sleep(Math.min(asked, MAX_RETRY_AFTER));
-      }
+    shouldRetry: (error) => shouldRetry(error),
+    delay: (attempts, error) => {
+      const asked = (error as { retryAfter?: unknown } | null)?.retryAfter;
+      const requested =
+        typeof asked === "number" ? Math.min(asked, MAX_RETRY_AFTER) : 0;
+      return Math.max(base * 2 ** attempts, requested);
     },
   });
 }

@@ -7,7 +7,7 @@ export type {
 } from "./create.js";
 export { createFileCache, createMemoryCache } from "./cache.js";
 export type { CacheStore } from "./cache.js";
-export { isRetryableError } from "./limiter.js";
+export { isRetryableError, parseRetryAfter } from "./limiter.js";
 export type { RetryOptions } from "./limiter.js";
 export {
   defaultProtectPatterns,

@@ -1,8 +1,16 @@
 import {
+  chineseScript,
   createTranslator,
+  parseLocale,
+  parseRetryAfter,
   type TranslatorMiddleware,
   type TranslatorOptions,
 } from "@kiritan/middleware";
+import { createHash } from "node:crypto";
+import {
+  decode as decodeEntities,
+  encode as encodeEntities,
+} from "html-entities";
 import { createFetch, FetchError } from "ofetch";
 
 export type GoogleTranslateMiddleware = TranslatorMiddleware;
@@ -39,49 +47,37 @@ const MAX_TEXTS_PER_REQUEST = 128;
 const MAX_TEXT_CODE_POINTS = 25_000;
 const MAX_BATCH_CODE_POINTS = 28_000;
 
-/** A locale's language code as Google expects it: the override if one is given, otherwise the locale unchanged. */
+/**
+ * The Cloud Translation v2 language code for a Kiritan locale, parsed with `Intl.Locale` so any BCP 47 tag works. v2 takes a bare language (`en-US` -> `en`, `pt-BR` -> `pt`) except Chinese, which is `zh-CN`/`zh-TW` by script (`zh-Hans`, `zh-Hant` and the regions are understood); Norwegian is `no` and Filipino `tl`. `overrides` (matched on the exact locale) win.
+ */
 export function toGoogleLanguage(
   locale: string,
   overrides: Record<string, string> = {}
 ): string {
-  return Object.hasOwn(overrides, locale) ? overrides[locale] : locale;
+  if (Object.hasOwn(overrides, locale)) return overrides[locale];
+  const { language } = parseLocale(locale);
+  switch (language) {
+    case "zh":
+      return chineseScript(locale) === "Hant" ? "zh-TW" : "zh-CN";
+    case "nb":
+    case "nn":
+      return "no";
+    case "fil":
+      return "tl";
+    default:
+      return language;
+  }
 }
 
 // `@kiritan/middleware` swaps everything that must stay verbatim (code, URLs, front matter, `%{name}`, ...) for `[[N]]` tokens before this sees the text. Google leaves `translate="no"` elements alone when `format` is `html`, so each token is wrapped in one; the rest of the text has to be valid HTML going in, and is un-escaped coming out.
 const KEEP_OPEN = '<span translate="no">';
 const KEEP_CLOSE = "</span>";
 
-function escapeHtml(text: string): string {
-  return text
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
-}
-
-// Entities are decoded in a single pass. Decoding again after `&amp;` would corrupt literal text: a source containing `&#39;` is sent as `&amp;#39;`, and has to come back as `&#39;`, not as an apostrophe.
-// Google's responses HTML-escape more than what was sent in (an apostrophe comes back as `&#39;`, for instance), so this decodes the named entities that can appear plus any numeric one.
-const ENTITIES: Record<string, string> = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&apos;": "'",
-};
-
-function unescapeHtml(text: string): string {
-  return text.replace(
-    /&(?:#x([0-9a-f]+)|#(\d+)|[a-z]+);/gi,
-    (whole, hex: string | undefined, dec: string | undefined) => {
-      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
-      if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
-      return ENTITIES[whole.toLowerCase()] ?? whole;
-    }
-  );
-}
+// Entities are decoded in a single pass. Decoding again after `&amp;` would corrupt literal text: a source containing `&#39;` is sent as `&amp;#39;`, and has to come back as `&#39;`, not as an apostrophe. Google's responses also HTML-escape more than what was sent in (an apostrophe comes back as `&#39;`), so numeric entities are decoded too.
 
 /** Escapes the text as HTML and wraps every `[[N]]` token in a `translate="no"` span. */
 export function encode(text: string): string {
-  return escapeHtml(text).replace(
+  return encodeEntities(text, { mode: "specialChars" }).replace(
     /\[\[(\d+)\]\]/g,
     `${KEEP_OPEN}[[$1]]${KEEP_CLOSE}`
   );
@@ -89,8 +85,9 @@ export function encode(text: string): string {
 
 /** The inverse of `encode`. */
 export function decode(text: string): string {
-  return unescapeHtml(
-    text.replace(/<span\s+translate="no">/gi, "").replace(/<\/span>/gi, "")
+  return decodeEntities(
+    text.replace(/<span\s+translate="no">/gi, "").replace(/<\/span>/gi, ""),
+    { level: "xml" }
   );
 }
 
@@ -103,6 +100,8 @@ class GoogleError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    /** How long Google asked us to wait, in ms; the layer's retry honors it. */
+    readonly retryAfter?: number,
     options?: { cause?: unknown }
   ) {
     super(message, options);
@@ -118,11 +117,13 @@ function describeError(error: unknown): Error {
     return new GoogleError(
       `@kiritan/google-translate: Google responded ${error.status}${detail ? `: ${detail}` : ""}`,
       error.status,
+      parseRetryAfter(error.response?.headers.get("retry-after")),
       { cause: error }
     );
   }
   return new GoogleError(
     `@kiritan/google-translate: request to Google failed: ${error instanceof Error ? error.message : String(error)}`,
+    undefined,
     undefined,
     { cause: error }
   );
@@ -176,7 +177,13 @@ function create(
   batched: boolean
 ): TranslatorMiddleware {
   const common: TranslatorOptions = {
-    name: "google-translate",
+    // Everything that changes what Google returns is part of the cache key, so editing `model` or a language mapping never serves a stale translation from a persistent cache.
+    name: `google-translate:${createHash("sha1")
+      .update(
+        JSON.stringify([options.extraParams ?? {}, options.languageCodes ?? {}])
+      )
+      .digest("hex")
+      .slice(0, 12)}`,
     wire: { encode, decode },
     measure: wireCodePoints,
     maxChars: MAX_TEXT_CODE_POINTS,

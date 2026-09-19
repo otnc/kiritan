@@ -9,6 +9,7 @@ import {
   isRetryableError,
   mask,
   parseLocale,
+  parseRetryAfter,
   PlaceholderLostError,
   splitText,
   unmask,
@@ -519,5 +520,18 @@ describe("parseLocale / chineseScript", () => {
     expect(chineseScript("zh-CN")).toBe("Hans");
     expect(chineseScript("zh")).toBe("Hans");
     expect(chineseScript("ja")).toBeUndefined();
+  });
+});
+
+describe("parseRetryAfter", () => {
+  it("reads seconds and HTTP dates, and ignores junk", () => {
+    expect(parseRetryAfter("3")).toBe(3000);
+    expect(parseRetryAfter("0")).toBe(0);
+    const inTenSeconds = new Date(Date.now() + 10_000).toUTCString();
+    const ms = parseRetryAfter(inTenSeconds)!;
+    expect(ms).toBeGreaterThan(8_000);
+    expect(ms).toBeLessThanOrEqual(10_000);
+    expect(parseRetryAfter("soon")).toBeUndefined();
+    expect(parseRetryAfter(null)).toBeUndefined();
   });
 });

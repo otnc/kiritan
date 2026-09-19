@@ -1,6 +1,7 @@
 import {
+  chineseScript,
   createTranslator,
-  defaultProtectPatterns,
+  parseLocale,
   type TranslatorMiddleware,
 } from "@kiritan/middleware";
 import {
@@ -14,12 +15,16 @@ import {
 
 const bytes = (text: string) => Buffer.byteLength(text, "utf8");
 
-/** The generic "pick a Kiritan locale, get the service's code" step: strip the region, keep Chinese script/region. */
-function chineseOr(locale: string, fallback: (base: string) => string): string {
-  const lower = locale.toLowerCase();
-  if (/^zh(-hant|-tw|-hk|-mo)$/.test(lower)) return "zh-TW";
-  if (lower === "zh" || /^zh-(hans|cn|sg)$/.test(lower)) return "zh-CN";
-  return fallback(lower.split(/[-_]/)[0]);
+/**
+ * The service's code for a Kiritan locale, parsed with `Intl.Locale` so any BCP 47 tag works (`en-US` -> `en`): the bare language, except Chinese, which the service names by script (`chinese.hans` for Simplified, `chinese.hant` for Traditional; `zh-Hant`, `zh-TW`, `zh-HK` are all Traditional).
+ */
+function toCode(
+  locale: string,
+  chinese: { hans: string; hant: string } = { hans: "zh-CN", hant: "zh-TW" }
+): string {
+  const { language } = parseLocale(locale);
+  if (language !== "zh") return language;
+  return chineseScript(locale) === "Hant" ? chinese.hant : chinese.hans;
 }
 
 // ───────────────────────────── MyMemory ─────────────────────────────
@@ -51,9 +56,7 @@ const MYMEMORY_MAX_BYTES = 480;
 export function myMemory(options: MyMemoryOptions = {}): TranslatorMiddleware {
   const baseUrl = options.baseUrl ?? "https://api.mymemory.translated.net";
   const code = (locale: string) =>
-    resolveCode(locale, options.languageCodes, (l) =>
-      chineseOr(l, (base) => base)
-    );
+    resolveCode(locale, options.languageCodes, (l) => toCode(l));
 
   return createTranslator({
     name: "mymemory",
@@ -61,8 +64,6 @@ export function myMemory(options: MyMemoryOptions = {}): TranslatorMiddleware {
     maxChars: MYMEMORY_MAX_BYTES,
     concurrency: 1,
     minInterval: 300,
-    // MyMemory HTML-escapes `&` in its output, so a literal entity in the source is shielded to survive the decoding below.
-    protect: [...defaultProtectPatterns, /&(?:#x?[0-9a-f]+|[a-z]+);/i],
     ...tuning(options),
     async translate(text, { from, to }) {
       const body = await send<MyMemoryResponse>(
@@ -124,11 +125,9 @@ const GOOGLE_LANGUAGES = new Set(
 );
 
 function toGoogleCode(locale: string): string {
-  const mapped = chineseOr(locale, (base) => {
-    if (base === "nb" || base === "nn") return "no";
-    if (base === "fil") return "tl";
-    return base;
-  });
+  const code = toCode(locale);
+  const mapped =
+    code === "nb" || code === "nn" ? "no" : code === "fil" ? "tl" : code;
   if (!GOOGLE_LANGUAGES.has(mapped)) {
     // Google's endpoint answers an unknown language with the original text and no error, which would look like a successful (untranslated) run.
     throw new ProviderError(
@@ -250,7 +249,7 @@ const APERTIUM_CODES: Record<string, string> = {
 };
 
 function toApertiumCode(locale: string): string {
-  const base = locale.toLowerCase().split(/[-_]/)[0];
+  const { language: base } = parseLocale(locale);
   if (APERTIUM_CODES[base]) return APERTIUM_CODES[base];
   if (/^[a-z]{3}$/.test(base)) return base;
   throw new ProviderError(
@@ -336,11 +335,7 @@ export function libreTranslate(
   const base = options.baseUrl.replace(/\/+$/, "");
   const code = (locale: string) =>
     resolveCode(locale, options.languageCodes, (l) =>
-      chineseOr(l, (b) => b) === "zh-CN"
-        ? "zh"
-        : chineseOr(l, (b) => b) === "zh-TW"
-          ? "zt"
-          : chineseOr(l, (b) => b)
+      toCode(l, { hans: "zh", hant: "zt" })
     );
 
   return createTranslator({

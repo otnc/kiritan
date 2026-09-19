@@ -1,4 +1,5 @@
-import type { TranslatorOptions } from "@kiritan/middleware";
+import { parseRetryAfter, type TranslatorOptions } from "@kiritan/middleware";
+import { decode } from "html-entities";
 import { createFetch, FetchError } from "ofetch";
 
 /** Options every provider shares: the layer's tuning knobs, plus the transport. */
@@ -22,14 +23,18 @@ export interface CommonOptions extends Pick<
 
 /** A failure the layer's retry logic can read: `status` decides whether it is retried, `retryable: false` forces it not to be. */
 export class ProviderError extends Error {
+  /** How long the service asked us to wait, in ms; the layer's retry honors it. */
+  readonly retryAfter?: number;
+
   constructor(
     message: string,
     readonly status?: number,
     readonly retryable?: boolean,
-    options?: { cause?: unknown }
+    options?: { cause?: unknown; retryAfter?: number }
   ) {
     super(message, options);
     this.name = "ProviderError";
+    this.retryAfter = options?.retryAfter;
   }
 }
 
@@ -74,7 +79,12 @@ export async function send<T>(
         `@kiritan/free-translate: ${service} responded ${error.status}${detail ? `: ${detail}` : ""}`,
         error.status,
         undefined,
-        { cause: error }
+        {
+          cause: error,
+          retryAfter: parseRetryAfter(
+            error.response?.headers.get("retry-after")
+          ),
+        }
       );
     }
     throw new ProviderError(
@@ -107,24 +117,9 @@ export function tuning(common: CommonOptions): Partial<TranslatorOptions> {
   return picked;
 }
 
-const ENTITIES: Record<string, string> = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&apos;": "'",
-};
-
-/** Decodes the HTML entities a service may add to plain text, in one pass so an escaped `&amp;#39;` stays `&#39;`. */
+/** Decodes the entities a service may add to plain text (`&amp;`, `&#39;`, ...), in one pass so an escaped `&amp;#39;` stays `&#39;`. */
 export function decodeEntities(text: string): string {
-  return text.replace(
-    /&(?:#x([0-9a-f]+)|#(\d+)|[a-z]+);/gi,
-    (whole, hex: string | undefined, dec: string | undefined) => {
-      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
-      if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
-      return ENTITIES[whole.toLowerCase()] ?? whole;
-    }
-  );
+  return decode(text, { level: "xml" });
 }
 
 /** Applies a per-locale override if there is one, otherwise `fallback(locale)`. */
