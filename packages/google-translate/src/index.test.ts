@@ -112,6 +112,33 @@ describe("googleTranslate()", () => {
     });
   });
 
+  it("never lets extraParams override the fields the middleware depends on", async () => {
+    const { calls, fetch } = fakeFetch();
+    await googleTranslate({
+      apiKey: "k",
+      extraParams: { format: "text", q: ["x"], model: "nmt" },
+      fetch,
+    })(ctx("Hi %{a}"), next);
+
+    expect(calls[0].body).toMatchObject({
+      q: ['Hi <span translate="no">%{a}</span>'],
+      format: "html",
+      model: "nmt",
+    });
+  });
+
+  it("round-trips source text that itself contains entity-like sequences", async () => {
+    // The source has the literal characters &#39; and &amp;; they go out escaped and must come back as the same literal characters, not be decoded a second time.
+    const { calls, fetch } = fakeFetch((texts) => texts);
+    const source = "Type &#39; or &amp; literally";
+    const result = await googleTranslate({ apiKey: "k", fetch })(
+      ctx(source),
+      next
+    );
+    expect(calls[0].body.q).toEqual(["Type &amp;#39; or &amp;amp; literally"]);
+    expect(result).toBe(source);
+  });
+
   it("un-escapes and un-wraps what Google returns", async () => {
     const { fetch } = fakeFetch(() => [
       '<span translate="no">%{name}</span> &lt;3 it&#39;s &amp; more',

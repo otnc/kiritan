@@ -26,12 +26,14 @@ import { googleTranslate } from "@kiritan/google-translate";
 
 export default {
   locales: { default: "en", list: ["en", "ja"] },
-  sources: [{ glob: "base/README.base.md", strategy: "catalog" }],
+  sources: [{ glob: "base/README.base.md", strategy: "sidecar" }],
   translate: {
     middlewares: [googleTranslate({ apiKey: process.env.GOOGLE_API_KEY })],
   },
 };
 ```
+
+`sidecar` では、ドキュメント全体が1つのテキストとしてGoogleに送られ、翻訳結果がsidecarファイルになる。`catalog` では、ベースファイル内の `:::kiritan{#id}` ブロックごとに個別に翻訳される — ベースファイルにこのブロックが無ければ、翻訳するものが何も無い。
 
 `catalog` のidが多い場合は、`googleTranslate` の代わりに `googleTranslateBatch` を使うと、1リクエストに多数のセグメント(128件または3万コードポイントまで)をまとめて送れるため、ずっと速い:
 

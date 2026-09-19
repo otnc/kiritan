@@ -58,6 +58,7 @@ function escapeHtml(text: string): string {
     .replaceAll(">", "&gt;");
 }
 
+// Entities are decoded in a single pass. Decoding again after `&amp;` would corrupt literal text: a source containing `&#39;` is sent as `&amp;#39;`, and has to come back as `&#39;`, not as an apostrophe.
 // Google's responses HTML-escape more than what was sent in (an apostrophe comes back as `&#39;`, for instance), so this decodes the named entities that can appear plus any numeric one.
 function unescapeHtml(text: string): string {
   return text
@@ -111,12 +112,13 @@ async function requestTranslations(
       "X-goog-api-key": options.apiKey,
       "Content-Type": "application/json",
     },
+    // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
     body: JSON.stringify({
+      ...options.extraParams,
       q: texts.map(protect),
       source: toGoogleLanguage(from, options.languageCodes),
       target: toGoogleLanguage(to, options.languageCodes),
       format: "html",
-      ...options.extraParams,
     }),
   });
 
