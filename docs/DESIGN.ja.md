@@ -308,10 +308,9 @@ interface Renderer {
 ```
 
 - `markdown`: remark + `remark-directive` による AST 解析。コードブロック・インラインコード・リンク URL を保護し、`:::kiritan{...}` ディレクティブの分解もここで行う。先頭の `---` で囲まれたYAML front matterは(`remark-frontmatter` により)1つの不透明なノードとして保持されるため、翻訳・補間・整形のいずれも行われず、どのビルドでもそのまま出力される。つまり `sidecar` の翻訳ファイルは自分自身のfront matterを持ち(手作業またはミドルウェアで翻訳する)、`inline`/`catalog` のビルドでは元ファイルのfront matterが全ロケールにそのまま繰り返される。
-- レンダラーはソースファイルごとに解決される: `SourceConfig.renderer` の明示指定が最優先、次に拡張子の一致(同じ拡張子を組み込みと `plugins.renderers` の両方が担当する場合は `plugins.renderers` が優先)、最後に `markdown`。したがって見慣れない拡張子のファイルも従来通りMarkdownとして処理される。レンダラーの `strategies` は、ソースの組み込み `strategy` に対して事前に検証され、非対応の組み合わせ(例: `sidecar` しか宣言しない形式への `inline`)は何もビルドされる前に分かりやすいエラーで弾かれる。カスタムの `plugins.stores` の戦略名はこのリストに照らして検証しない — ストア自身の登録が検証の役割を担うため。`text` は組み込み済みで、`mdx` はまだ(13章で追跡)。
+- レンダラーはソースファイルごとに解決される: `SourceConfig.renderer` の明示指定が最優先、次に拡張子の一致(同じ拡張子を組み込みと `plugins.renderers` の両方が担当する場合は `plugins.renderers` が優先)、最後に `markdown`。したがって見慣れない拡張子のファイルも従来通りMarkdownとして処理される。レンダラーの `strategies` は、ソースの組み込み `strategy` に対して事前に検証され、非対応の組み合わせ(例: `sidecar` しか宣言しない形式への `inline`)は何もビルドされる前に分かりやすいエラーで弾かれる。カスタムの `plugins.stores` の戦略名はこのリストに照らして検証しない — ストア自身の登録が検証の役割を担うため。`text` と `mdx` は組み込み済み。
 - `text`(`.txt`/`.text`): ファイル全体が1つのtextノードなので、`%{name}` の補間を除き、バイト単位でそのまま書き戻される — 折り返し・エスケープ・正規化は一切行わない。Markdown構文が無く、`:::kiritan{...}` ディレクティブもswitcherリンクも置き場所が無いため、対応するのは `sidecar` のみ(`supportsDirectives: false`)。またコメント構文も無いため `kiritan:hash` マーカーは書かれず、stale検知も無い: `kiritan check` は翻訳の欠落は報告するがstaleは決して報告せず、`kiritan translate` も欠けているものだけを埋める。段落単位には意図的に分割していない — その分割はセグメント単位の戦略でしか意味を持たず、平文にはそれが提供できないため。
-
-`mdx` が実装された場合の設計意図: markdown 拡張。JSX 部分は非翻訳、`:::kiritan{...}` は markdown 同様に扱え、3つの戦略すべてを宣言する想定。
+- `mdx`(`.mdx`): Markdown に JSX・`import`/`export`・`{式}` を加えた形式。`markdown` と同じディレクティブ・front matterの扱いの下に `remark-mdx` を重ねて実現している。JSX・ESM・式はそれぞれ、パイプラインが地の文として扱わない独自のmdastノードにパースされるため手を加えられずそのまま出力され、`:::kiritan{...}` も3つの戦略すべてでMarkdownと全く同じように動く。MDX自身の構文に由来するMarkdownとの違いが2つある。`%{name}` の補間は適用されない: `{` がJSの式を開始するため、`name` は地の文としてパイプラインに届かない(変更されずそのまま出力される。値を差し込みたい場合はMDX自身の `{式}` を使う)。そして `kiritan:hash`/`kiritan:untranslated` マーカーは、式の中のJSブロックコメントとして書かれる — MDXではHTMLコメントは構文エラーになるため。
 
 ### 6.1 言語切り替えリンクの自動挿入(`switcher`)
 
@@ -634,7 +633,7 @@ export type { CreateTOptions } from '@kiritan/runtime';
 | 翻訳格納戦略 | `sidecar` / `inline` / `catalog` は組み込みでハードコードされているが、それ以外の `strategy` 文字列を使うソースは、`plugins.stores[strategy]` に登録されていれば実際にそこへディスパッチされるようになった(4章、`TranslationStore`) — `build`/`check`/`translate`/`extract` のすべてがこれを呼び出す。組み込みにも登録済みストアにも一致しない `strategy` は、4コマンドすべてで分かりやすいエラーを投げる。 |
 | ランタイムリソース配置戦略 | `colocated` / `split` / `centralized` / `embedded`(9.1章)は `ResourceSourceConfig.strategy` 経由で実際にディスパッチされている。カスタムの文字列戦略は型としては受け付けるが、処理する実装はまだ無い。 |
 | 翻訳ミドルウェア | 現状で実際に拡張可能: 組み込みプロバイダは無く、`translate.middlewares` 配列だけで完結する(利用者が自由に実装。`docs/` に実装例を掲載)。 |
-| ファイルレンダラー | `plugins.renderers`(6章)経由で現状も実際に拡張可能: レンダラーは、パイプラインの各段階が使うのと同じmdastツリーに対する `parse`/`stringify` の組。組み込みは今のところ `markdown` と `text`。 |
+| ファイルレンダラー | `plugins.renderers`(6章)経由で現状も実際に拡張可能: レンダラーは、パイプラインの各段階が使うのと同じmdastツリーに対する `parse`/`stringify` の組。組み込みは `markdown`・`text`・`mdx`。 |
 | 言語切り替えリンクの描画 | `SwitcherConfig.render`(6.1章)経由で現状も実際に拡張可能。 |
 
 `plugins.stores` と `plugins.renderers` はどちらも13章の通り配線済み。
@@ -655,4 +654,4 @@ export type { CreateTOptions } from '@kiritan/runtime';
 - **`plugins.renderers` の配線**: 対応済み。ボトルネックは、元々宣言されていた `Renderer`(`parse(sourceText): { raw: string }`、`reassemble(doc, translated: string)`)が、`renderForLocale`/`collectCatalogSegments` が最初から最後まで操作しているmdastツリーを表現できなかったこと。そこで `parse(source): Root` / `stringify(tree): string` の組として定義し直した — 新しい形式は並行するパイプラインを持つのではなく、既存のツリーに**パースされる**ため、ディレクティブ解決・補間・switcher挿入はそのまま動く。`build`/`check`/`translate`/`extract` はソースファイルごとにレンダラーを解決し(6章)、あらゆるparse/stringifyをそれ経由で行う。Markdownと性質の違う形式のために、オプションの2つの機能を用意した: `supportsDirectives: false` はディレクティブ解決とswitcher挿入を飛ばし、`comment` が無ければ(Markdownでは `<!-- ... -->` コメントである)`kiritan:hash`/`kiritan:untranslated` のマーカーは単に書き込まれず、その形式にはstale検知が無い。`kiritan:hash` はHTMLコメント内に限らずどこにあっても検出するようになったため、独自の `comment` で好きな形に包める。
 - **front matter保護**: 対応済み。先頭のYAMLブロックはmdastツリー上で1つの不透明な `yaml` ノードになり、parse/stringifyを経てもそのまま保たれ、補間もここには及ばない。`translateFrontmatter` オプション(ロケールごとのfront matter値)も検討したが当面見送った — `inline`/`catalog` にはロケール固有の値を置く場所が無く、意味を持つのは翻訳ファイルが自分自身のfront matterを持つ `sidecar` だけだったため。
 - **`text` レンダラー**: 対応済み(6章) — 上の `plugins.renderers` の項目が、インターフェースの実際の形を検証するために待っていた2つ目のレンダラーでもある。2つのオプション機能(`supportsDirectives: false` とコメント構文なし)の両方を実際に使い、それ以上のものは必要なかった。
-- **`mdx` レンダラー**: まだ `mdx` には対応しておらず、設計段階。
+- **`mdx` レンダラー**: 対応済み(6章)。引き継げなかった唯一のものが `%{name}` の補間で、MDX自身のパースを変えない限りそれは不可能。
