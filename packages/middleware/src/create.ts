@@ -42,6 +42,10 @@ export interface TranslatorOptions {
   maxChars?: number;
   /** How `maxChars`/`maxBatchChars` are counted. Default: string length. Pass a byte counter for a provider that limits bytes, e.g. `(t) => Buffer.byteLength(t)`. */
   measure?: (text: string) => number;
+  /**
+   * Adapts the text to the provider's own wire format and back, applied around every provider call. The text passed to `encode` already has its protected spans swapped for `[[N]]` tokens (the spans themselves never reach the provider), so this is where a provider that supports "leave this alone" markup wraps them, e.g. `<x>[[0]]</x>`, and escapes the rest. `decode` must give back text with the tokens intact.
+   */
+  wire?: { encode(text: string): string; decode(text: string): string };
   /** The most texts per `translateBatch` call. Default: 50. */
   maxBatchSize?: number;
   /** The most total characters per `translateBatch` call. Default: no limit. */
@@ -115,6 +119,9 @@ export function createTranslator(
   const maxChars = options.maxChars ?? Number.MAX_SAFE_INTEGER;
   const measure = options.measure ?? ((text: string) => text.length);
 
+  const encode = options.wire?.encode ?? ((text: string) => text);
+  const decode = options.wire?.decode ?? ((text: string) => text);
+
   const call = <T>(task: () => Promise<T>) =>
     limit(() => withRetry(task, retry));
 
@@ -136,7 +143,9 @@ export function createTranslator(
       if (!options.translateBatch) {
         for (const job of group) {
           tasks.push(
-            call(() => options.translate!(job.text, pair)).then((result) => {
+            call(async () =>
+              decode(await options.translate!(encode(job.text), pair))
+            ).then((result) => {
               out.set(job.key, result);
             })
           );
@@ -152,11 +161,13 @@ export function createTranslator(
         current = [];
         chars = 0;
         tasks.push(
-          call(() =>
-            options.translateBatch!(
-              batch.map((job) => job.text),
-              pair
-            )
+          call(async () =>
+            (
+              await options.translateBatch!(
+                batch.map((job) => encode(job.text)),
+                pair
+              )
+            ).map(decode)
           ).then((results) => {
             if (results.length !== batch.length) {
               throw new Error(
