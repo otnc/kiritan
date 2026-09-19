@@ -348,6 +348,24 @@ describe("createTranslator", () => {
     );
   });
 
+  it("wraps tokens in provider markup on the way out and unwraps them on the way back", async () => {
+    const sent: string[] = [];
+    const mw = createTranslator({
+      name: "t",
+      wire: {
+        encode: (text) => text.replace(/\[\[(\d+)\]\]/g, "<x>[[$1]]</x>"),
+        decode: (text) => text.replace(/<\/?x>/gi, ""),
+      },
+      translate: async (text) => {
+        sent.push(text);
+        return text.toUpperCase();
+      },
+    });
+    const [out] = await mw.handle([ctx("hi `code` there")], next);
+    expect(sent[0]).toBe("hi <x>[[0]]</x> there");
+    expect(out).toBe("HI `code` THERE");
+  });
+
   it("can turn protection off", async () => {
     const seen: string[] = [];
     const mw = createTranslator({
