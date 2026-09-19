@@ -4,9 +4,11 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
   createFileCache,
+  chineseScript,
   createTranslator,
   isRetryableError,
   mask,
+  parseLocale,
   PlaceholderLostError,
   splitText,
   unmask,
@@ -48,7 +50,7 @@ describe("mask / unmask", () => {
       expect(text).not.toContain(secret);
     }
     expect(text).toContain("Use");
-    expect(text).toContain("See [docs]");
+    expect(text).toMatch(/See \[\[\d+\]\]docs\[\[\d+\]\]/);
   });
 
   it("keeps line-start markers (heading, quote, bullet, number) with their space", () => {
@@ -57,6 +59,91 @@ describe("mask / unmask", () => {
     expect(text).not.toMatch(/[#>-]/);
     expect(text).toContain("Title");
     expect(unmask(text, spans)).toBe(md);
+  });
+
+  it("shields table structure: delimiter rows and every pipe", () => {
+    const md = "| Name | Note |\n| --- | :-: |\n| `a` | b | c |\n";
+    const { text, spans } = mask(md);
+    expect(text).not.toContain("|");
+    expect(text).toContain("Name");
+    expect(unmask(text, spans)).toBe(md);
+  });
+
+  it("shields emphasis markers, backslash escapes and reference links", () => {
+    const md =
+      '**bold** and ~~gone~~ and \\*literal\\* see [text][ref].\n\n[ref]: https://example.com/x "Title"\n';
+    const { text, spans } = mask(md);
+    for (const secret of ["**", "~~", "\\*", "[ref]", "example.com", "Title"]) {
+      expect(text).not.toContain(secret);
+    }
+    expect(text).toContain("bold");
+    expect(unmask(text, spans)).toBe(md);
+  });
+
+  it("handles CRLF line endings in fences, directives and front matter", () => {
+    const md =
+      "---\r\ntitle: Hi\r\n---\r\n\r\n:::kiritan{locale=en}\r\nHello\r\n:::\r\n\r\n```js\r\nconst x = 1;\r\n```\r\n";
+    const { text, spans } = mask(md);
+    for (const secret of ["title: Hi", "kiritan{", "const x"]) {
+      expect(text).not.toContain(secret);
+    }
+    expect(unmask(text, spans)).toBe(md);
+  });
+
+  it("gets tokens back even when an engine re-typesets them full-width or in corner brackets", () => {
+    const { spans } = mask("a `x` b `y` c `z`");
+    expect(unmask("a ［［0］］ b 【1】 c [［ ２ ］]", spans)).toBe(
+      "a `x` b `y` c `z`"
+    );
+  });
+
+  it("leaves only the words of a link translatable, not its brackets or address", () => {
+    const { text, spans } = mask("See [the docs](https://example.com/a) now.");
+    expect(text).toMatch(/^See \[\[\d+\]\]the docs\[\[\d+\]\] now\.$/);
+    expect(spans).toEqual(["[", "](https://example.com/a)"]);
+  });
+
+  it("handles what a hand-written pattern list gets wrong", () => {
+    const cases: Array<[string, string[]]> = [
+      // A fence longer than three backticks, containing a shorter one.
+      ["````md\n```js\nx\n```\n````\n", ["```js", "x"]],
+      // Indented code.
+      ["Intro\n\n    const secret = 1;\n\nOutro\n", ["const secret"]],
+      // A double-backtick span containing a backtick.
+      ["Use `` a`b `` here\n", ["a`b"]],
+      // Setext heading underline.
+      ["Title\n=====\n\nBody\n", ["====="]],
+      // HTML block.
+      ['<div class="x">\n  keep me\n</div>\n\nText\n', ["keep me", "class"]],
+      // Autolinks, both forms.
+      [
+        "Go to <https://a.dev/x> or https://b.dev/y today\n",
+        ["a.dev", "b.dev"],
+      ],
+      // Footnote reference and definition marker.
+      ["Claim[^1]\n\n[^1]: The note.\n", ["[^1]"]],
+      // Nested emphasis.
+      ["***bold italic*** and _em_\n", ["***", "_"]],
+      // Reference-style link and its definition.
+      [
+        'See [text][ref].\n\n[ref]: https://example.com/x "T"\n',
+        ["[ref]", "example.com"],
+      ],
+      // A table with an inline code cell.
+      ["| a | b |\n| - | - |\n| `x` | y |\n", ["|", "x`"]],
+    ];
+    for (const [md, secrets] of cases) {
+      const { text, spans } = mask(md);
+      for (const secret of secrets) {
+        expect(text, JSON.stringify(md)).not.toContain(secret);
+      }
+      expect(unmask(text, spans), JSON.stringify(md)).toBe(md);
+    }
+  });
+
+  it("keeps blank lines literal so paragraph breaks stay visible", () => {
+    const { text } = mask("First paragraph.\n\nSecond paragraph.\n");
+    expect(text).toBe("First paragraph.\n\nSecond paragraph.\n");
   });
 
   it("round-trips exactly", () => {
@@ -302,6 +389,28 @@ describe("createTranslator", () => {
     expect(denied).toBe(1);
   });
 
+  it("waits at least as long as the server's Retry-After asked", async () => {
+    let attempts = 0;
+    const times: number[] = [];
+    const mw = createTranslator({
+      name: "t",
+      retry: { delay: 0 },
+      translate: async (text) => {
+        times.push(Date.now());
+        attempts += 1;
+        if (attempts === 1) {
+          throw Object.assign(new Error("busy"), {
+            status: 429,
+            retryAfter: 60,
+          });
+        }
+        return text;
+      },
+    });
+    expect(await mw.handle([ctx("x")], next)).toEqual(["x"]);
+    expect(times[1] - times[0]).toBeGreaterThanOrEqual(55);
+  });
+
   it("classifies errors for retry", () => {
     expect(isRetryableError(new Error("network"))).toBe(true);
     expect(isRetryableError({ status: 503 })).toBe(true);
@@ -375,5 +484,40 @@ describe("createTranslator", () => {
     });
     await mw.handle([ctx("a `x` b")], next);
     expect(seen).toEqual(["a `x` b"]);
+  });
+});
+
+describe("parseLocale / chineseScript", () => {
+  it("splits any BCP 47 tag with Intl.Locale", () => {
+    expect(parseLocale("ja")).toMatchObject({ language: "ja" });
+    expect(parseLocale("en-US")).toMatchObject({
+      language: "en",
+      region: "US",
+    });
+    expect(parseLocale("pt_BR")).toMatchObject({
+      language: "pt",
+      region: "BR",
+    });
+    expect(parseLocale("zh-Hant-TW")).toEqual({
+      language: "zh",
+      script: "Hant",
+      region: "TW",
+    });
+    // Legacy code is canonicalised.
+    expect(parseLocale("iw").language).toBe("he");
+  });
+
+  it("falls back to the first subtag for a tag Intl rejects", () => {
+    expect(parseLocale("not a locale!").language).toBe("not");
+  });
+
+  it("decides the Chinese script from script, then region, else Simplified", () => {
+    expect(chineseScript("zh-Hant")).toBe("Hant");
+    expect(chineseScript("zh-Hans-TW")).toBe("Hans");
+    expect(chineseScript("zh-TW")).toBe("Hant");
+    expect(chineseScript("zh-HK")).toBe("Hant");
+    expect(chineseScript("zh-CN")).toBe("Hans");
+    expect(chineseScript("zh")).toBe("Hans");
+    expect(chineseScript("ja")).toBeUndefined();
   });
 });

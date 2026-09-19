@@ -1,43 +1,19 @@
-/** Runs at most `concurrency` tasks at once, and starts no two tasks less than `minInterval` ms apart. */
+import PQueue from "p-queue";
+import pRetry from "p-retry";
+
+/** Runs at most `concurrency` tasks at once, and starts no more than one task per `minInterval` ms. */
 export function createLimiter(options: {
   concurrency: number;
   minInterval: number;
 }): <T>(task: () => Promise<T>) => Promise<T> {
-  let active = 0;
-  // Starts are serialised through one chain, and each waits until `minInterval` has passed since the previous one *actually* began — so timer jitter can't bunch two starts together.
-  let gate: Promise<void> = Promise.resolve();
-  let lastStart = 0;
-  const waiting: Array<() => void> = [];
-
-  const release = () => {
-    active -= 1;
-    waiting.shift()?.();
-  };
-
-  const waitForTurn = (): Promise<void> => {
-    gate = gate.then(async () => {
-      for (;;) {
-        const wait = lastStart + options.minInterval - Date.now();
-        if (wait <= 0) break;
-        await new Promise((resolve) => setTimeout(resolve, wait));
-      }
-      lastStart = Date.now();
-    });
-    return gate;
-  };
-
-  return async <T>(task: () => Promise<T>): Promise<T> => {
-    if (active >= options.concurrency) {
-      await new Promise<void>((resolve) => waiting.push(resolve));
-    }
-    active += 1;
-    try {
-      if (options.minInterval > 0) await waitForTurn();
-      return await task();
-    } finally {
-      release();
-    }
-  };
+  const queue = new PQueue({
+    concurrency: options.concurrency,
+    // `strict` makes the interval a rolling window, so starts really are spaced apart instead of bunching at a window's edge.
+    ...(options.minInterval > 0
+      ? { interval: options.minInterval, intervalCap: 1, strict: true }
+      : {}),
+  });
+  return <T>(task: () => Promise<T>) => queue.add(task) as Promise<T>;
 }
 
 export interface RetryOptions {
@@ -65,20 +41,29 @@ export function isRetryableError(error: unknown): boolean {
   return [408, 409, 425, 429].includes(status) || status >= 500;
 }
 
-export async function withRetry<T>(
+/** The longest a `Retry-After` is honored, so one bad header can't hang a run. */
+const MAX_RETRY_AFTER = 60_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Retries `task` with exponential backoff (p-retry), honoring a server's `Retry-After` when the error carries it as `retryAfter` in ms. */
+export function withRetry<T>(
   task: () => Promise<T>,
   options: RetryOptions
 ): Promise<T> {
-  const retries = options.retries ?? 2;
   const shouldRetry = options.shouldRetry ?? isRetryableError;
-  let delay = options.delay ?? 500;
-  for (let attempt = 0; ; attempt++) {
-    try {
-      return await task();
-    } catch (error) {
-      if (attempt >= retries || !shouldRetry(error)) throw error;
-      if (delay > 0) await new Promise((r) => setTimeout(r, delay));
-      delay *= 2;
-    }
-  }
+  return pRetry(task, {
+    retries: options.retries ?? 2,
+    minTimeout: options.delay ?? 500,
+    factor: 2,
+    randomize: false,
+    shouldRetry: ({ error }) => shouldRetry(error),
+    onFailedAttempt: async ({ error }) => {
+      const asked = (error as { retryAfter?: unknown }).retryAfter;
+      // Waited on top of the backoff, so the total is at least what the server asked for.
+      if (typeof asked === "number" && asked > 0) {
+        await sleep(Math.min(asked, MAX_RETRY_AFTER));
+      }
+    },
+  });
 }

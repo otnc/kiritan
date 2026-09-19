@@ -16,3 +16,5 @@ export {
   unmask,
 } from "./protect.js";
 export { splitText } from "./split.js";
+export { chineseScript, parseLocale } from "./locale.js";
+export type { ParsedLocale } from "./locale.js";
