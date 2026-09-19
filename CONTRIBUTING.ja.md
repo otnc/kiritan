@@ -76,6 +76,7 @@ npm run ci && npm run typecheck && npm run test && npm run build
 - **テストはコードの隣に** `*.test.ts` として置き、vitest で実行します。
 - **コメントとドキュメントは英語**で、簡潔に保ちます。
 - **型のみの import には `import type` を使用**します(`verbatimModuleSyntax` が有効です)。
+- **手書きのロジックよりメンテナンスされているライブラリを優先し、依存はESM/CJS両対応のものにする。** パッケージのAPI(`kiritan` のAPI、`@kiritan/runtime`、`@kiritan/middleware`、各プロバイダーのパッケージ)を通じて利用者が読み込むものは、*最新版*がESMとCJSの両方を提供しているライブラリにする。そうすればbundleの小細工なしに `require()` も `import` も使える。追加する前に、最新版の `exports` を確認すること。CLIは例外で、`yargs` のようなESM専用のライブラリを使ってよい。APIにおける唯一の恒常的な例外が、`kiritan` の `unified`/`remark-*` 群: ESM専用で、Markdownを文字列に戻せる両対応の代替が無いため、`dist/` にbundleしており(`tsdown.config.ts` を参照)、CJSの利用者には影響しない。そのような代替が現れるまで、これは残す。
 
 ## プルリクエスト
 

@@ -79,6 +79,7 @@ npm run ci && npm run typecheck && npm run test && npm run build
 - **Tests live next to the code** as `*.test.ts` and run with vitest.
 - **Comments and docs are in English** and kept brief.
 - **Type-only imports use `import type`** (`verbatimModuleSyntax` is on).
+- **Prefer a maintained library to hand-written logic, and keep the dependency ESM/CJS-dual.** Anything a consumer loads through the package's API (`kiritan`'s API, `@kiritan/runtime`, `@kiritan/middleware` and the provider packages) must be a library whose *latest* release ships both ESM and CJS, so `require()` and `import` both work without bundling tricks; check the latest version's `exports` before adding one. The CLI is the exception, and may use ESM-only libraries such as `yargs`. The one standing exception in the API is the `unified`/`remark-*` stack in `kiritan`: it is ESM-only with no dual-format equivalent that can also stringify Markdown, so it is bundled into `dist/` (see `tsdown.config.ts`) and CJS consumers are unaffected. It stays until such an equivalent exists.
 
 ## Pull requests
 
