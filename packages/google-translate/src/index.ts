@@ -1,3 +1,5 @@
+import { createFetch, FetchError } from "ofetch";
+
 /**
  * The slice of Kiritan's `TranslateContext` this package reads. Declared here instead of imported from `kiritan` so the package has no dependency on it at all — a middleware is just a function, and these shapes are structurally compatible with `translate.middlewares`.
  */
@@ -29,6 +31,12 @@ export interface GoogleTranslateOptions {
   languageCodes?: Record<string, string>;
   /** Extra fields merged into the request body, e.g. `{ model: "nmt" }`. */
   extraParams?: Record<string, unknown>;
+  /** How many times to retry a failed request (network errors, 408/409/425/429/5xx) before giving up. Default: 2. */
+  retry?: number;
+  /** Delay between retries, in ms. Default: 500. */
+  retryDelay?: number;
+  /** Per-request timeout, in ms. Default: 30000. */
+  timeout?: number;
   /** For testing or a custom transport. Default: the global `fetch`. */
   fetch?: typeof fetch;
 }
@@ -98,6 +106,23 @@ interface GoogleResponse {
   data?: { translations?: Array<{ translatedText: string }> };
 }
 
+/** Turns an ofetch failure into a readable error carrying the HTTP status and the service's own message. */
+function describeError(error: unknown): Error {
+  if (error instanceof FetchError && error.status !== undefined) {
+    const data: unknown = error.data;
+    const detail =
+      typeof data === "string" ? data : data ? JSON.stringify(data) : "";
+    return new Error(
+      `@kiritan/google-translate: Google responded ${error.status}${detail ? `: ${detail}` : ""}`,
+      { cause: error }
+    );
+  }
+  return new Error(
+    `@kiritan/google-translate: request to Google failed: ${error instanceof Error ? error.message : String(error)}`,
+    { cause: error }
+  );
+}
+
 async function requestTranslations(
   options: GoogleTranslateOptions,
   texts: string[],
@@ -105,31 +130,31 @@ async function requestTranslations(
   to: string
 ): Promise<string[]> {
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-  const doFetch = options.fetch ?? fetch;
-  const response = await doFetch(`${baseUrl}/language/translate/v2`, {
-    method: "POST",
-    headers: {
-      "X-goog-api-key": options.apiKey,
-      "Content-Type": "application/json",
-    },
-    // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
-    body: JSON.stringify({
-      ...options.extraParams,
-      q: texts.map(protect),
-      source: toGoogleLanguage(from, options.languageCodes),
-      target: toGoogleLanguage(to, options.languageCodes),
-      format: "html",
-    }),
-  });
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `@kiritan/google-translate: Google responded ${response.status}${detail ? `: ${detail}` : ""}`
+  const request = createFetch({ fetch: options.fetch ?? globalThis.fetch });
+  let response: GoogleResponse;
+  try {
+    response = await request<GoogleResponse>(
+      `${baseUrl}/language/translate/v2`,
+      {
+        method: "POST",
+        headers: { "X-goog-api-key": options.apiKey },
+        retry: options.retry ?? 2,
+        retryDelay: options.retryDelay ?? 500,
+        timeout: options.timeout ?? 30_000,
+        // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
+        body: {
+          ...options.extraParams,
+          q: texts.map(protect),
+          source: toGoogleLanguage(from, options.languageCodes),
+          target: toGoogleLanguage(to, options.languageCodes),
+          format: "html",
+        },
+      }
     );
+  } catch (error) {
+    throw describeError(error);
   }
-  const translations = ((await response.json()) as GoogleResponse).data
-    ?.translations;
+  const translations = response.data?.translations;
   if (translations?.length !== texts.length) {
     throw new Error(
       `@kiritan/google-translate: expected ${texts.length} translation(s), got ${translations?.length ?? 0}`

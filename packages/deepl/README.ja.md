@@ -56,17 +56,20 @@ export default {
 | `baseUrl`         | エンドポイントを上書きする。                                                                                        |
 | `targetLanguages` | DeepLの `target_lang` をロケールごとに上書きする。例: `{ en: "EN-GB" }`。既定では `en` は `EN-US`、`pt` は `PT-BR`。 |
 | `extraParams`     | リクエストボディにマージする追加フィールド。例: `{ formality: "prefer_less" }`。                                    |
+| `retry` | 失敗したリクエスト(ネットワークエラー、408/409/425/429/5xx)を再試行する回数。既定: 2。 |
+| `retryDelay` | 再試行までの待ち時間(ms)。既定: 500。 |
+| `timeout` | リクエストごとのタイムアウト(ms)。既定: 30000。 |
 | `fetch`           | テストやプロキシ用の独自の `fetch`。                                                                                |
 
 ### 挙動
 
 - `%{name}` のプレースホルダーは変更されずに戻る: DeepLが無視するよう指示したタグ(`tag_handling: xml`)で包み、残りのテキストは送信時にXMLエスケープ、受信時にアンエスケープする。
 - それ以外のテキストはそのまま送られるため、セグメント内のMarkdown構文(リンク・強調・コード)の扱いはDeepL自身に任される。公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
-- 応答がOKでない場合は例外を投げ、`kiritan translate` はDeepL自身のメッセージ(無効なキー、使い切ったクォータ等)とともに停止する。
+- 失敗したリクエストは再試行(`retry` 参照)され、それでも失敗すれば例外を投げ、`kiritan translate` はDeepL自身のメッセージ(無効なキー、使い切ったクォータ等)とともに停止する。
 
 ## 動作環境
 
-- Node.js >= 22.7(グローバルの `fetch` を使用)
+- Node.js >= 22.7(HTTP通信は [ofetch](https://github.com/unjs/ofetch) 経由)
 
 ## コントリビュート
 

@@ -80,13 +80,16 @@ export default {
 | `baseUrl`       | Overrides the endpoint.                                                                                          |
 | `languageCodes` | Per-locale overrides of the language code sent as `source`/`target`, e.g. `{ zh: "zh-CN" }`. Others go as-is.    |
 | `extraParams`   | Extra fields merged into the request body, e.g. `{ model: "nmt" }`.                                              |
+| `retry` | How many times to retry a failed request (network errors, 408/409/425/429/5xx). Default: 2. |
+| `retryDelay` | Delay between retries, in ms. Default: 500. |
+| `timeout` | Per-request timeout, in ms. Default: 30000. |
 | `fetch`         | A custom `fetch`, for testing or a proxy.                                                                        |
 
 ### Behavior
 
 - This uses the Basic (v2) API. `%{name}` placeholders come back unchanged: they're wrapped in `<span translate="no">` and the text is sent as `format: "html"`, so the rest of the text is HTML-escaped on the way in and un-escaped on the way out (Google also escapes characters like `'` on its own, which is decoded too).
 - Otherwise the text is sent as-is, so Markdown syntax in a segment (links, emphasis, code) is left to Google's own handling. Review machine translations before publishing them — `kiritan check` flags `catalog` entries written this way as `machine` until you do.
-- A non-OK response throws, and `kiritan translate` stops with Google's own message (an invalid key, an exhausted quota, ...).
+- A failed request is retried (see `retry`) and then throws, and `kiritan translate` stops with Google's own message (an invalid key, an exhausted quota, ...).
 :::
 :::kiritan{locale=ja}
 ### オプション
@@ -97,19 +100,22 @@ export default {
 | `baseUrl`       | エンドポイントを上書きする。                                                                                |
 | `languageCodes` | `source`/`target` として送る言語コードをロケールごとに上書きする。例: `{ zh: "zh-CN" }`。他はそのまま送る。 |
 | `extraParams`   | リクエストボディにマージする追加フィールド。例: `{ model: "nmt" }`。                                        |
+| `retry` | 失敗したリクエスト(ネットワークエラー、408/409/425/429/5xx)を再試行する回数。既定: 2。 |
+| `retryDelay` | 再試行までの待ち時間(ms)。既定: 500。 |
+| `timeout` | リクエストごとのタイムアウト(ms)。既定: 30000。 |
 | `fetch`         | テストやプロキシ用の独自の `fetch`。                                                                        |
 
 ### 挙動
 
 - Basic(v2)APIを使う。`%{name}` のプレースホルダーは変更されずに戻る: `<span translate="no">` で包み、テキストを `format: "html"` で送るため、残りのテキストは送信時にHTMLエスケープ、受信時にアンエスケープする(Google自身が `'` のような文字も勝手にエスケープして返すが、それもデコードする)。
 - それ以外のテキストはそのまま送られるため、セグメント内のMarkdown構文(リンク・強調・コード)の扱いはGoogle自身に任される。公開前に機械翻訳をレビューすること — この方法で書き込まれた `catalog` のエントリは、レビューするまで `kiritan check` が `machine` として報告する。
-- 応答がOKでない場合は例外を投げ、`kiritan translate` はGoogle自身のメッセージ(無効なキー、使い切ったクォータ等)とともに停止する。
+- 失敗したリクエストは再試行(`retry` 参照)され、それでも失敗すれば例外を投げ、`kiritan translate` はGoogle自身のメッセージ(無効なキー、使い切ったクォータ等)とともに停止する。
 :::
 
 :::kiritan{locale=en}
 ## Requirements
 
-- Node.js >= 22.7 (uses the global `fetch`)
+- Node.js >= 22.7 (HTTP goes through [ofetch](https://github.com/unjs/ofetch), its only dependency of note)
 
 ## Contributing
 
@@ -122,7 +128,7 @@ Distributed under the [WTFPL License](https://github.com/otnc/kiritan/blob/main/
 :::kiritan{locale=ja}
 ## 動作環境
 
-- Node.js >= 22.7(グローバルの `fetch` を使用)
+- Node.js >= 22.7(HTTP通信は [ofetch](https://github.com/unjs/ofetch) 経由)
 
 ## コントリビュート
 
