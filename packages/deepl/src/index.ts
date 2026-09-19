@@ -37,6 +37,8 @@ const FREE_URL = "https://api-free.deepl.com";
 const PRO_URL = "https://api.deepl.com";
 /** DeepL accepts at most 50 texts per request. */
 const MAX_TEXTS_PER_REQUEST = 50;
+/** ...and a request body of at most 128 KiB; this leaves headroom for the other fields. */
+const MAX_BODY_BYTES = 120 * 1024;
 
 // DeepL's `target_lang` has no bare EN/PT — it wants the regional variant. Everything else is just the uppercased Kiritan locale.
 const DEFAULT_TARGET_OVERRIDES: Record<string, string> = {
@@ -115,13 +117,14 @@ async function requestTranslations(
       Authorization: `DeepL-Auth-Key ${options.apiKey}`,
       "Content-Type": "application/json",
     },
+    // `extraParams` goes first so it can add fields but never override the ones placeholder protection and response ordering depend on.
     body: JSON.stringify({
+      ...options.extraParams,
       text: texts.map(protect),
       source_lang: toDeepLSource(from),
       target_lang: toDeepLTarget(to, options.targetLanguages),
       tag_handling: "xml",
       ignore_tags: [KEEP_TAG],
-      ...options.extraParams,
     }),
   });
 
@@ -156,8 +159,33 @@ export function deepl(options: DeepLOptions): DeepLMiddleware {
   };
 }
 
+/** Splits `indexes` into runs within DeepL's per-request text count and body size (measured on the escaped, JSON-encoded text, which is what actually goes out). A single text over the size limit still goes out alone, for DeepL to reject with its own error. */
+function chunkIndexes(
+  indexes: number[],
+  ctxs: TranslateContextLike[]
+): number[][] {
+  const chunks: number[][] = [];
+  let current: number[] = [];
+  let bytes = 0;
+  for (const index of indexes) {
+    const size = Buffer.byteLength(JSON.stringify(protect(ctxs[index].text)));
+    if (
+      current.length > 0 &&
+      (current.length >= MAX_TEXTS_PER_REQUEST || bytes + size > MAX_BODY_BYTES)
+    ) {
+      chunks.push(current);
+      current = [];
+      bytes = 0;
+    }
+    current.push(index);
+    bytes += size;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
 /**
- * A batch-form `translate.middlewares` entry: contexts sharing a language pair go out together, up to DeepL's 50 texts per request, instead of one request each. Prefer this for a catalog with many segments.
+ * A batch-form `translate.middlewares` entry: contexts sharing a language pair go out together, up to DeepL's 50 texts / 128 KiB per request, instead of one request each. Prefer this for a catalog with many segments.
  */
 export function deeplBatch(options: DeepLOptions): DeepLBatchMiddleware {
   return {
@@ -171,12 +199,7 @@ export function deeplBatch(options: DeepLOptions): DeepLBatchMiddleware {
       });
 
       for (const indexes of groups.values()) {
-        for (
-          let start = 0;
-          start < indexes.length;
-          start += MAX_TEXTS_PER_REQUEST
-        ) {
-          const chunk = indexes.slice(start, start + MAX_TEXTS_PER_REQUEST);
+        for (const chunk of chunkIndexes(indexes, ctxs)) {
           const { from, to } = ctxs[chunk[0]];
           const translated = await requestTranslations(
             options,

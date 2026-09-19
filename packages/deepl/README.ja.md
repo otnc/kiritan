@@ -26,14 +26,16 @@ import { deepl } from "@kiritan/deepl";
 
 export default {
   locales: { default: "en", list: ["en", "ja"] },
-  sources: [{ glob: "base/README.base.md", strategy: "catalog" }],
+  sources: [{ glob: "base/README.base.md", strategy: "sidecar" }],
   translate: {
     middlewares: [deepl({ apiKey: process.env.DEEPL_API_KEY })],
   },
 };
 ```
 
-`catalog` のidが多い場合は、`deepl` の代わりに `deeplBatch` を使うと、1リクエストに多数のセグメント(DeepLの上限である50件まで)をまとめて送れるため、ずっと速い:
+`sidecar` では、ドキュメント全体が1つのテキストとしてDeepLに送られ、翻訳結果がsidecarファイルになる。`catalog` では、ベースファイル内の `:::kiritan{#id}` ブロックごとに個別に翻訳される — ベースファイルにこのブロックが無ければ、翻訳するものが何も無い。
+
+`catalog` のidが多い場合は、`deepl` の代わりに `deeplBatch` を使うと、1リクエストに多数のセグメント(DeepLの上限である50件・128 KiBまで)をまとめて送れるため、ずっと速い:
 
 ```js
 import { deeplBatch } from "@kiritan/deepl";
