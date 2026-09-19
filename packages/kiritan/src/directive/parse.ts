@@ -26,13 +26,16 @@ export function parseMarkdown(source: string): Root {
 // That position is never meaningful Markdown otherwise, so restoring any `[!...]` marker found there (and any escaping inside it) is always safe.
 const ESCAPED_ALERT_MARKER = /^(>\s*)(\\\[![^\]\n]*\\?\])/gm;
 
+/** Undoes mdast-util-to-markdown escaping a `[!TYPE]` alert marker at the start of a blockquote line. */
+export function restoreAlertMarkers(markdown: string): string {
+  return markdown.replace(
+    ESCAPED_ALERT_MARKER,
+    (_match, prefix: string, marker: string) =>
+      prefix + marker.replace(/\\/g, "")
+  );
+}
+
 /** Serializes an mdast tree (produced by `parseMarkdown`/`renderForLocale`) back to Markdown. */
 export function stringifyMarkdown(tree: Root): string {
-  return stringifier
-    .stringify(tree)
-    .replace(
-      ESCAPED_ALERT_MARKER,
-      (_match, prefix: string, marker: string) =>
-        prefix + marker.replace(/\\/g, "")
-    );
+  return restoreAlertMarkers(stringifier.stringify(tree));
 }
