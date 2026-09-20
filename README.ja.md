@@ -32,7 +32,7 @@
 - [`skills/kiritan`](./skills/kiritan) — Kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
 
 > [!Warning]
->
+>   
 > Kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。`build` / `check` / `translate` / `extract` / `typegen` はすべて実装済みです。使い方は各パッケージの README を、今後の展望は [docs/DESIGN.md](./docs/DESIGN.md) 13章を参照してください。
 
 ## 動作環境
@@ -48,5 +48,5 @@
 [WTFPL License](./LICENSE) の下で配布されています。
 
 > [!Note]
->
+>   
 > `assets/` 配下の画像ファイル(`.png` / `.gal`)は WTFPL の対象外です。本ライブラリの紹介(ブログ記事など)といった用途には使用できますが、アプリケーションのロゴ/アイコンとして使ったり、他の製品に組み込んだりすることはできません。詳細は [ASSETS\_LICENSE.md](./ASSETS_LICENSE.md) を参照してください。
