@@ -206,6 +206,14 @@ export interface SwitcherConfig {
   render?: (ctx: SwitcherRenderContext) => string;
 }
 
+/** Formatting of the Markdown that `kiritan build` writes. */
+export interface MarkdownConfig {
+  /**
+   * How many trailing spaces to put on the blank continuation lines of GitHub-style alerts (`> [!NOTE]`): `3` writes `>` followed by three spaces instead of a bare `>`. Default: 0 (a bare `>`, which is what the serializer produces and what GitHub itself renders identically).
+   */
+  alertBlankLineSpaces?: number;
+}
+
 export interface KiritanConfig {
   locales: LocalesConfig;
   sources: SourceConfig[];
@@ -215,6 +223,7 @@ export interface KiritanConfig {
   runtime?: RuntimeConfig;
   check?: CheckConfig;
   switcher?: SwitcherConfig;
+  markdown?: MarkdownConfig;
   plugins?: PluginsConfig;
 }
 

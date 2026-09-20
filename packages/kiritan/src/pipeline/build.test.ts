@@ -420,3 +420,34 @@ describe("build (plugins.renderers)", () => {
     ).rejects.toThrow(/"plain" renderer doesn't support the "inline" strategy/);
   });
 });
+
+describe("build (markdown.alertBlankLineSpaces)", () => {
+  const alertDoc = "# T\n\n> [!NOTE]\n>\n> Careful.\n";
+
+  it("writes a bare > by default", async () => {
+    await writeFile(join(cwd, "README.base.md"), alertDoc, "utf8");
+    await build(
+      baseConfig({
+        sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+        switcher: { enabled: false },
+      }),
+      { cwd }
+    );
+    const out = await readFile(join(cwd, "README.md"), "utf8");
+    expect(out).toContain("> [!NOTE]\n>\n> Careful.");
+  });
+
+  it("writes the configured trailing spaces on an alert's blank lines", async () => {
+    await writeFile(join(cwd, "README.base.md"), alertDoc, "utf8");
+    await build(
+      baseConfig({
+        sources: [{ glob: "README.base.md", strategy: "sidecar" }],
+        switcher: { enabled: false },
+        markdown: { alertBlankLineSpaces: 3 },
+      }),
+      { cwd }
+    );
+    const out = await readFile(join(cwd, "README.md"), "utf8");
+    expect(out).toContain("> [!NOTE]\n>   \n> Careful.");
+  });
+});

@@ -15,6 +15,7 @@ import { renderForLocale } from "../directive/render.js";
 import { resolveNamingOptions, resolveOutputPath } from "../discover/naming.js";
 import { discoverSourceFiles } from "../discover/sources.js";
 import { interpolateTree } from "../interpolate/index.js";
+import { padAlertBlankLines } from "../directive/parse.js";
 import { resolveRenderer } from "../renderers/index.js";
 import { catalogPathFor, readCatalogFile } from "../stores/catalog.js";
 import {
@@ -87,7 +88,8 @@ function finalizeTree(
     resolveVariables(config, locale),
     config.interpolation
   );
-  return renderer.stringify(interpolated);
+  const text = renderer.stringify(interpolated);
+  return padAlertBlankLines(text, config.markdown?.alertBlankLineSpaces ?? 0);
 }
 
 // A leading `---` YAML block only counts as front matter as the very first thing in the file, so a marker has to go after it, not before.
