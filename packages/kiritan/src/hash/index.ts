@@ -29,14 +29,31 @@ export function extractHashComment(
   return pattern.exec(text)?.[1];
 }
 
+/** The marker that says a `sidecar` file was machine-translated and hasn't been reviewed yet. Delete the line once it has been. */
+const MACHINE_MARKER = "kiritan:machine";
+
 /**
- * Appends a `kiritan:hash` marker, wrapped in `comment` (a `Renderer.comment`), recording the base content's hash at translation time.
+ * Whether a `sidecar` output file still carries the `kiritan:machine` marker, in the comment syntax of `comment` (a `Renderer.comment`) — the same words in prose or a code sample don't count.
+ */
+export function hasMachineMarker(
+  text: string,
+  comment: (text: string) => string = defaultComment
+): boolean {
+  const pattern = escapeRegExp(comment(MACHINE_MARKER)).replace(/ /g, "\\s*");
+  return new RegExp(pattern).test(text);
+}
+
+/**
+ * Appends a `kiritan:hash` marker, wrapped in `comment` (a `Renderer.comment`), recording the base content's hash at translation time. With `machine`, a `kiritan:machine` marker goes on the next line, so `kiritan check` reports the file as awaiting review until that line is deleted.
  * Defaults to Markdown's `<!-- ... -->`.
  */
 export function withHashComment(
   text: string,
   hash: string,
-  comment: (text: string) => string = defaultComment
+  comment: (text: string) => string = defaultComment,
+  options: { machine?: boolean } = {}
 ): string {
-  return `${text.replace(/\n+$/, "")}\n\n${comment(`kiritan:hash ${hash}`)}\n`;
+  const markers = [comment(`kiritan:hash ${hash}`)];
+  if (options.machine) markers.push(comment(MACHINE_MARKER));
+  return `${text.replace(/\n+$/, "")}\n\n${markers.join("\n")}\n`;
 }
