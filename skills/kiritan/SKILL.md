@@ -51,6 +51,51 @@ English content.
 - `::kiritan{switcher}` (a leaf directive, no closing `:::`) marks where the language-switcher line is inserted. It's usually unnecessary to add by hand — Kiritan auto-inserts it after the first heading unless a marker already exists or `switcher.position`/`switcher.enabled` says otherwise.
 - Nesting another directive inside a block just needs more colons on the outer fence (`::::kiritan{locale=en}` wrapping a `:::note`) — no special handling needed.
 
+### Prefer many small block pairs over one block holding the whole document
+
+Split at every natural section boundary (each heading, usually) into its own `locale=en`/`locale=ja` pair, rather than wrapping the entire page's content in a single pair per locale. Prefer this:
+
+```md
+:::kiritan{locale=en}
+## Usage
+English content.
+:::
+:::kiritan{locale=ja}
+## 使い方
+日本語のコンテンツ。
+:::
+
+:::kiritan{locale=en}
+## Configuration
+More English content.
+:::
+:::kiritan{locale=ja}
+## 設定
+さらに日本語のコンテンツ。
+:::
+```
+
+over this:
+
+```md
+:::kiritan{locale=en}
+## Usage
+English content.
+
+## Configuration
+More English content.
+:::
+:::kiritan{locale=ja}
+## 使い方
+日本語のコンテンツ。
+
+## 設定
+さらに日本語のコンテンツ。
+:::
+```
+
+Both build to the same output, but the split form is far easier to read and review in the source: each locale pair sits right next to its counterpart, a diff to one section doesn't touch the surrounding ones, and nothing is lost scrolling through a wall of one language before the other begins. Apply this when writing a new base file and when restructuring an existing one — not by forcibly re-splitting a file just to reformat it if nothing else about it is changing.
+
 ## Directive syntax (`catalog` strategy)
 
 ```md
@@ -101,6 +146,7 @@ Check the project's `runtime.sources` config before assuming which one is in use
 - Editing a generated output file instead of its `*.base.md` source (see the rule above).
 - Writing `{{name}}` instead of `%{name}` for interpolation.
 - Packing multiple locales into one `:::kiritan{...}` block instead of one self-contained block per locale.
+- Wrapping a whole document's content in one block pair per locale instead of splitting at each section — see "Prefer many small block pairs" above.
 - Using a `locale=` value not present in `locales.list` (build-time error).
 - Adding a new `:::kiritan{#<id>}` block for `catalog` and forgetting to run `kiritan extract` before it can be translated.
 - Hand-writing or guessing a catalog entry's `hash` field.
