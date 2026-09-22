@@ -10,7 +10,7 @@
 
 > 任意の「このテキストを翻訳する」関数を、完全な [Kiritan](https://www.npmjs.com/package/kiritan) 翻訳ミドルウェアにする。プロバイダーを呼ぶ部分だけを書けば、実際の運用に必要な残りはこの層が引き受ける。
 
-[![npm](https://img.shields.io/npm/v/%40kiritan%2Fmiddleware)](https://www.npmjs.com/package/@kiritan/middleware)
+[![npm](https://img.shields.io/npm/v/%40kiritan%2Fmiddleware)](https://www.npmjs.com/package/@kiritan/middleware) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/%40kiritan%2Fmiddleware)](https://www.npmjs.com/package/@kiritan/middleware)
 
 ## インストール
 
