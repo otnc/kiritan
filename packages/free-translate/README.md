@@ -10,7 +10,7 @@
 
 > Kiritan translate middlewares that need **no API key**: MyMemory, Google's keyless endpoint, and two that talk to a server you run yourself, LibreTranslate and your own Google Apps Script. Built on [`@kiritan/middleware`](https://www.npmjs.com/package/@kiritan/middleware), so code, URLs and `%{name}` are protected and long documents are split for you.
 
-[![npm](https://img.shields.io/npm/v/%40kiritan%2Ffree-translate)](https://www.npmjs.com/package/@kiritan/free-translate)
+[![npm](https://img.shields.io/npm/v/%40kiritan%2Ffree-translate)](https://www.npmjs.com/package/@kiritan/free-translate) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/%40kiritan%2Ffree-translate)](https://www.npmjs.com/package/@kiritan/free-translate)
 
 ## Install
 

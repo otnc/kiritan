@@ -10,7 +10,7 @@
 
 > Turn any "translate this text" function into a complete [Kiritan](https://www.npmjs.com/package/kiritan) translate middleware. You supply the call to your provider; this layer handles everything else a real run needs.
 
-[![npm](https://img.shields.io/npm/v/%40kiritan%2Fmiddleware)](https://www.npmjs.com/package/@kiritan/middleware)
+[![npm](https://img.shields.io/npm/v/%40kiritan%2Fmiddleware)](https://www.npmjs.com/package/@kiritan/middleware) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/%40kiritan%2Fmiddleware)](https://www.npmjs.com/package/@kiritan/middleware)
 
 ## Install
 
