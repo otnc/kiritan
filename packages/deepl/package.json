@@ -1,6 +1,6 @@
 {
   "name": "@kiritan/deepl",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A DeepL translate middleware for Kiritan / KiritanのDeepL翻訳ミドルウェア",
   "keywords": [
     "deepl",
