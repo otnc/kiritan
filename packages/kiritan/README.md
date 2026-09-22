@@ -13,7 +13,7 @@
 [![npm](https://img.shields.io/npm/v/kiritan)](https://www.npmjs.com/package/kiritan) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/kiritan)](https://www.npmjs.com/package/kiritan)
 
 > [!Warning]
->
+>   
 > Kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. The full design is written up in [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md).
 
 ## Install
@@ -77,7 +77,7 @@ await build(config);
 | `kiritan build` | Builds localized documents from every configured source |
 | `kiritan check` | Reports missing/stale/machine-translated content; exits non-zero in CI when `check.failOn` matches |
 | `kiritan verify` | Checks that every generated document matches what `build` would write today (by hash), without writing anything; exits non-zero in CI on a mismatch or a missing file. Catches an out-of-date or hand-edited generated doc |
-| `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` — only when `translate.auto` is `true`, otherwise it reports that nothing ran (`sidecar`/`catalog`; `inline` isn't supported yet) |
+| `kiritan translate` | Fills in missing/stale translations via `translate.middlewares` — only when `translate.auto` is `true`, otherwise it reports that nothing ran. Works for `sidecar`, `catalog` and `inline` (which writes new `:::kiritan{locale=...}` blocks into the base file); what it writes is marked as machine-translated until you review it |
 | `kiritan extract` | Scaffolds new `catalog`-strategy ids and reports orphaned ones |
 | `kiritan typegen` | Merges `runtime.sources` into one namespaced `ResourceModule` and writes its type declaration ([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) chapter 9.6) |
 
@@ -108,5 +108,5 @@ Contributions are welcome! See [CONTRIBUTING.md](https://github.com/otnc/kiritan
 Distributed under the [WTFPL License](https://github.com/otnc/kiritan/blob/main/LICENSE).
 
 > [!Note]
->
+>   
 > The image files (`.png` / `.gal`) under `assets/` are **not** covered by WTFPL. They may be used for purposes such as introducing this library (e.g. blog posts), but may not be used as an application logo/icon or embedded into any product. See [ASSETS\_LICENSE.md](https://github.com/otnc/kiritan/blob/main/ASSETS_LICENSE.md) for details.

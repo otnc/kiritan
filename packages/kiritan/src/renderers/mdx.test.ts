@@ -168,6 +168,15 @@ describe("mdx sources through the pipeline", () => {
     await translate(config("sidecar", true), { cwd });
     const translated = await readFile(join(cwd, "page.ja.mdx"), "utf8");
     expect(translated).toMatch(/\{\/\* kiritan:hash [0-9a-f]+ \*\/\}/);
+    // A machine translation is flagged for review, in MDX's own comment syntax, until its marker line is deleted.
+    expect(translated).toContain("{/* kiritan:machine */}");
+    expect((await check(config("sidecar"), { cwd })).issues).toMatchObject([
+      { kind: "machine", locale: "ja" },
+    ]);
+    await writeFile(
+      join(cwd, "page.ja.mdx"),
+      translated.replace("{/* kiritan:machine */}\n", "")
+    );
     expect((await check(config("sidecar"), { cwd })).issues).toEqual([]);
 
     await writeFile(join(cwd, "page.base.mdx"), "# Hello, changed\n");

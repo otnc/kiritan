@@ -7,6 +7,7 @@ import type {
   StoreContext,
   TranslationStore,
 } from "../config/types.js";
+import { blockBody, collectLocaleGroups } from "../directive/inline.js";
 import {
   collectCatalogIds,
   collectCatalogSegments,
@@ -17,7 +18,11 @@ import {
   discoverSourceFiles,
   type DiscoveredFile,
 } from "../discover/sources.js";
-import { extractHashComment, hashText } from "../hash/index.js";
+import {
+  extractHashComment,
+  hasMachineMarker,
+  hashText,
+} from "../hash/index.js";
 import { aggregateResources } from "../i18n/aggregate.js";
 import { findKeyMismatches } from "../i18n/mismatch.js";
 import { resolveRenderer } from "../renderers/index.js";
@@ -104,6 +109,16 @@ async function checkSidecar(
         detail: `sidecar file "${outPath}" is stale (source changed since it was last translated)`,
       });
     }
+
+    // `kiritan translate` marks what it writes as machine-translated; deleting the marker line is how a reviewer signs it off.
+    if (renderer.comment && hasMachineMarker(outputText, renderer.comment)) {
+      issues.push({
+        kind: "machine",
+        source: file.path,
+        locale,
+        detail: `sidecar file "${outPath}" is machine-translated and needs review (delete its kiritan:machine marker once reviewed)`,
+      });
+    }
   }
 }
 
@@ -115,7 +130,8 @@ function checkInline(
   issues: CheckIssue[],
   targetLocales: string[]
 ): void {
-  const declared = collectLocaleBlocks(renderer.parse(sourceText));
+  const tree = renderer.parse(sourceText);
+  const declared = collectLocaleBlocks(tree);
   for (const locale of targetLocales) {
     if (locale === config.locales.default) continue;
     if (!declared.has(locale)) {
@@ -125,6 +141,41 @@ function checkInline(
         locale,
         detail: `no :::kiritan{locale=${locale}} block`,
       });
+    }
+  }
+
+  // `kiritan translate` writes a block marked `machine` with the hash of the default-locale block it came from. A block with no `hash` was written by hand, so it can never be stale.
+  for (const group of collectLocaleGroups(tree)) {
+    const source = group.blocks.find(
+      (block) => block.locale === config.locales.default
+    );
+    const sourceHash = source
+      ? hashText(blockBody(renderer, source))
+      : undefined;
+    for (const block of group.blocks) {
+      if (
+        block.locale === config.locales.default ||
+        !targetLocales.includes(block.locale)
+      ) {
+        continue;
+      }
+      if (block.attributes.machine !== undefined) {
+        issues.push({
+          kind: "machine",
+          source: file.path,
+          locale: block.locale,
+          detail: `:::kiritan{locale=${block.locale}} is machine-translated and needs review (delete its "machine" attribute once reviewed)`,
+        });
+      }
+      const storedHash = block.attributes.hash ?? undefined;
+      if (sourceHash !== undefined && storedHash && storedHash !== sourceHash) {
+        issues.push({
+          kind: "stale",
+          source: file.path,
+          locale: block.locale,
+          detail: `:::kiritan{locale=${block.locale}} is stale (the :::kiritan{locale=${config.locales.default}} block changed since it was last translated)`,
+        });
+      }
     }
   }
 }
@@ -263,7 +314,7 @@ export function resolveInterpolationVariableNames(
 /**
  * `kiritan check` (docs/DESIGN.md chapter 8): finds missing/stale/machine-translated content across every source, plus `i18n-key-mismatch` for every `runtime.sources` strategy (`colocated`/`split`/`centralized`/`embedded`).
  * Stale detection compares a hash embedded at translation time (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) against the source's current hash; a file/entry with no hash yet (predating this feature, or hand-authored) is never flagged.
- * `inline` has no stale detection yet, since there's no per-block place to embed a hash without kiritan owning the base file's translated content.
+ * `sidecar` also reports a `machine` issue while a translation still carries its `kiritan:machine` marker comment, and `inline` does for a block still carrying the `machine` attribute; both are signed off by deleting the marker. An `inline` block's `hash` attribute is the hash of the default-locale block it was translated from, and a mismatch is `stale`; a block with no `hash` was written by hand and is never flagged.
  * A source whose `strategy` matches a `plugins.stores` entry is checked via that store's own `status()` instead (see `checkPluginStore`); one matching neither a built-in strategy nor a registered store throws.
  */
 export async function check(

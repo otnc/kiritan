@@ -9,6 +9,12 @@ import type {
   TranslateContext,
   TranslationStore,
 } from "../config/types.js";
+import {
+  blockBody,
+  collectLocaleGroups,
+  openingColons,
+  renderLocaleBlock,
+} from "../directive/inline.js";
 import { collectCatalogSegments } from "../directive/render.js";
 import { resolveNamingOptions, resolveOutputPath } from "../discover/naming.js";
 import {
@@ -126,7 +132,9 @@ async function translateSidecar(
     await writeFile(
       join(cwd, outPath),
       renderer.comment
-        ? withHashComment(result, sourceHash, renderer.comment)
+        ? withHashComment(result, sourceHash, renderer.comment, {
+            machine: true,
+          })
         : result,
       "utf8"
     );
@@ -282,11 +290,125 @@ async function translatePluginStore(
   }
 }
 
+interface InlineEdit {
+  start: number;
+  end: number;
+  text: string;
+  /** Tie-break for inserts at the same offset: earlier locales in `locales.list` come first. */
+  order: number;
+}
+
+/**
+ * The \`inline\` strategy has no file of its own to put a translation in, so \`kiritan translate\` writes it into the base file: for each group of adjacent locale blocks, a locale that's missing gets a new block right after the group, and a block that carries a \`hash\` gets rewritten when the default-locale block it was translated from has since changed. Every block written is marked \`machine\` (awaiting review; \`kiritan check\` reports it until the attribute is deleted) and carries that hash. A block with no \`hash\` was written by hand and is left alone. Edits are applied to the source text by offset, so nothing else in the file is reformatted.
+ */
+async function translateInline(
+  file: DiscoveredFile,
+  renderer: Renderer,
+  config: KiritanConfig,
+  cwd: string,
+  translated: TranslatedEntry[],
+  allowedLocales: string[]
+): Promise<void> {
+  const middlewares = middlewaresFor(file.source, config);
+  if (middlewares.length === 0) return;
+
+  const sourcePath = join(cwd, file.path);
+  const sourceText = await readFile(sourcePath, "utf8");
+  const groups = collectLocaleGroups(renderer.parse(sourceText));
+
+  interface Job {
+    context: TranslateContext;
+    locale: string;
+    hash: string;
+    colons: number;
+    /** Where the result goes: replaces \`replace\`, or is inserted at \`insertAt\`. */
+    replace?: { start: number; end: number };
+    insertAt: number;
+    order: number;
+  }
+  const jobs: Job[] = [];
+
+  for (const group of groups) {
+    const source = group.blocks.find(
+      (block) => block.locale === config.locales.default
+    );
+    if (!source) continue;
+    const body = blockBody(renderer, source);
+    const hash = hashText(body);
+    const groupEnd = group.blocks.at(-1)!.end;
+
+    for (const locale of allowedLocales) {
+      if (locale === config.locales.default) continue;
+      const existing = group.blocks.find((block) => block.locale === locale);
+      const storedHash = existing?.attributes.hash ?? undefined;
+      const stale = storedHash !== undefined && storedHash !== hash;
+      if (existing && !stale) continue;
+
+      jobs.push({
+        context: {
+          text: body,
+          from: config.locales.default,
+          to: locale,
+          source: file.source,
+        },
+        locale,
+        hash,
+        colons: openingColons(sourceText, source),
+        replace: existing && { start: existing.start, end: existing.end },
+        insertAt: groupEnd,
+        order: config.locales.list.indexOf(locale),
+      });
+    }
+  }
+  if (jobs.length === 0) return;
+
+  const results = await runTranslateMiddlewares(
+    middlewares,
+    jobs.map((job) => job.context)
+  );
+
+  const edits: InlineEdit[] = [];
+  jobs.forEach((job, index) => {
+    const result = results[index];
+    if (result == null) return;
+    const block = renderLocaleBlock({
+      colons: job.colons,
+      locale: job.locale,
+      hash: job.hash,
+      body: result,
+    });
+    if (job.replace) {
+      edits.push({ ...job.replace, text: block, order: job.order });
+    } else {
+      edits.push({
+        start: job.insertAt,
+        end: job.insertAt,
+        text: `\n\n${block}`,
+        order: job.order,
+      });
+    }
+    translated.push({
+      source: file.path,
+      locale: job.locale,
+      detail: `${job.replace ? "refreshed" : "added"} a :::kiritan{locale=${job.locale}} block`,
+    });
+  });
+  if (edits.length === 0) return;
+
+  // Apply from the end of the file backwards so earlier offsets stay valid; inserts at one offset go in locale order.
+  edits.sort((a, b) => b.start - a.start || b.order - a.order);
+  let output = sourceText;
+  for (const edit of edits) {
+    output = output.slice(0, edit.start) + edit.text + output.slice(edit.end);
+  }
+  await writeFile(sourcePath, output, "utf8");
+}
+
 /**
  * `kiritan translate` (docs/DESIGN.md chapter 7): fills in missing translations, and re-translates stale ones, via `translate.middlewares`.
  * A translation only counts as stale once it carries a hash (a `<!-- kiritan:hash ... -->` comment for `sidecar`, the catalog entry's `hash` field for `catalog`) that no longer matches the current source — one written by hand, with no hash yet, is left untouched.
  * Only runs for sources that actually configure middlewares — the default `middlewares: []` means nothing happens.
- * `inline` isn't supported yet (inserting a new locale block into the shared base file needs placement logic this doesn't have).
+ * `inline` translates into the base file itself (see `translateInline`): new `:::kiritan{locale=...}` blocks are added next to the default-locale one, marked `machine` and carrying its hash.
  */
 export async function translate(
   config: KiritanConfig,
@@ -327,11 +449,14 @@ export async function translate(
       continue;
     }
     if (file.source.strategy === "inline") {
-      if (middlewaresFor(file.source, config).length > 0) {
-        throw new Error(
-          `kiritan: "${file.path}" configures translate middlewares, but the "inline" strategy doesn't support auto-translation yet`
-        );
-      }
+      await translateInline(
+        file,
+        renderer,
+        config,
+        cwd,
+        translated,
+        targetLocales
+      );
       continue;
     }
 

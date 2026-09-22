@@ -405,24 +405,6 @@ describe("translate (plugins.stores)", () => {
 });
 
 describe("translate (inline strategy)", () => {
-  it("throws when middlewares are configured, since inline isn't supported yet", async () => {
-    await writeFile(
-      join(cwd, "README.base.md"),
-      [":::kiritan{locale=en}", "hello", ":::"].join("\n"),
-      "utf8"
-    );
-    const config = baseConfig({
-      sources: [
-        {
-          glob: "README.base.md",
-          strategy: "inline",
-          translate: { auto: true, middlewares: [uppercase] },
-        },
-      ],
-    });
-    await expect(translate(config, { cwd })).rejects.toThrow(/inline/);
-  });
-
   it("does nothing (and doesn't throw) when no middlewares are configured", async () => {
     await writeFile(
       join(cwd, "README.base.md"),

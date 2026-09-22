@@ -13,7 +13,7 @@
 [![npm](https://img.shields.io/npm/v/kiritan)](https://www.npmjs.com/package/kiritan) [![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/otnc/kiritan/ci.yml?branch=main)](https://github.com/otnc/kiritan/actions) [![GitHub](https://img.shields.io/github/license/otnc/kiritan)](https://github.com/otnc/kiritan/blob/main/LICENSE) [![Node](https://img.shields.io/node/v/kiritan)](https://www.npmjs.com/package/kiritan)
 
 > [!Warning]
->
+>   
 > Kiritan はまだ開発初期段階です(pre-1.0)。設定の形や API は今後も変わる可能性があります。詳細な設計は [docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) にまとまっています。
 
 ## インストール
@@ -77,7 +77,7 @@ await build(config);
 | `kiritan build` | 設定済みの全ソースからローカライズされたドキュメントをビルドする |
 | `kiritan check` | missing/stale/機械翻訳のコンテンツを報告する。`check.failOn` に一致すればCIで非ゼロ終了する |
 | `kiritan verify` | 生成済みの全ドキュメントが、今`build`を実行した場合の出力と(ハッシュで)一致するかを、何も書き込まずに確認する。不一致やファイルの欠落があればCIで非ゼロ終了する。古くなった、または手で編集された生成ドキュメントを検出できる |
-| `kiritan translate` | `translate.middlewares` でmissing/staleな訳文を埋める。`translate.auto` が `true` のときだけ動き、そうでなければ何も実行されなかったと報告する(`sidecar`/`catalog`対応。`inline`は未対応) |
+| `kiritan translate` | `translate.middlewares` でmissing/staleな訳文を埋める。`translate.auto` が `true` のときだけ動き、そうでなければ何も実行されなかったと報告する。`sidecar`・`catalog`・`inline`(baseファイルに新しい `:::kiritan{locale=...}` ブロックを書き込む)に対応し、書き込んだ内容はレビューするまで機械翻訳としてマークされる |
 | `kiritan extract` | `catalog`戦略の新規idをスキャフォールドし、オーファンを報告する |
 | `kiritan typegen` | `runtime.sources` を1つの名前空間付き `ResourceModule` に集約し、型定義を書き出す([docs/DESIGN.md](https://github.com/otnc/kiritan/blob/main/docs/DESIGN.md) 9.6章) |
 
@@ -108,5 +108,5 @@ await build(config);
 [WTFPL License](https://github.com/otnc/kiritan/blob/main/LICENSE) の下で配布されています。
 
 > [!Note]
->
+>   
 > `assets/` 配下の画像ファイル(`.png` / `.gal`)は WTFPL の対象外です。本ライブラリの紹介(ブログ記事など)といった用途には使用できますが、アプリケーションのロゴ/アイコンとして使ったり、他の製品に組み込んだりすることはできません。詳細は [ASSETS\_LICENSE.md](https://github.com/otnc/kiritan/blob/main/ASSETS_LICENSE.md) を参照してください。

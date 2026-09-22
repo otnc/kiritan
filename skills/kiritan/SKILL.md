@@ -66,7 +66,7 @@ This is the base-locale original text.
 
 ## `sidecar` strategy
 
-A whole separate file per locale (`README.ja.md` next to `README.base.md`), translated by hand or via `kiritan translate` (only if the source configures `translate.middlewares` **and** `translate.auto: true`). A `<!-- kiritan:hash ... -->` comment near the top records the base content's hash at translation time; don't remove or hand-edit it, or `kiritan check` loses the ability to detect that file going stale.
+A whole separate file per locale (`README.ja.md` next to `README.base.md`), translated by hand or via `kiritan translate` (only if the source configures `translate.middlewares` **and** `translate.auto: true`). What `translate` writes carries a `<!-- kiritan:machine -->` line, which `kiritan check` reports as `machine` until you have reviewed the translation and deleted that line. A `<!-- kiritan:hash ... -->` comment near the top records the base content's hash at translation time; don't remove or hand-edit it, or `kiritan check` loses the ability to detect that file going stale.
 
 ## Variable interpolation
 

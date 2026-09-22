@@ -32,7 +32,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 - [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) that teaches an AI coding agent how to work inside a Kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — see [skills/README.md](./skills/README.md) for how to install it.
 
 > [!Warning]
->
+>   
 > Kiritan is early and under active development (pre-1.0); the config shape and APIs may still change. `build`, `check`, `translate`, `extract`, and `typegen` are all implemented — see each package's README for usage, and [docs/DESIGN.md](./docs/DESIGN.md) chapter 13 for what's still on the roadmap.
 
 ## Requirements
@@ -48,5 +48,5 @@ Contributions are welcome! See [CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 Distributed under the [WTFPL License](./LICENSE).
 
 > [!Note]
->
+>   
 > The image files (`.png` / `.gal`) under `assets/` are **not** covered by WTFPL. They may be used for purposes such as introducing this library (e.g. blog posts), but may not be used as an application logo/icon or embedded into any product. See [ASSETS\_LICENSE.md](./ASSETS_LICENSE.md) for details.
