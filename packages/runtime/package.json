@@ -1,6 +1,6 @@
 {
   "name": "@kiritan/runtime",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Minimal runtime i18n (t(key, params)) for Kiritan, with no build-time dependencies / Kiritanの最小ランタイムi18n(t(key, params))。ビルド時依存なし",
   "keywords": [
     "i18n",
