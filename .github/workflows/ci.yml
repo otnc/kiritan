@@ -31,3 +31,16 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run docs:verify
+
+  # skills/kiritan is published as an Agent Skill (installed via `npx skills add otnc/kiritan --skill kiritan`), so CI keeps it valid: skills/validate.mjs checks the SKILL.md frontmatter, body size, and reference links against the Agent Skills spec (https://agentskills.io/specification), and the skills CLI step confirms a plain checkout still yields the skill (`--list` only lists and exits — it never installs or prompts).
+  agent-skill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate skills/kiritan against the Agent Skills spec
+        run: node skills/validate.mjs
+      - name: Skills CLI recognizes the skill
+        run: npx --yes skills add . --list | grep -q kiritan

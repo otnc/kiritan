@@ -29,7 +29,7 @@
 
 - [`otoneko1102.kiritan`](./extensions/vscode) — VS Code拡張機能: `:::kiritan{...}` ディレクティブブロックのシンタックスハイライト。npmパッケージではないため `packages/` ではなく `extensions/` 配下にあります。
 - [`extensions/vim`](./extensions/vim) — 同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定をカバーするVim/Neovimプラグイン。
-- [`skills/kiritan`](./skills/kiritan) — Kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
+- [`skills/kiritan`](./skills/kiritan) — Kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://agentskills.io/specification)。npmパッケージではないため、[Skills CLI](https://github.com/vercel-labs/skills) で導入する: `npx skills add otnc/kiritan --skill kiritan`(`-g` を付けると現在のリポジトリではなくユーザー全体にインストールできる。`npx skills add otnc/kiritan --list` でインストールせずにプレビュー、`npx skills update kiritan` / `npx skills remove kiritan` で管理)。詳細は [skills/README.md](./skills/README.md) を参照。
 
 > [!Warning]
 >   

@@ -34,7 +34,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 
 - [`otoneko1102.kiritan`](./extensions/vscode) — a VS Code extension: syntax highlighting for `:::kiritan{...}` directive blocks. Lives under `extensions/`, not `packages/`, since it isn't an npm package.
 - [`extensions/vim`](./extensions/vim) — a Vim/Neovim plugin covering the same directive highlighting, plus `*.kiritanconfig` filetype detection.
-- [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) that teaches an AI coding agent how to work inside a Kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — see [skills/README.md](./skills/README.md) for how to install it.
+- [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://agentskills.io/specification) that teaches an AI coding agent how to work inside a Kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — install it with the [Skills CLI](https://github.com/vercel-labs/skills): `npx skills add otnc/kiritan --skill kiritan` (`-g` installs it for your user as a whole instead of just the current repository; `npx skills add otnc/kiritan --list` previews without installing, and `npx skills update kiritan` / `npx skills remove kiritan` manage it afterwards). See [skills/README.md](./skills/README.md) for details.
 :::
 
 :::kiritan{locale=ja}
@@ -55,7 +55,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 
 - [`otoneko1102.kiritan`](./extensions/vscode) — VS Code拡張機能: `:::kiritan{...}` ディレクティブブロックのシンタックスハイライト。npmパッケージではないため `packages/` ではなく `extensions/` 配下にあります。
 - [`extensions/vim`](./extensions/vim) — 同じディレクティブハイライトに加え、`*.kiritanconfig` のfiletype判定をカバーするVim/Neovimプラグイン。
-- [`skills/kiritan`](./skills/kiritan) — Kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills)。npmパッケージではありません。導入方法は [skills/README.md](./skills/README.md) を参照。
+- [`skills/kiritan`](./skills/kiritan) — Kiritanプロジェクト内での作業のしかた(`*.base.md` ソースの編集、ディレクティブ記法、どのCLIコマンドを使うべきか)をAIコーディングエージェントに教える [Agent Skill](https://agentskills.io/specification)。npmパッケージではないため、[Skills CLI](https://github.com/vercel-labs/skills) で導入する: `npx skills add otnc/kiritan --skill kiritan`(`-g` を付けると現在のリポジトリではなくユーザー全体にインストールできる。`npx skills add otnc/kiritan --list` でインストールせずにプレビュー、`npx skills update kiritan` / `npx skills remove kiritan` で管理)。詳細は [skills/README.md](./skills/README.md) を参照。
 :::
 
 :::kiritan{locale=en}
