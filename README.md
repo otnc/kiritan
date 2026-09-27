@@ -29,7 +29,7 @@ This is an npm workspaces monorepo. The full design lives in [docs/DESIGN.md](./
 
 - [`otoneko1102.kiritan`](./extensions/vscode) — a VS Code extension: syntax highlighting for `:::kiritan{...}` directive blocks. Lives under `extensions/`, not `packages/`, since it isn't an npm package.
 - [`extensions/vim`](./extensions/vim) — a Vim/Neovim plugin covering the same directive highlighting, plus `*.kiritanconfig` filetype detection.
-- [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills) that teaches an AI coding agent how to work inside a Kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — see [skills/README.md](./skills/README.md) for how to install it.
+- [`skills/kiritan`](./skills/kiritan) — an [Agent Skill](https://agentskills.io/specification) that teaches an AI coding agent how to work inside a Kiritan project (editing `*.base.md` sources, the directive syntax, which CLI command to reach for). Not an npm package — install it with the [Skills CLI](https://github.com/vercel-labs/skills): `npx skills add otnc/kiritan --skill kiritan` (`-g` installs it for your user as a whole instead of just the current repository; `npx skills add otnc/kiritan --list` previews without installing, and `npx skills update kiritan` / `npx skills remove kiritan` manage it afterwards). See [skills/README.md](./skills/README.md) for details.
 
 > [!Warning]
 >   
