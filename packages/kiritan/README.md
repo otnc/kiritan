@@ -87,7 +87,7 @@ Every command also accepts `--lang <en|ja>`, picking the CLI's own display langu
 
 ## Requirements
 
-- Node.js >= 18
+- Node.js >= 18.3
 
 ## Related packages
 

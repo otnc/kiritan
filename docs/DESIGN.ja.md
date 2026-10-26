@@ -600,7 +600,7 @@ export function Button() {
 
 ## 10. CLI / プログラム API
 
-CLI の骨組みは [yargs](https://github.com/yargs/yargs) を使う(サブコマンド定義・ヘルプ表示・型付き引数を自前実装しない)。`kiritan` は以前 [citty](https://github.com/unjs/citty) を使っていたが、citty には自身の`--help`出力や引数解析エラー(`Missing required argument`、`Unknown argument` 等)を翻訳するフックが無く、ライブラリ自身にハードコードされた英語の文字列だった。yargsはこうした定型文言すべてに対する翻訳をバンドルで持っており(`.locale("ja")`で`Commands:`/`Options:`/`Missing required argument: %s`等が日本語に切り替わる)、これによってCLI自身の`console.log`だけでなく`--help`とエラー出力まで実際に多言語化できるようになった。
+CLI の骨組みは [citty](https://github.com/unjs/citty) を使う(サブコマンド定義・ヘルプ表示・型付き引数を自前実装しない)。`--lang` で切り替わるのは Kiritan 自身の文言、つまりコマンドとオプションの説明と、各コマンドが出力する行(`packages/kiritan/src/cli/messages.i18n.ts`)だ。citty 自身のヘルプの見出し(`USAGE`、`OPTIONS`、`COMMANDS`)と引数エラーは英語のまま出す。こうした定型文言はどの CLI でも同じ読み方をするので、citty の描画を置き換えてまで訳す価値はない。`kiritan` は一時期、この定型文言の翻訳をバンドルで持つ [yargs](https://github.com/yargs/yargs) を使っていた。しかし yargs 18 は Node.js `^20.19.0 || ^22.12.0 || >=23` を要求する。依存が無く Node.js 18.3 以上で動く citty に、0.7.0 で戻した。citty はどんな引数も受け付けてしまうので、各コマンドは宣言していない引数を拒否する(`Unknown argument: --locle`)。yargs の `.strict()` と同じ挙動だ。
 
 ```
 kiritan init [--lang] [--force]                            # Scaffolds .kiritanconfig / base/README.base.md / a .gitignore entry for local.kiritanconfig

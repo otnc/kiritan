@@ -108,9 +108,19 @@ test("kiritan CLI scaffolds and builds a project", async () => {
   }
 });
 
-test("kiritan CLI localizes yargs's own messages", async () => {
+test("kiritan CLI rejects an unknown argument", async () => {
   await assert.rejects(
-    run(process.execPath, [cli, "--lang", "ja", "nope"]),
-    (error) => /不明|引数/.test(error.stderr)
+    run(process.execPath, [cli, "build", "--locle", "ja"]),
+    (error) => /Unknown argument: --locle/.test(error.stderr)
   );
+});
+
+test("kiritan CLI translates its help with --lang", async () => {
+  const { stdout } = await run(process.execPath, [
+    cli,
+    "--help",
+    "--lang",
+    "ja",
+  ]);
+  assert.match(stdout, /ローカライズされたドキュメントをビルドする/);
 });
