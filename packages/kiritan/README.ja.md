@@ -87,7 +87,7 @@ await build(config);
 
 ## 動作環境
 
-- Node.js >= 22.7
+- Node.js >= 18
 
 ## 関連パッケージ
 

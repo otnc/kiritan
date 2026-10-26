@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [22, 24]
+        node-version: [22, 24, 26]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -31,6 +31,25 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run docs:verify
+
+  # The published packages declare engines.node >=18, but the dev toolchain (vitest, eslint) needs a newer Node.js. So this installs and builds on 24, then switches to the oldest supported versions and runs test-compat/ against the built dist/.
+  compat:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      - run: npm run test:compat
 
   # skills/kiritan is published as an Agent Skill (installed via `npx skills add otnc/kiritan --skill kiritan`), so CI keeps it valid: skills/validate.mjs checks the SKILL.md frontmatter, body size, and reference links against the Agent Skills spec (https://agentskills.io/specification), and the skills CLI step confirms a plain checkout still yields the skill (`--list` only lists and exits — it never installs or prompts).
   agent-skill:

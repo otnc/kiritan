@@ -133,7 +133,7 @@ translate: {
 
 ## Requirements
 
-- Node.js >= 22.7
+- Node.js >= 18
 
 ## Contributing
 

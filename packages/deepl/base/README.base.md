@@ -117,7 +117,7 @@ export default {
 :::kiritan{locale=en}
 ## Requirements
 
-- Node.js >= 22.7 (HTTP goes through [ofetch](https://github.com/unjs/ofetch), its only dependency of note)
+- Node.js >= 18 (HTTP goes through [ofetch](https://github.com/unjs/ofetch), its only dependency of note)
 
 ## Contributing
 
@@ -130,7 +130,7 @@ Distributed under the [WTFPL License](https://github.com/otnc/kiritan/blob/main/
 :::kiritan{locale=ja}
 ## 動作環境
 
-- Node.js >= 22.7(HTTP通信は [ofetch](https://github.com/unjs/ofetch) 経由)
+- Node.js >= 18(HTTP通信は [ofetch](https://github.com/unjs/ofetch) 経由)
 
 ## コントリビュート
 
