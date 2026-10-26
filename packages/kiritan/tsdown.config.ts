@@ -12,17 +12,9 @@ const EXTERNAL_DUAL_FORMAT_DEPENDENCIES = new Set([
   "tinyglobby",
 ]);
 
-/**
- * `yargs`'s own `.locale("ja")` support (used for the CLI's own `--help`/error-message translation) reads its bundled locale JSON files at runtime from a path resolved relative to yargs's own installed package directory, not via a static `import` a bundler could follow — bundling it into dist/ would silently break that lookup, since the JSON files wouldn't be sitting next to the bundled code anymore. `yargs` stays on 17: 18 requires Node.js `^20.19.0 || ^22.12.0 || >=23`, while 17 keeps the `>=18` floor.
- */
-const EXTERNAL_RUNTIME_ASSET_DEPENDENCIES = new Set(["yargs"]);
-
 function isExternal(id: string): boolean {
   if (builtinModules.includes(id.replace(/^node:/, ""))) return true;
-  for (const name of [
-    ...EXTERNAL_DUAL_FORMAT_DEPENDENCIES,
-    ...EXTERNAL_RUNTIME_ASSET_DEPENDENCIES,
-  ]) {
+  for (const name of EXTERNAL_DUAL_FORMAT_DEPENDENCIES) {
     if (id === name || id.startsWith(`${name}/`)) return true;
   }
   return false;

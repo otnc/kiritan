@@ -1,5 +1,12 @@
 import { createT, type T } from "@kiritan/runtime";
-import yargs, { type Argv } from "yargs";
+import {
+  defineCommand,
+  runCommand,
+  showUsage,
+  type ArgsDef,
+  type CommandDef,
+} from "citty";
+import packageJson from "../../package.json" with { type: "json" };
 import { resolveConfig } from "../config/index.js";
 import { build } from "../pipeline/build.js";
 import { check, resolveInterpolationVariableNames } from "../pipeline/check.js";
@@ -28,52 +35,85 @@ async function resolveConfigFromArgs(args: ConfigArgs) {
 
 type Translate = T<typeof messages>["t"];
 
-/** Every command except `init` shares these two — layered onto a command's own options via `{ ...configOptions(t) }`. */
+/** Accepted both before and after the command name (`kiritan --lang ja build` / `kiritan build --lang ja`), so every command declares it too. */
+function langOption(t: Translate) {
+  return {
+    lang: {
+      type: "enum",
+      options: [...SUPPORTED_LANGUAGES],
+      description: t("option.lang"),
+    },
+  } satisfies ArgsDef;
+}
+
+/** Every command except `init` shares these two. */
 function configOptions(t: Translate) {
   return {
-    mode: { type: "string", describe: t("option.mode") },
-    config: { type: "string", describe: t("option.config") },
-  } as const;
+    mode: { type: "string", description: t("option.mode") },
+    config: { type: "string", description: t("option.config") },
+  } satisfies ArgsDef;
 }
 
 /** `build`/`check`/`translate`/`extract` share this; `typegen` doesn't, since it always aggregates every locale into one runtime module. */
 function localeOption(t: Translate) {
   return {
-    locale: { type: "string", describe: t("option.locale") },
-  } as const;
+    locale: { type: "string", description: t("option.locale") },
+  } satisfies ArgsDef;
 }
 
-export interface CreateCliOptions {
-  /** Default: true. Set to false in tests so an error or --help doesn't call process.exit(). */
-  exitProcess?: boolean;
+function jsonOption(t: Translate) {
+  return {
+    json: { type: "boolean", description: t("option.json") },
+  } satisfies ArgsDef;
 }
 
-/**
- * Builds the yargs CLI, already fully translated for `lang` — command/option descriptions have to be resolved strings by the time they reach `.command()`/`.options()`, so the display language must be known before this is called (see `resolveCliLanguage`). `yargs.locale(lang)` separately covers everything yargs renders on its own (USAGE/Options/Commands labels, "Missing required argument", "Unknown argument", etc.) via its own bundled locale files — this only has to supply the strings that are actually ours.
- */
-export function createCli(
-  lang: CliLanguage,
-  options: CreateCliOptions = {}
-): Argv {
-  const { t } = createT(messages, { locale: lang, fallbackLocale: "en" });
+class UsageError extends Error {}
 
-  return yargs()
-    .locale(lang)
-    .scriptName("kiritan")
-    .exitProcess(options.exitProcess ?? true)
-    .option("lang", {
-      type: "string",
-      choices: SUPPORTED_LANGUAGES,
-      describe: t("option.lang"),
-    })
-    .command(
-      "init",
-      t("command.init.describe"),
-      (y) =>
-        y.options({
-          force: { type: "boolean", describe: t("option.force") },
-        }),
-      async (args) => {
+/** The first argument `argsDef` doesn't declare, if any. citty itself accepts anything, so a typo like `--locle ja` would otherwise be silently ignored. No command takes a positional or a short flag, so either one is unknown too. */
+function findUnknownArgument(
+  rawArgs: string[],
+  argsDef: ArgsDef
+): string | undefined {
+  for (let index = 0; index < rawArgs.length; index++) {
+    const token = rawArgs[index]!;
+    if (!token.startsWith("--")) return token;
+    const [name = "", inlineValue] = token.slice(2).split(/=(.*)/s);
+    const negated = name.startsWith("no-") ? argsDef[name.slice(3)] : undefined;
+    const def = Object.hasOwn(argsDef, name)
+      ? argsDef[name]
+      : negated?.type === "boolean"
+        ? negated
+        : undefined;
+    if (!def) return token;
+    if (def.type !== "boolean" && inlineValue === undefined) index++;
+  }
+  return undefined;
+}
+
+/** `defineCommand`, plus a `setup` that rejects arguments the command doesn't declare. */
+function defineStrictCommand<const A extends ArgsDef>(
+  def: CommandDef<A> & { args: A }
+): CommandDef<A> {
+  return defineCommand({
+    ...def,
+    setup({ rawArgs }) {
+      const unknown = findUnknownArgument(rawArgs, def.args);
+      if (unknown !== undefined) {
+        throw new UsageError(`Unknown argument: ${unknown}`);
+      }
+    },
+  });
+}
+
+function createCommands(t: Translate) {
+  return {
+    init: defineStrictCommand({
+      meta: { name: "init", description: t("command.init.describe") },
+      args: {
+        ...langOption(t),
+        force: { type: "boolean", description: t("option.force") },
+      },
+      async run({ args }) {
         const result = await init({ force: args.force });
         for (const path of result.created) {
           console.log(t("output.init.created", { path }));
@@ -81,30 +121,28 @@ export function createCli(
         for (const path of result.skipped) {
           console.log(t("output.init.skipped", { path }));
         }
-      }
-    )
-    .command(
-      "build",
-      t("command.build.describe"),
-      (y) => y.options({ ...configOptions(t), ...localeOption(t) }),
-      async (args) => {
+      },
+    }),
+    build: defineStrictCommand({
+      meta: { name: "build", description: t("command.build.describe") },
+      args: { ...langOption(t), ...configOptions(t), ...localeOption(t) },
+      async run({ args }) {
         const config = await resolveConfigFromArgs(args);
         const result = await build(config, { locale: args.locale });
         for (const path of result.written) {
           console.log(t("output.wrote", { path }));
         }
-      }
-    )
-    .command(
-      "check",
-      t("command.check.describe"),
-      (y) =>
-        y.options({
-          ...configOptions(t),
-          ...localeOption(t),
-          json: { type: "boolean", describe: t("option.json") },
-        }),
-      async (args) => {
+      },
+    }),
+    check: defineStrictCommand({
+      meta: { name: "check", description: t("command.check.describe") },
+      args: {
+        ...langOption(t),
+        ...configOptions(t),
+        ...localeOption(t),
+        ...jsonOption(t),
+      },
+      async run({ args }) {
         const config = await resolveConfigFromArgs(args);
         const result = await check(config, { locale: args.locale });
 
@@ -137,18 +175,17 @@ export function createCli(
         if (result.failed) {
           process.exitCode = 1;
         }
-      }
-    )
-    .command(
-      "verify",
-      t("command.verify.describe"),
-      (y) =>
-        y.options({
-          ...configOptions(t),
-          ...localeOption(t),
-          json: { type: "boolean", describe: t("option.json") },
-        }),
-      async (args) => {
+      },
+    }),
+    verify: defineStrictCommand({
+      meta: { name: "verify", description: t("command.verify.describe") },
+      args: {
+        ...langOption(t),
+        ...configOptions(t),
+        ...localeOption(t),
+        ...jsonOption(t),
+      },
+      async run({ args }) {
         const config = await resolveConfigFromArgs(args);
         const result = await verify(config, { locale: args.locale });
 
@@ -178,13 +215,12 @@ export function createCli(
             t("output.verify.allOk", { count: result.entries.length })
           );
         }
-      }
-    )
-    .command(
-      "translate",
-      t("command.translate.describe"),
-      (y) => y.options({ ...configOptions(t), ...localeOption(t) }),
-      async (args) => {
+      },
+    }),
+    translate: defineStrictCommand({
+      meta: { name: "translate", description: t("command.translate.describe") },
+      args: { ...langOption(t), ...configOptions(t), ...localeOption(t) },
+      async run({ args }) {
         const config = await resolveConfigFromArgs(args);
         const result = await translate(config, { locale: args.locale });
         for (const entry of result.translated) {
@@ -204,13 +240,12 @@ export function createCli(
         if (result.translated.length === 0) {
           console.log(t("output.translate.none"));
         }
-      }
-    )
-    .command(
-      "extract",
-      t("command.extract.describe"),
-      (y) => y.options({ ...configOptions(t), ...localeOption(t) }),
-      async (args) => {
+      },
+    }),
+    extract: defineStrictCommand({
+      meta: { name: "extract", description: t("command.extract.describe") },
+      args: { ...langOption(t), ...configOptions(t), ...localeOption(t) },
+      async run({ args }) {
         const config = await resolveConfigFromArgs(args);
         const result = await extract(config, { locale: args.locale });
         for (const change of result.changes) {
@@ -225,13 +260,12 @@ export function createCli(
         if (result.changes.length === 0) {
           console.log(t("output.extract.none"));
         }
-      }
-    )
-    .command(
-      "typegen",
-      t("command.typegen.describe"),
-      (y) => y.options(configOptions(t)),
-      async (args) => {
+      },
+    }),
+    typegen: defineStrictCommand({
+      meta: { name: "typegen", description: t("command.typegen.describe") },
+      args: { ...langOption(t), ...configOptions(t) },
+      async run({ args }) {
         const config = await resolveConfigFromArgs(args);
         const result = await typegen(config);
         console.log(
@@ -241,9 +275,65 @@ export function createCli(
             keyCount: result.keyCount,
           })
         );
+      },
+    }),
+  };
+}
+
+export interface Cli {
+  /** Runs one invocation. A usage error prints the relevant `--help` plus the message to stderr and sets `process.exitCode` to 1; any other error is rethrown. */
+  run(rawArgs: string[]): Promise<void>;
+}
+
+/**
+ * Builds the CLI for `lang`. The descriptions and output lines come from messages.i18n.ts, so `lang` has to be known before this is called (see `resolveCliLanguage`). citty's own help labels (`USAGE`, `OPTIONS`, ...) and argument errors stay in English.
+ */
+export function createCli(lang: CliLanguage): Cli {
+  const { t } = createT(messages, { locale: lang, fallbackLocale: "en" });
+  const subCommands = createCommands(t);
+  const main = defineCommand({
+    meta: {
+      name: "kiritan",
+      version: packageJson.version,
+      description: t("description"),
+    },
+    args: langOption(t),
+    subCommands,
+  });
+
+  /** Prints the `--help` of the first argument naming a command, else of the top level. */
+  async function showHelp(rawArgs: string[]) {
+    const name = rawArgs.find((arg): arg is keyof typeof subCommands =>
+      Object.hasOwn(subCommands, arg)
+    );
+    // A command's usage only reads its parent's meta (for "kiritan build" and the version).
+    if (name)
+      await showUsage(subCommands[name] as CommandDef, { meta: main.meta });
+    else await showUsage(main);
+  }
+
+  return {
+    async run(rawArgs) {
+      if (rawArgs.includes("--help") || rawArgs.includes("-h")) {
+        await showHelp(rawArgs);
+        return;
       }
-    )
-    .demandCommand(1)
-    .strict()
-    .help();
+      if (rawArgs.length === 1 && rawArgs[0] === "--version") {
+        console.log(packageJson.version);
+        return;
+      }
+      try {
+        await runCommand(main, { rawArgs });
+      } catch (error) {
+        // citty doesn't export its CLIError class, only names it.
+        const isUsageError =
+          error instanceof UsageError ||
+          (error instanceof Error && error.name === "CLIError");
+        if (!isUsageError) throw error;
+        await showHelp(rawArgs);
+        console.error(error.message);
+        process.exitCode = 1;
+      }
+    },
+  };
 }

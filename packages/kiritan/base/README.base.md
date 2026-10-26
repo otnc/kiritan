@@ -139,7 +139,7 @@ Every command also accepts `--lang <en|ja>`, picking the CLI's own display langu
 :::kiritan{locale=en}
 ## Requirements
 
-- Node.js >= 18
+- Node.js >= 18.3
 
 ## Related packages
 
@@ -162,7 +162,7 @@ Distributed under the [WTFPL License](https://github.com/otnc/kiritan/blob/main/
 :::kiritan{locale=ja}
 ## 動作環境
 
-- Node.js >= 18
+- Node.js >= 18.3
 
 ## 関連パッケージ
 

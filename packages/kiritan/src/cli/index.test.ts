@@ -35,7 +35,7 @@ function logged(): string[] {
 
 describe("createCli (init)", () => {
   it("prints translated created/skipped lines depending on --lang", async () => {
-    await createCli("en", { exitProcess: false }).parseAsync(["init"]);
+    await createCli("en").run(["init"]);
     expect(logged()).toEqual([
       "created .kiritanconfig",
       "created base/README.base.md",
@@ -43,7 +43,7 @@ describe("createCli (init)", () => {
     ]);
 
     logSpy.mockClear();
-    await createCli("ja", { exitProcess: false }).parseAsync(["init"]);
+    await createCli("ja").run(["init"]);
     expect(logged()).toEqual([
       ".kiritanconfig をスキップしました(既に存在します)",
       "base/README.base.md をスキップしました(既に存在します)",
@@ -78,13 +78,13 @@ describe("createCli (build/check)", () => {
       "utf8"
     );
 
-    await createCli("ja", { exitProcess: false }).parseAsync(["build"]);
+    await createCli("ja").run(["build"]);
     expect(logged().sort()).toEqual(
       ["README.md を書き込みました", "README.ja.md を書き込みました"].sort()
     );
 
     logSpy.mockClear();
-    await createCli("ja", { exitProcess: false }).parseAsync(["check"]);
+    await createCli("ja").run(["check"]);
     expect(logged()).toEqual(["kiritan check: 問題は見つかりませんでした"]);
   });
 
@@ -105,10 +105,7 @@ describe("createCli (build/check)", () => {
       "utf8"
     );
 
-    await createCli("ja", { exitProcess: false }).parseAsync([
-      "check",
-      "--json",
-    ]);
+    await createCli("ja").run(["check", "--json"]);
     expect(logged()).toHaveLength(1);
     const parsed = JSON.parse(logged()[0]!);
     expect(parsed.issues).toEqual([
@@ -160,10 +157,10 @@ describe("createCli (verify)", () => {
 
   it("passes after a build, and fails with a translated line once a document is edited", async () => {
     await scaffold();
-    await createCli("en", { exitProcess: false }).parseAsync(["build"]);
+    await createCli("en").run(["build"]);
 
     logSpy.mockClear();
-    await createCli("en", { exitProcess: false }).parseAsync(["verify"]);
+    await createCli("en").run(["verify"]);
     expect(logged()).toEqual([
       "kiritan verify: 2 generated document(s) up to date",
     ]);
@@ -171,7 +168,7 @@ describe("createCli (verify)", () => {
 
     await writeFile(join(cwd, "README.md"), "Tampered.\n", "utf8");
     logSpy.mockClear();
-    await createCli("ja", { exitProcess: false }).parseAsync(["verify"]);
+    await createCli("ja").run(["verify"]);
     expect(logged()).toHaveLength(1);
     expect(logged()[0]).toMatch(
       /^\[mismatch\] README\.md \(en、元: README\.base\.md\): 期待 [0-9a-f]+、実際 [0-9a-f]+$/
@@ -181,12 +178,9 @@ describe("createCli (verify)", () => {
 
   it("prints machine-readable JSON with --json", async () => {
     await scaffold();
-    await createCli("en", { exitProcess: false }).parseAsync(["build"]);
+    await createCli("en").run(["build"]);
     logSpy.mockClear();
-    await createCli("ja", { exitProcess: false }).parseAsync([
-      "verify",
-      "--json",
-    ]);
+    await createCli("ja").run(["verify", "--json"]);
     const parsed = JSON.parse(logged()[0]);
     expect(parsed.failed).toBe(false);
     expect(parsed.entries).toHaveLength(2);
@@ -209,10 +203,74 @@ describe("createCli (translate.auto)", () => {
     );
     await writeFile(join(cwd, "README.base.md"), "hello", "utf8");
 
-    await createCli("en", { exitProcess: false }).parseAsync(["translate"]);
+    await createCli("en").run(["translate"]);
     expect(logged()).toEqual([
       "kiritan translate: translate.middlewares are configured for 1 source(s), but translate.auto is not true, so they did not run (set translate: { auto: true } to enable them)",
       "kiritan translate: nothing to do",
     ]);
+  });
+});
+
+describe("createCli (usage)", () => {
+  let errorSpy: MockInstance<typeof console.error>;
+
+  beforeEach(() => {
+    process.exitCode = undefined;
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    process.exitCode = undefined;
+    errorSpy.mockRestore();
+  });
+
+  function errors(): string[] {
+    return errorSpy.mock.calls.map((call) => String(call[0]));
+  }
+
+  it("prints help with translated descriptions", async () => {
+    await createCli("ja").run(["--help"]);
+    expect(logged().join("\n")).toContain(
+      "設定済みの全ソースからローカライズされたドキュメントをビルドする"
+    );
+
+    logSpy.mockClear();
+    await createCli("en").run(["build", "--help"]);
+    const help = logged().join("\n");
+    expect(help).toContain("--locale");
+    expect(help).toContain(
+      "Restrict to this locale instead of every locale in locales.list"
+    );
+    expect(process.exitCode).toBeUndefined();
+  });
+
+  it("prints the package version", async () => {
+    await createCli("en").run(["--version"]);
+    expect(logged()).toEqual([expect.stringMatching(/^\d+\.\d+\.\d+/)]);
+  });
+
+  it.each([
+    [["build", "--locle", "ja"], "Unknown argument: --locle"],
+    [["build", "extra"], "Unknown argument: extra"],
+    [["init", "-f"], "Unknown argument: -f"],
+    [["nope"], "Unknown command nope"],
+    [[], "No command specified."],
+  ])("rejects %j with a usage error", async (rawArgs, message) => {
+    await createCli("en").run(rawArgs);
+    expect(errors()).toEqual([message]);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("rejects an unsupported --lang", async () => {
+    await createCli("en").run(["build", "--lang", "fr"]);
+    expect(errors()[0]).toMatch(/^Invalid value for argument: --lang \(fr\)/);
+    expect(process.exitCode).toBe(1);
+  });
+
+  it("accepts declared options in --name=value, --name value and --no-name form", async () => {
+    await createCli("en").run(["init", "--no-force", "--lang=ja"]);
+    await createCli("en").run(["--lang", "ja", "init", "--force"]);
+    expect(errors()).toEqual([]);
+    expect(process.exitCode).toBeUndefined();
   });
 });
