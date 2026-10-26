@@ -47,7 +47,6 @@ jobs:
       - run: npm run ci
       - run: npm run typecheck
       - run: npm run test
-      - run: npm run build
 
       - name: Bump version
         id: bump
@@ -78,6 +77,9 @@ jobs:
           fi
           echo "npm_tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "prerelease=$([ "$TAG" = "latest" ] && echo false || echo true)" >> "$GITHUB_OUTPUT"
+
+      # After the bump, so anything the build inlines from package.json (kiritan --version) carries the released version.
+      - run: npm run build
 
       # Harmless no-op if base/*.base.md hasn't changed since the last commit;
       # kept here so a release never ships with stale generated docs.
