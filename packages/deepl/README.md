@@ -71,7 +71,7 @@ export default {
 
 ## Requirements
 
-- Node.js >= 22.7 (HTTP goes through [ofetch](https://github.com/unjs/ofetch), its only dependency of note)
+- Node.js >= 18 (HTTP goes through [ofetch](https://github.com/unjs/ofetch), its only dependency of note)
 
 ## Contributing
 

@@ -71,7 +71,7 @@ export default {
 
 ## 動作環境
 
-- Node.js >= 22.7(HTTP通信は [ofetch](https://github.com/unjs/ofetch) 経由)
+- Node.js >= 18(HTTP通信は [ofetch](https://github.com/unjs/ofetch) 経由)
 
 ## コントリビュート
 

@@ -71,7 +71,7 @@ The output is machine translation. `kiritan check` flags `catalog` entries writt
 
 ## Requirements
 
-- Node.js >= 22.7
+- Node.js >= 18
 
 ## Contributing
 

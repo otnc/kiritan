@@ -5,7 +5,7 @@ export default defineConfig({
   format: ["esm", "cjs"],
   dts: true,
   clean: true,
-  // Node >= 22 supports ES2024
-  target: "node22",
+  // Matches engines.node (>=18)
+  target: "node18",
   platform: "node",
 });

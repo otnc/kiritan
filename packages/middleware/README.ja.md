@@ -71,7 +71,7 @@ export default {
 
 ## 動作環境
 
-- Node.js >= 22.7
+- Node.js >= 18
 
 ## コントリビュート
 

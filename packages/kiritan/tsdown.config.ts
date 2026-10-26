@@ -13,7 +13,7 @@ const EXTERNAL_DUAL_FORMAT_DEPENDENCIES = new Set([
 ]);
 
 /**
- * `yargs`'s own `.locale("ja")` support (used for the CLI's own `--help`/error-message translation) reads its bundled locale JSON files at runtime from a path resolved relative to yargs's own installed package directory, not via a static `import` a bundler could follow — bundling it into dist/ would silently break that lookup, since the JSON files wouldn't be sitting next to the bundled code anymore. Unlike the dual-format packages above, `yargs` (18+) is ESM-only, so an externalized `require("yargs")` in the unused `dist/cli.cjs` stub would throw if anyone actually ran it — harmless, since nothing does (see the `entry`/`format` comment below); the real `bin` entry, `dist/cli.mjs`, only ever loads it via `import`.
+ * `yargs`'s own `.locale("ja")` support (used for the CLI's own `--help`/error-message translation) reads its bundled locale JSON files at runtime from a path resolved relative to yargs's own installed package directory, not via a static `import` a bundler could follow — bundling it into dist/ would silently break that lookup, since the JSON files wouldn't be sitting next to the bundled code anymore. `yargs` stays on 17: 18 requires Node.js `^20.19.0 || ^22.12.0 || >=23`, while 17 keeps the `>=18` floor.
  */
 const EXTERNAL_RUNTIME_ASSET_DEPENDENCIES = new Set(["yargs"]);
 
@@ -37,8 +37,8 @@ export default defineConfig({
   format: ["esm", "cjs"],
   dts: true,
   clean: true,
-  // Node >= 22 supports ES2024
-  target: "node22",
+  // Matches engines.node (>=18)
+  target: "node18",
   platform: "node",
   deps: {
     alwaysBundle: (id) => !isExternal(id),
