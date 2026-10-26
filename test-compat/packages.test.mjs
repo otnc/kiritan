@@ -1,6 +1,7 @@
-// Runs the built dist/ of every published package on the oldest Node.js versions engines.node allows (18, 20), where vitest itself can't run. Kept to node:test and plain .mjs so nothing here needs a newer Node.js than the packages do.
+// Runs the built dist/ of every published package on the oldest Node.js versions engines.node allows (18.3.0, 18, 20), where vitest itself can't run. Kept to node:test and plain .mjs so nothing here needs a newer Node.js than the packages do.
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createRequire } from "node:module";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -11,6 +12,7 @@ import { myMemory } from "@kiritan/free-translate";
 import { googleTranslate } from "@kiritan/google-translate";
 import { mask, unmask } from "@kiritan/middleware";
 import { createT } from "@kiritan/runtime";
+import { resolveConfig } from "kiritan";
 
 const run = promisify(execFile);
 const cli = fileURLToPath(
@@ -123,4 +125,48 @@ test("kiritan CLI translates its help with --lang", async () => {
     "ja",
   ]);
   assert.match(stdout, /ローカライズされたドキュメントをビルドする/);
+});
+
+/** Writes `files` into a fresh project inside the repo (so `import ... from "kiritan"` resolves), runs `body`, then removes it. */
+async function withProject(files, body) {
+  await mkdir(cacheDir, { recursive: true });
+  const cwd = await mkdtemp(join(cacheDir, "kiritan-config-"));
+  try {
+    for (const [name, content] of Object.entries(files)) {
+      await writeFile(join(cwd, name), content, "utf8");
+    }
+    await body(cwd);
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+// *.kiritanconfig has no extension Node.js recognizes, and loads through jiti rather than Node.js's own ESM detection (22.7+), so none of this depends on the Node.js version.
+test("kiritan loads a *.kiritanconfig cascade with imports and top-level await", async () => {
+  await withProject(
+    {
+      "locales.ts": 'export const list: string[] = ["en", "ja"];\n',
+      ".kiritanconfig": [
+        'import { defineConfig } from "kiritan";',
+        'import { list } from "./locales.ts";',
+        'const glob = await Promise.resolve("x.md");',
+        'export default defineConfig({ locales: { default: "en", list }, sources: [{ glob, strategy: "inline" }] });',
+      ].join("\n"),
+      "ci.kiritanconfig":
+        "export default { check: { failOn: ['missing'] } };\n",
+      "local.kiritanconfig":
+        "module.exports = { naming: { template: '{base}.{locale}.{ext}' } };\n",
+    },
+    async (cwd) => {
+      const config = await resolveConfig({ cwd, mode: "ci" });
+      assert.deepEqual(config.locales.list, ["en", "ja"]);
+      assert.equal(config.sources[0].glob, "x.md");
+      assert.deepEqual(config.check.failOn, ["missing"]);
+      assert.equal(config.naming.template, "{base}.{locale}.{ext}");
+
+      const cjs = createRequire(import.meta.url)("kiritan");
+      const fromCjs = await cjs.resolveConfig({ cwd });
+      assert.deepEqual(fromCjs.locales.list, ["en", "ja"]);
+    }
+  );
 });

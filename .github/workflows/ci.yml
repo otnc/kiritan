@@ -32,12 +32,12 @@ jobs:
       - run: npm run test
       - run: npm run docs:verify
 
-  # The published packages declare engines.node >=18, but the dev toolchain (vitest, eslint) needs a newer Node.js. So this installs and builds on 24, then switches to the oldest supported versions and runs test-compat/ against the built dist/.
+  # The published packages declare engines.node >=18 (kiritan >=18.3.0, so that exact version is in the matrix too), but the dev toolchain (vitest, eslint) needs a newer Node.js. So this installs and builds on 24, then switches to the oldest supported versions and runs test-compat/ against the built dist/.
   compat:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20]
+        node-version: [18.3.0, 18, 20]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
