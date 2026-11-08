@@ -12,9 +12,12 @@ const execAsync = promisify(exec);
 
 /** @type {Map<string, { issues: object[], interpolationVariableNames: string[], delimiters: [string, string] }>} workspace folder path -> its last successful `kiritan check --json` */
 const checkResultByWorkspace = new Map();
+const latestCheckByWorkspace = new Map();
 
 /** @param {vscode.WorkspaceFolder} folder */
 async function runCheck(folder) {
+  const check = Symbol();
+  latestCheckByWorkspace.set(folder.uri.fsPath, check);
   // `kiritan check` exits 1 whenever any issue matches `check.failOn` — exactly the case where there's something worth showing, not a reason to discard stdout. Node's exec rejects on any non-zero exit regardless, but the rejection error still carries `.stdout`, so a real "issues found" run must be read from the caught error, not just the try block's happy path.
   let stdout;
   try {
@@ -25,7 +28,9 @@ async function runCheck(folder) {
   } catch (error) {
     stdout = /** @type {{ stdout?: string }} */ (error)?.stdout;
   }
-  if (!stdout) return; // No local kiritan install, no *.kiritanconfig, or a real crash.
+  // A newer check owns the cache even if this older process finishes last.
+  if (!stdout || latestCheckByWorkspace.get(folder.uri.fsPath) !== check)
+    return;
 
   try {
     checkResultByWorkspace.set(folder.uri.fsPath, JSON.parse(stdout));
@@ -104,15 +109,37 @@ function registerDiagnostics(context) {
   /** @type {NodeJS.Timeout | undefined} */
   let debounceTimer;
 
+  async function refreshWorkspace(folder) {
+    await runCheck(folder);
+    for (const document of vscode.workspace.textDocuments) {
+      const documentFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+      if (documentFolder?.uri.fsPath === folder.uri.fsPath) {
+        refreshDiagnostics(document, diagnosticCollection);
+      }
+    }
+  }
+
   async function refreshFromDisk(document) {
     if (document.languageId !== "markdown") return;
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
     if (!folder) return;
-    await runCheck(folder);
-    refreshDiagnostics(document, diagnosticCollection);
+    await refreshWorkspace(folder);
   }
 
+  async function refreshConfig(uri) {
+    const folder = vscode.workspace.getWorkspaceFolder(uri);
+    if (!folder || path.dirname(uri.fsPath) !== folder.uri.fsPath) return;
+    checkResultByWorkspace.delete(folder.uri.fsPath);
+    await refreshWorkspace(folder);
+  }
+
+  const configWatcher =
+    vscode.workspace.createFileSystemWatcher("**/*kiritanconfig");
   context.subscriptions.push(
+    configWatcher,
+    configWatcher.onDidChange(refreshConfig),
+    configWatcher.onDidCreate(refreshConfig),
+    configWatcher.onDidDelete(refreshConfig),
     vscode.workspace.onDidOpenTextDocument(refreshFromDisk),
     vscode.workspace.onDidSaveTextDocument(refreshFromDisk),
     vscode.workspace.onDidChangeTextDocument((event) => {
